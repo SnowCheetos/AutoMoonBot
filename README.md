@@ -7,7 +7,7 @@
 * The file ```subroutines.py``` contains all the methods used to calculate the different technical indicators of a given cryptocurrency asset and timeframe. 
 * The file ```gen_transform.py``` reduces the dimensionality of the dataset by selecting the top 200 features using the Random Forest algorithm. 
 * The reduced dataset is then used to train 4 different machine learning algorithms, K-nearest neighbor, random forest, gaussian naive bayes and gradient boosting classifier.
-*  The 4 models' outputs are combined using a weighted average, and the final outputs are used as raw signals. Below shows the raw predictions on the BTC/USD pair.\
+*  The 4 models' outputs are combined using a weighted average, and the final outputs are used as raw signals. Below shows the raw predictions on the ```BTC/USD``` pair.\
 \
 ![raw](https://user-images.githubusercontent.com/86272122/139788759-5549fe69-1c03-4d94-86c8-39582657bd08.png)
 
@@ -28,7 +28,7 @@
 ## Installation and usage
 * This program requires the libraries ```sklearn```, ```imblearn``` as well as ```cbpro```
 * To install, clone this repo via ```git clone https://github.com/SnowCheetos/BubbleMint.git .```
-* A pre-trained model for BTC/USD is ready for use. To use the model, execute ```python trader.py```
+* A pre-trained model for ```BTC/USD``` is ready for use. To use the model, execute ```python trader.py```
 * Make sure to have inserted all the API information in ```authCredentials.py``` for Coinbase Pro.
 * If you would like to train the model on an asset other than BTC, type ```python train.py``` and enter the asset.
 * You are encouraged to change the function parameters to what works best.
