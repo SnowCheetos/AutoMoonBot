@@ -18,13 +18,13 @@ class trader:
             X = np.array(data)[:,:-1]
             price = np.array(data['Close'])
             prediction = self.model.predict(X)
-            if np.argmax(prediction) == 0:
+            if prediction[-1] == -1:
                 self.tryEnter(price)
                 time.sleep(900)
                 while self.state == -1:
                     self.tryEnter(price)
                     time.sleep(900)
-            elif np.argmax(prediction) == 2:
+            elif prediction[-1] == 1:
                 self.tryExit(price)
                 time.sleep(900)
                 while self.state == 1:
