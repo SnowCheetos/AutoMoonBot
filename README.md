@@ -26,7 +26,7 @@
 * Different assets often require different chunk sizes, the default chunk size is ```320```.
 
 ## Installation and usage
-* This program requires the packages ```sklearn```, ```imblearn``` as well as ```cbpro```.
+* This program requires the packages ```sklearn```, ```termcolor```, ```imblearn``` as well as ```cbpro```.
 * To install, clone this repo via ```git clone https://github.com/SnowCheetos/BubbleMint.git .```
 * A pre-trained model for ```BTC/USD``` is ready for use. To use the model, execute ```python trader.py```.
 * Make sure to have inserted all the API information in ```authCredentials.py``` for Coinbase Pro.
