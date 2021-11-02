@@ -27,6 +27,10 @@
 \
 ![reduced](https://user-images.githubusercontent.com/86272122/139963255-fbecb351-fc31-47c1-880b-c6a71423d9ba.png)
 
+## Live Trading
+* The file ```trader.py``` contains the real-time prediction processing methods.
+* You might see different results when you change the risk tolerance and risk multiplier values.
+
 ## Installation and usage
 * This program requires the packages ```sklearn```, ```termcolor```, ```imblearn``` as well as ```cbpro```.
 * To install, clone this repo via ```git clone https://github.com/SnowCheetos/BubbleMint.git .```.
