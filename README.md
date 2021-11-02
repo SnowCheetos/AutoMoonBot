@@ -15,7 +15,7 @@ As shown above, the raw outputs from the ensembled model have too many buy/sell 
 Historic prices are first transformed into chunks of equal sizes, the minimum and maximum for each chunk is considered a buy and sell label respectively. To visualize the profit and percent gains for a large range of chunk sizes, execute ```python general_test.py```. Different assets often require different chunk sizes, the default chunk size is ```320```.
 
 ## Installation and usage
-This program requires the libraries ```sklearn``` as well as ```cbpro```.\
+This program requires the libraries ```sklearn```, ```imblearn``` as well as ```cbpro```.\
 To install, type in terminal ```git clone https://github.com/SnowCheetos/BubbleMint.git .```, a pre-trained model for BTC/USD is ready for use. To use the model, execute ```python trader.py```, but make sure to have inserted all the API information in ```authCredentials.py``` for Coinbase Pro. If you would like to train the model on a new asset, type ```python train.py``` and enter the asset, or modify the function inputs first.
 
 ## Testing
