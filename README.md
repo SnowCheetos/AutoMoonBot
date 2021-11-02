@@ -14,8 +14,7 @@ Historic prices are first transformed into chunks of equal sizes, the minimum an
 
 ## Installation and usage
 This program requires the libraries ```sklearn``` as well as ```cbpro```.\
-To install, type in terminal ```git clone https://github.com/SnowCheetos/BubbleMint.git .```, a pre-trained model for BTC/USD is ready for use. To use the model, execute ```python trader.py```, but make sure to have inserted all the API information in ```authCredentials.py``` for Coinbase Pro.\
-If you would like to train the model on a new asset, type ```python train.py``` and enter the asset, or modify the function inputs first.\
+To install, type in terminal ```git clone https://github.com/SnowCheetos/BubbleMint.git .```, a pre-trained model for BTC/USD is ready for use. To use the model, execute ```python trader.py```, but make sure to have inserted all the API information in ```authCredentials.py``` for Coinbase Pro. If you would like to train the model on a new asset, type ```python train.py``` and enter the asset, or modify the function inputs first.\
 
 ## Testing
 To visualize performances of each model, execute ```python general_test.py```. To visualize the performance of the ensembled model, execute ```python ensembled_test.py```.
