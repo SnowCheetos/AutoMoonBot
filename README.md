@@ -14,7 +14,7 @@
 
 ## Data Labeling
 * Historic prices are first transformed into chunks of equal sizes, the minimum and maximum for each chunk is considered a buy and sell label respectively. 
-* To visualize the profit and percent gains for a large range of chunk sizes, execute ```python general_test.py```. 
+* To visualize the profit and percent gains for a large range of chunk sizes, execute\ ```python general_test.py```
 * Different assets often require different chunk sizes, the default chunk size is ```320```.
 
 ## Prediction Processing
