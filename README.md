@@ -11,5 +11,5 @@ As shown above, the raw outputs from the ensembled model have too many buy/sell 
 
 # Installation and usage
 This program requires the libraries ```sklearn``` as well as ```cbpro```.\
-To install, type in terminal ```git clone https://github.com/SnowCheetos/BubbleMint.git .\n cd BubbleMint```. A pre-trained model for BTC/USD is ready for use. To use the model, execute ```python trader.py```, but make sure to have inserted all the API information in ```authCredentials.py``` for Coinbase Pro.\
+To install, type in terminal ```git clone https://github.com/SnowCheetos/BubbleMint.git .```. A pre-trained model for BTC/USD is ready for use. To use the model, execute ```python trader.py```, but make sure to have inserted all the API information in ```authCredentials.py``` for Coinbase Pro.\
 If you would like to train the model on a new asset, type ```python train.py``` and enter the asset, or modify the function inputs first.
