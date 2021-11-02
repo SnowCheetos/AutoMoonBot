@@ -13,11 +13,11 @@
 
 ## Prediction Processing
 * The raw outputs from the ensembled model have too many buy/sell signals in the same reneral area. 
-* To combat this, a step operation is introduced, where the first buy signal will not result in the execution of the purchase, but rather trigger a stoploss and take-profit margin to be set. 
-* If a new buy signal is received prior to the price crossing either margins, then a new margin is generated. 
-* The purchase will only be executed when prices eventually crosses the margins. 
-* Margins settings can be changed by changing the risk tolerance levels in ```trader.py```.
-* The same operation is done on sall signals. Blow shows the same predictions after the stepping operations.\
+* To combat this, every time a buy signal is received, it won't immediately trigger a buy action, but rather sets up a stop-loss and take-profit margin that centers at the previous closing price.
+* The margins are set up according to the risk tolerance and multiplier settings in ```trader.py```.
+* If a new buy signal is received before price breaks the margin, then a new margin will be set at the previous closing price.
+* The buy action will only be executed when prices eventually crosses either the stop-loss or take-profit. 
+* The same operation is done on sell signals. Blow shows the same predictions after the prediction processing.\
 \
 ![stepped](https://user-images.githubusercontent.com/86272122/139789031-068c1a99-db77-45bb-972f-750db1c31000.png)
 
