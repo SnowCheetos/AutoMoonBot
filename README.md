@@ -1,4 +1,5 @@
-# BubbleMint, a ML-driven cryptocurrency trading bot
+# BubbleMint, A Machine Learning Driven Cryptocurrency Trading Bot
+* This program is built with simplicity in mind, you can train/test/run a model for a certain asset in less than 30 minutes.
 * This program runs on Coinbase Pro, if you would like to use it as an investment tool, be sure to have a Coinbase Pro account and insert all necessary API information in ```authCredentials.py```. 
 * This program uses 4 different machine learning algorithms to generate buy and sell signals for a given asset and time interval. 
 * A pre-trained model for Bitcoin/USD is available and ready to use.
