@@ -33,6 +33,8 @@
 * Make sure to have inserted all the API information in ```authCredentials.py``` for Coinbase Pro.
 * If you would like to train the model on an asset other than BTC, execute ```python train.py``` and enter the asset. Make sure the asset is available for trading on Coinbase Pro (XRP is not).
 * You are encouraged to change the function parameters to what works best.
+* You are also encouraged to set up a general stop-loss when you are holding a certain asset. Cryptocurrency prices are extremely volatile and the model can make bad decisions during extreme volatility.
 
 ## Testing
-To visualize performances of each model, execute ```python general_test.py```. To visualize the performance of the ensembled model, execute ```python ensembled_test.py```.
+* To visualize performances of each model, execute ```python general_test.py```. 
+* To visualize the performance of the ensembled model, execute ```python ensembled_test.py```.
