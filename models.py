@@ -32,7 +32,7 @@ GB = GradientBoostingClassifier(
     min_samples_split = 0.05,
     min_samples_leaf = 0.05,
     verbose = 9
-    )
+)
 
 
 def model_gen(asset, X, Y):
