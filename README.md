@@ -11,6 +11,11 @@
 \
 ![raw](https://user-images.githubusercontent.com/86272122/139788759-5549fe69-1c03-4d94-86c8-39582657bd08.png)
 
+## Data Labeling
+* Historic prices are first transformed into chunks of equal sizes, the minimum and maximum for each chunk is considered a buy and sell label respectively. 
+* To visualize the profit and percent gains for a large range of chunk sizes, execute ```python general_test.py```. 
+* Different assets often require different chunk sizes, the default chunk size is ```320```.
+
 ## Prediction Processing
 * The raw outputs from the ensembled model have too many buy/sell signals in the same reneral area. 
 * To combat this, every time a buy signal is received, it won't immediately trigger a buy action, but rather sets up a stop-loss and take-profit margin that centers at the previous closing price.
@@ -20,11 +25,6 @@
 * The same operation is done on sell signals. Blow shows the same predictions after the prediction processing.\
 \
 ![stepped](https://user-images.githubusercontent.com/86272122/139789031-068c1a99-db77-45bb-972f-750db1c31000.png)
-
-## Data Labeling
-* Historic prices are first transformed into chunks of equal sizes, the minimum and maximum for each chunk is considered a buy and sell label respectively. 
-* To visualize the profit and percent gains for a large range of chunk sizes, execute ```python general_test.py```. 
-* Different assets often require different chunk sizes, the default chunk size is ```320```.
 
 ## Installation and usage
 * This program requires the packages ```sklearn```, ```termcolor```, ```imblearn``` as well as ```cbpro```.
