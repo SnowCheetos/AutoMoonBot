@@ -25,7 +25,7 @@
 * The buy action will only be executed when prices eventually crosses either the stop-loss or take-profit. 
 * The same operation is done on sell signals. Blow shows the same predictions after the prediction processing.\
 \
-![stepped](https://user-images.githubusercontent.com/86272122/139789031-068c1a99-db77-45bb-972f-750db1c31000.png)
+![reduced](https://user-images.githubusercontent.com/86272122/139963255-fbecb351-fc31-47c1-880b-c6a71423d9ba.png)
 
 ## Installation and usage
 * This program requires the packages ```sklearn```, ```termcolor```, ```imblearn``` as well as ```cbpro```.
