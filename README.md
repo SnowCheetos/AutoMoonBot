@@ -1,5 +1,7 @@
 # BubbleMint, a ML-driven cryptocurrency trading bot
-This program runs on Coinbase Pro, if you would like to use it as an investment tool, be sure to have a Coinbase Pro account and insert all necessary API information in ```authCredentials.py```. This program uses 4 different machine learning algorithms to generate buy/sell signals for a given asset and time interval. Pre-trained model for Bitcoin/USD is available and ready to use.
+* This program runs on Coinbase Pro, if you would like to use it as an investment tool, be sure to have a Coinbase Pro account and insert all necessary API information in ```authCredentials.py```. 
+* This program uses 4 different machine learning algorithms to generate buy and sell signals for a given asset and time interval. 
+* A pre-trained model for Bitcoin/USD is available and ready to use.
 
 ## How it works
 The file ```subroutines.py``` contains all the methods used to calculate the different technical indicators of a given cryptocurrency asset and timeframe. The file ```gen_transform.py``` reduces the dimensionality of the dataset by selecting the top 200 features using the Random Forest algorithm. The reduced dataset is then used to train 4 different machine learning algorithms, K-nearest neighbor, random forest, gaussian naive bayes and gradient boosting classifier. The 4 models' outputs are combined using a weighted average, and the final outputs are used as raw signals. Below shows the raw predictions on the BTC/USD pair.\
@@ -15,11 +17,12 @@ As shown above, the raw outputs from the ensembled model have too many buy/sell 
 Historic prices are first transformed into chunks of equal sizes, the minimum and maximum for each chunk is considered a buy and sell label respectively. To visualize the profit and percent gains for a large range of chunk sizes, execute ```python general_test.py```. Different assets often require different chunk sizes, the default chunk size is ```320```.
 
 ## Installation and usage
-* This program requires the libraries ```sklearn```, ```imblearn``` as well as ```cbpro```\
-* To install, clone this repo via ```git clone https://github.com/SnowCheetos/BubbleMint.git .```\
-* A pre-trained model for BTC/USD is ready for use. To use the model, execute ```python trader.py```\ 
+* This program requires the libraries ```sklearn```, ```imblearn``` as well as ```cbpro```
+* To install, clone this repo via ```git clone https://github.com/SnowCheetos/BubbleMint.git .```
+* A pre-trained model for BTC/USD is ready for use. To use the model, execute ```python trader.py```
 * Make sure to have inserted all the API information in ```authCredentials.py``` for Coinbase Pro.
-* If you would like to train the model on an asset other than BTC, type ```python train.py``` and enter the asset, or modify the function inputs first.
+* If you would like to train the model on an asset other than BTC, type ```python train.py``` and enter the asset.
+* You are encouraged to change the function parameters to what works best.
 
 ## Testing
 To visualize performances of each model, execute ```python general_test.py```. To visualize the performance of the ensembled model, execute ```python ensembled_test.py```.
