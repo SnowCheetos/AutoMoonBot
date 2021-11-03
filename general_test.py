@@ -32,21 +32,25 @@ B_GB, S_GB = np.where(GB_proba == -1)[0], np.where(GB_proba == 1)[0]
 plt.figure(figsize = (16, 8))
 plt.plot(x, gain[:,0])
 plt.title('Total gain')
+plt.xlabel('Chunk Size')
 plt.plot()
 
 plt.figure(figsize = (16, 8))
 plt.plot(x, gain[:,1])
 plt.title('Average gain')
+plt.xlabel('Chunk Size')
 plt.show()
 
 plt.figure(figsize = (16, 8))
 plt.plot(x, gain[:,2])
 plt.title('Total profit')
+plt.xlabel('Chunk Size')
 plt.plot()
 
 plt.figure(figsize = (16, 8))
 plt.plot(x, gain[:,3])
 plt.title('Average profit')
+plt.xlabel('Chunk Size')
 plt.show()
 
 plt.figure(figsize = (16, 8))
