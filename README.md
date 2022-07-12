@@ -19,7 +19,7 @@
 * Different assets often require different chunk sizes, the default chunk size is ```320```.
 
 ## Prediction Processing
-* The raw outputs from the ensembled model have too many buy/sell signals in the same reneral area. 
+* The raw outputs from the ensembled model have too many buy/sell signals in the same general area. 
 * To combat this, every time a buy signal is received, it won't immediately trigger a buy action, but rather sets up a stop-loss and take-profit margin that centers at the previous closing price.
 * The margins are set up according to the risk tolerance and multiplier settings in ```trader.py```.
 * If a new buy signal is received before price breaks the margin, then a new margin will be set at the previous closing price.
