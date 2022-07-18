@@ -18,12 +18,11 @@ class ensembled:
         self.sampler = RandomOverSampler()
 
     def predict(self, X):
-        self.preds = np.array([
-            self.KNN.predict(X),
-            self.RF.predict(X),
-            self.NB.predict(X),
-            self.GB.predict(X)
-        ]).T
-        self.pred = (self.preds @ self.w).T
-        return self.pred
-
+        preds = np.dstack([
+            self.KNN.predict_proba(X),
+            self.RF.predict_proba(X),
+            self.NB.predict_proba(X),
+            self.GB.predict_proba(X)
+        ])
+        preds = np.einsum("ijk,k->ij", preds, self.w)
+        return preds
