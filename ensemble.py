@@ -25,4 +25,4 @@ class ensembled:
             self.GB.predict_proba(X)
         ])
         preds = np.einsum("ijk,k->ij", preds, self.w)
-        return preds
+        return preds.argmax(1)
