@@ -39,18 +39,14 @@ def balance(asset):
 def buy(asset, amount):
     if amount > 0 and amount <= balance('USD-USD'):
         client.place_market_order(product_id = asset, side = 'buy', funds = round_decimals_down(amount, 7))
-        print(colored(('Bought ' + asset.split('-')[0] + ' at $' + str(currentPrice(asset)) + ', datetime: ' + rightNow() + """
-        """), 'red', attrs = ['bold']))
+        print(f"Bought {asset.split('-')[0]} at ${currentPrice(asset)}, datetime: {rightNow()} \n")
     else:
-        print(colored(('Insufficient Funds.' + """
-        """), 'red', attrs = ['bold']))
+        print("Insufficient Funds \n")
 
 def sell(asset):
     if balance(asset) > 0:
         client.place_market_order(product_id = asset, side = 'sell', size = balance(asset))
-        print(colored(('Sold all ' + asset.split('-')[0] + ' at $' + str(currentPrice(asset)) + ', datetime: ' + rightNow() + """
-        """), 'green', attrs = ['bold']))
+        print(f"Sold all {asset.split('-')[0]} at ${currentPrice(asset)}, datetime: {rightNow()} \n")
     else:
-        print(colored(('Insufficient Asset.' + """
-        """), 'green', attrs = ['bold']))
+        print("Insufficient Asset \n")
 
