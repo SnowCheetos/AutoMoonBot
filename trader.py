@@ -31,7 +31,7 @@ class trader:
                     self.tryExit(price)
                     time.sleep(900)
             else:
-                print(colored('No actions at ' + rightNow(), 'yellow' , attrs = ['bold']))
+                print(f"No actions at {rightNow()}")
             print("""-----------------------------------------------------------------------------------------
             """)
             time.sleep(900)
