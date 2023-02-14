@@ -2,7 +2,6 @@ import math
 import cbpro
 import datetime
 import pandas as pd
-from termcolor import colored
 from cbpro.public_client import PublicClient as pcl
 from authCredentials import api_secret, api_key, api_pass
 
