@@ -2,7 +2,7 @@ import joblib
 import numpy as np
 from imblearn.over_sampling import RandomOverSampler
 
-from subroutines import to_onehot
+from utils import to_onehot
 
 class ensembled:
     def __init__(self, asset):

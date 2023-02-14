@@ -1,7 +1,7 @@
 import joblib
 import numpy as np
 import matplotlib.pyplot as plt
-from subroutines import load_data, eval_label
+from utils import load_data, eval_label
 
 asset = input('Asset: ')
 
