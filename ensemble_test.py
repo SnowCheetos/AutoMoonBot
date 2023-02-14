@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from subroutines import *
+from utils import *
 from ensemble import ensembled
 
 def enter(prediction, price, risk):

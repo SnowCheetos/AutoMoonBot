@@ -1,6 +1,6 @@
 import joblib
 import numpy as np
-from subroutines import load_data
+from utils import load_data
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
