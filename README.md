@@ -6,7 +6,7 @@
 * A pre-trained model for ```BTC/USD``` is available and ready to be used.
 
 ## How it works
-* The file ```subroutines.py``` contains all the methods used to calculate the different technical indicators of a given asset.
+* The file ```utils.py``` contains all the methods used to calculate the different technical indicators of a given asset.
 * The file ```gen_transform.py``` reduces the dimensionality of the dataset by selecting the top 200 features using Random Forest. 
 * The reduced dataset is then used to train 4 different machine learning algorithms, K-nearest neighbor classifier, random forest classifier, gaussian naive bayes classifier and gradient boosting classifier.
 *  The 4 models' outputs are combined using a weighted average, and the final outputs are used as raw predictions. Below shows the raw predictions on the ```BTC/USD``` pair.\
