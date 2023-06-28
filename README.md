@@ -1,9 +1,21 @@
 # A Data Driven Cryptocurrency Trading Bot
-* ## You will probably not make money with this, you are at your own risk if you choose to put in real money!
-* This program is built with simplicity in mind, you can train/test/run a model for a certain asset in less than 30 minutes.
-* This program runs on Coinbase Pro, if you would like to use it as an investment tool, be sure to have a Coinbase Pro account and insert all necessary API information in ```authCredentials.py```. 
-* This program uses 4 different machine learning algorithms to generate buy and sell signals for a given asset and time interval. 
-* A pre-trained model for ```BTC/USD``` is available and ready to be used.
+![](media/demo.gif)
+
+## [**DISCLAIMER**] Beating the market is very difficult. It's likely that you will not make money with this, you are at your own risk if you choose to put in real money!
+
+## Introduction
+
+Who haven't though about using ML for stock market predictions! This repository offers educational content for how a trade bot can be built in python using relatively simple components. 
+
+For this purpose, 3 relatively common classifiers were chosen: `K-Nearest-Neighbor`, `Gaussian Naive-Bayes` and `Random Forest` from the `scikit-learn` library. Inputs to the model consists of normalized technical indicator values ranging from (0, 1), and the three models will classify the input to one of three classes: **-1** or a **buy** signal, **+1** or a **sell** signal, **0** or a **hold** signal.
+
+The model is trained live, every new 50 data points. This number is configurable. The targets used for training are produced by first splitting the market price data into equal chunks of size `n`, and then the minimum index of each chunk is recorded and labeled `sell`, the maximum index of each chunk and recorded and labeled `buy`, everything else is labeled `hold`.
+
+After each training session, each model will make a prediction on some recent testing data, and a weight will be assigned to each model that's proportional to the test accuracy values. The predictions made by each model will be linearly combined using their corresponding weight values to produce the final prediction.
+
+**I need to update the README after this point...**
+
+# ------- OUTDATED AFTER THIS POINT --------
 
 ## How it works
 * The file ```utils.py``` contains all the methods used to calculate the different technical indicators of a given asset.
@@ -12,11 +24,6 @@
 *  The 4 models' outputs are combined using a weighted average, and the final outputs are used as raw predictions. Below shows the raw predictions on the ```BTC/USD``` pair.\
 \
 ![raw](https://user-images.githubusercontent.com/86272122/139788759-5549fe69-1c03-4d94-86c8-39582657bd08.png)
-
-## Data Labeling
-* Historic prices are first transformed into chunks of equal sizes, the minimum and maximum for each chunk is considered a buy and sell label respectively. 
-* To visualize the profit and percent gains for a large range of chunk sizes, execute the line ```python general_test.py```
-* Different assets often require different chunk sizes, the default chunk size is ```320```.
 
 ## Prediction Processing
 * The raw outputs from the ensembled model have too many buy/sell signals in the same general area. 
@@ -29,18 +36,13 @@
 ![reduced](https://user-images.githubusercontent.com/86272122/139963255-fbecb351-fc31-47c1-880b-c6a71423d9ba.png)
 
 ## Live Trading
-* The file ```trader.py``` contains the real-time prediction processing methods.
-* You might see different results when you change the risk tolerance and risk multiplier values.
+...
 
-## Installation and usage
-* To install, clone this repo via ```git clone https://github.com/SnowCheetos/Emsemble-Tradebot.git```.
-* Install dependencies via `pip install -r requirements.txt`.
-* A pre-trained model for ```BTC/USD``` is ready to be used. To use the model, execute the line ```python trader.py``` and type in ```BTC``` for the asset.
-* Make sure to have inserted all the API information in ```authCredentials.py``` for Coinbase Pro.
-* If you would like to train the model on an asset other than BTC, execute ```python train.py``` and enter the asset. Make sure the asset is available for trading on Coinbase Pro (XRP is not).
-* You are encouraged to change the function parameters to what works best.
-* You are also encouraged to set up a general stop-loss when you are holding a certain asset. Cryptocurrency prices are extremely volatile and the model can make bad decisions during extreme volatility.
+## Installation
+...
+
+## Usage
+...
 
 ## Testing
-* To visualize performances of each model, execute ```python general_test.py```. 
-* To visualize the performance of the ensembled model, execute ```python ensembled_test.py```.
+New testing scripts needed...
