@@ -1,9 +1,5 @@
 numpy
 pandas
-datetime
-joblib
-numba
-scikit-learn
-imlearn
+ccxt
 matplotlib
-cbpro
+sklearn
