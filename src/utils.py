@@ -2,20 +2,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def label_data(data, chunk_size):
-    labels = np.zeros(data.shape[0])
+    labels = np.ones(data.shape[0])
     chunks = data[:data.shape[0]//chunk_size*chunk_size, 3].reshape(-1, chunk_size)
     mins, maxs = chunks.argmin(1), chunks.argmax(1)
     buy_idx = np.arange(len(mins)) * chunk_size + mins
     sell_idx = np.arange(len(maxs)) * chunk_size + maxs
-    labels[buy_idx] = -1
-    labels[sell_idx] = 1
+    labels[buy_idx] = 0
+    labels[sell_idx] = 2
 
     remaining = data[data.shape[0]//chunk_size*chunk_size:, 3]
     if remaining.size > 0:
         min_idx = np.argmin(remaining)
         max_idx = np.argmax(remaining)
-        labels[data.shape[0]//chunk_size*chunk_size + min_idx] = -1
-        labels[data.shape[0]//chunk_size*chunk_size + max_idx] = 1
+        labels[data.shape[0]//chunk_size*chunk_size + min_idx] = 0
+        labels[data.shape[0]//chunk_size*chunk_size + max_idx] = 2
 
     return labels
 

@@ -2,6 +2,8 @@ import ccxt
 import redis
 from typing import Union
 
+from src.simulator import Simulator
+
 class Wallet:
     def __init__(
             self, 
@@ -9,7 +11,7 @@ class Wallet:
             interval: str = "1m", 
             asset: str = "BTC/USDT",
             funds: float = 10_000.0,
-            buffer_size: int = 100,
+            buffer_size: int = 720,
             host: str = "localhost",
             port: int = 6379,
         ) -> None:
@@ -22,6 +24,7 @@ class Wallet:
             "binanceus": ccxt.binanceus,
             "kraken": ccxt.kraken,
             "coinbasepro": ccxt.coinbasepro,
+            "simulator": Simulator
         }
 
         self.redis_conn = redis.Redis(
@@ -82,7 +85,7 @@ class Wallet:
 
     def depth_weighted_price(self, asset, depth=5) -> Union[float, None]:
         try:
-            order_book = self.exchange.fetch_order_book(asset, limit=depth)
+            order_book = self.exchange.fetch_order_book(asset)
             total_volume = sum([bid[1] for bid in order_book['bids'][:depth]]) + sum([ask[1] for ask in order_book['asks'][:depth]])
             weighted_price = sum([bid[0] * bid[1] for bid in order_book['bids'][:depth]]) + sum([ask[0] * ask[1] for ask in order_book['asks'][:depth]])
             return weighted_price / total_volume if total_volume else None
@@ -114,30 +117,36 @@ class Wallet:
             print(f"Error calculating net worth with {pricing_method}: {e}")
             return None
 
-    def buy(self, asset: str, amount: float) -> bool:
+    def buy(self, asset: str, amount: Union[float, str]) -> bool:
         """
         Simulates buying an amount of a specified asset.
         :param asset: The asset to buy (e.g., 'BTC/USD').
-        :param amount: The amount of the asset to buy.
+        :param amount: The amount of the asset to buy, or 'max' to use all available cash.
         :return: True if the buy was successful, False otherwise.
         """
         try:
             price = self.last_traded_price(asset)
-            if price is None:
-                raise ValueError("Unable to fetch asset price")
+            if price is None or price == 0:
+                raise ValueError("Unable to fetch a valid asset price")
 
             fee_rate = self.get_fee_rate()  # Fetch the current fee rate
+            cash = self.fetch_cash()
+
+            # Calculate the maximum purchasable amount if 'max' is specified
+            if amount == "max":
+                total_cost_per_unit = price * (1 + fee_rate)
+                amount = cash / total_cost_per_unit
+
             total_cost = amount * price
             total_cost_incl_fee = total_cost * (1 + fee_rate)
 
-            cash = self.fetch_cash()
             if cash < total_cost_incl_fee:
-                raise ValueError("Insufficient funds")
+                raise ValueError(f"Insufficient funds, available: {cash:.2f}, cost: {total_cost_incl_fee:.2f}")
 
             # Update cash and holdings
             self.set_cash(cash - total_cost_incl_fee)
             self.set_holdings(self.fetch_holdings() + amount)
-            
+
             return True
         except Exception as e:
             print(f"Error in buying: {e}")
@@ -175,7 +184,7 @@ class Wallet:
     def fill_one(self, asset: str) -> None:
         try:
             # Fetching the OHLCVC data
-            ohlcvc_data = self.exchange.fetch_ohlcvc(asset, self.interval, limit=2)
+            ohlcvc_data = self.exchange.fetch_ohlcv(asset, self.interval, limit=2)
             if not ohlcvc_data:
                 raise ValueError(f"No data received for {asset}")
 
@@ -187,9 +196,9 @@ class Wallet:
             last_timestamp = self.redis_conn.lindex('timestamp', -1)
 
             # Check if the new data's timestamp is different from the last timestamp
-            if last_timestamp is None or int(last_timestamp) != latest_data[0]:
+            if last_timestamp is None or last_timestamp != latest_data[0]:
                 pipe = self.redis_conn.pipeline()
-                order = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'count']
+                order = ['timestamp', 'open', 'high', 'low', 'close', 'volume'] #, 'count']
                 for key, value in zip(order, latest_data):
                     # Append value to the end of the list
                     pipe.rpush(key, value)
@@ -208,7 +217,7 @@ class Wallet:
     def fill_buffer(self, asset: str) -> None:
         try:
             # Fetching the OHLCVC data
-            ohlcvc_data = self.exchange.fetch_ohlcvc(asset, self.interval, limit=self.buffer_size)
+            ohlcvc_data = self.exchange.fetch_ohlcv(asset, self.interval, limit=self.buffer_size)
             if not ohlcvc_data:
                 raise ValueError(f"No data received for {asset}")
 
@@ -217,7 +226,7 @@ class Wallet:
 
             # Using Redis pipeline for efficient data storage
             pipe = self.redis_conn.pipeline()
-            order = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'count']
+            order = ['timestamp', 'open', 'high', 'low', 'close', 'volume'] #, 'count']
 
             # Ensure we have the expected number of components
             if len(transposed_data) != len(order):
@@ -231,19 +240,3 @@ class Wallet:
 
         except Exception as e:
             print(f"Error in fill_buffer method for {asset}: {e}")
-
-    def max_buy(self, asset: str) -> float:
-        try:
-            cash = self.fetch_cash()
-            current_price = self.last_traded_price(asset)
-            fee_rate = self.get_fee_rate()
-
-            if current_price is None or current_price == 0:
-                raise ValueError("Unable to fetch valid asset price or price is zero.")
-
-            # Calculate the maximum amount that can be bought, accounting for fees
-            max_amount = cash / (current_price * (1 + fee_rate))
-            return max_amount
-        except Exception as e:
-            print(f"Error in max_buy method for {asset}: {e}")
-            return 0.0
