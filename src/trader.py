@@ -1,8 +1,8 @@
+import json
 import time
+import pika
 import logging
-import numpy as np
 from src.wallet import Wallet
-from src.trainer import Trainer
 
 class Trader(Wallet):
     def __init__(
@@ -28,8 +28,18 @@ class Trader(Wallet):
 
         self.init_trade_params()
 
+    @staticmethod
+    def send_message(message_body: str, queue='pred_service'):
+        # Connect to RabbitMQ
+        connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
+        channel = connection.channel()
+        channel.queue_declare(queue=queue)
+        channel.basic_publish(exchange='', routing_key=queue, body=message_body)
+        connection.close()
+
     def init_trade_params(self) -> None:
         self.status = "idle"
+        self.prediction = "hold"
         pipe = self.redis_conn.pipeline()
         pipe.set("stop_loss", 0.0)
         pipe.set("take_profit", "inf")
@@ -74,8 +84,12 @@ class Trader(Wallet):
         return float(self.redis_conn.ttl("timer"))
 
     def predict(self):
-        # Sends message to message queue, model service will predict and store result in redis
-        pass
+        data = json.dumps({"ops", "pred"})
+        self.send_message(data)
+
+    def train(self):
+        data = json.dumps({"ops", "train"})
+        self.send_message(data)
 
     def try_trade(self):
         price = self.depth_weighted_price(self.asset)
@@ -104,7 +118,7 @@ class Trader(Wallet):
     def run(self):
         for cycle in range(self.max_cycles):
             self.reset_timer()
-
+            self.train()
             clock = self.fetch_timer()
             while clock > 0:
                 self.fill_one(self.asset)
