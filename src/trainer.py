@@ -32,6 +32,14 @@ class Trainer:
         self.col_idx = np.random.permutation(np.arange(5 * self.periods.shape[0]))
         self.confs = np.ones(3) / 3
 
+        self.redis_conn = redis.Redis()
+
+        self.pred_map = {
+            0: "sell",
+            1: "hold",
+            2: "buy"
+        }
+
     def transform(self, x):
         rsis = np.stack([calculate_rsi(x, p) for p in self.periods], axis=-1)
         smas = np.stack([calculate_sma(x, p) for p in self.periods], axis=-1)
@@ -75,7 +83,7 @@ class Trainer:
             self.nb.predict_proba(x)
         ], -1)
         preds = np.einsum("ijk,k->ij", preds, self.confs)
-        return preds.argmax(1) - 1
+        return preds.argmax(1)
 
     def assign_weights(self, x, y):
         accuracies = np.asarray([
@@ -85,14 +93,39 @@ class Trainer:
         ])
         self.confs = accuracies / np.linalg.norm(accuracies)
 
+    def get_x(self, num: int) -> np.ndarray:
+        try:
+            # Fetch the last 'num' values for each key using Redis pipeline
+            pipe = self.redis_conn.pipeline()
+            pipe.lrange("open", -num, -1)
+            pipe.lrange("high", -num, -1)
+            pipe.lrange("low", -num, -1)
+            pipe.lrange("close", -num, -1)
+            results = pipe.execute()
+
+            # Convert the results to a NumPy array and ensure type is float
+            data_array = np.asarray(results).astype(float)
+            
+            # Check if the data array shape is as expected
+            if data_array.shape != (4, num):
+                raise ValueError("Insufficient data points returned from Redis.")
+
+            return data_array.T
+        except Exception as e:
+            print(f"Error in get_x method: {e}")
+            return None
+
 
     def callback(self, channel, method_frame, header_frame, body):
         ops = json.loads(body)['ops']
         if ops == "pred":
-            ...
+            x = self.get_x(64)
+            res = int(self.predict(x))
+            self.redis_conn.set("prediction", self.pred_map[res])
 
         elif ops == "train":
-            ...
+            x = self.get_x(0)
+            self.fit(x)
 
     def start(self):
         try:
@@ -110,8 +143,8 @@ class Trainer:
             print(f"Error: {e}")
         finally:
             # Ensure the connection is closed
-            # if connection:
-            #     connection.close()
+            if connection:
+                connection.close()
             print("Close connection")
 
 
