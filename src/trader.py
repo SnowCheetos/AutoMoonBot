@@ -2,6 +2,8 @@ import json
 import time
 import pika
 import logging
+
+from typing import Union
 from src.wallet import Wallet
 
 class Trader(Wallet):
@@ -11,13 +13,14 @@ class Trader(Wallet):
             interval: str = "1m", 
             asset: str = "BTC/USDT", 
             funds: float = 10_000.0, 
-            buffer_size: int = 100, 
+            buffer_size: int = 720, 
             host: str = "localhost", 
             port: int = 6379,
             risk: float = 0.05, 
             multiplier: float = 1.025, 
-            cycle_time: int = 60 * 30,
-            max_cycles: int = 1000
+            cycle_time: int = 60,
+            max_cycles: int = 1000,
+            time_per_pred: Union[int, None] = None
         ) -> None:
         super().__init__(exchange, interval, asset, funds, buffer_size, host, port)
 
@@ -25,13 +28,31 @@ class Trader(Wallet):
         self.multiplier = multiplier
         self.cycle_time = cycle_time
         self.max_cycles = max_cycles
+        interval_map = {
+            "1m": 60,
+            "3m": 180,
+            "5m": 300,
+            "15m": 900,
+            "30m": 1800,
+            "1h": 3600,
+            "2h": 7200,
+            "4h": 14400,
+            "6h": 21600,
+            "8h": 28800,
+            "12h": 43200,
+            "1d": 86400,
+            "3d": 259200,
+            "1w": 604800,
+            "1M": 2592000,
+        }
+        self.time_per_pred = interval_map[interval] if not time_per_pred else time_per_pred
 
         self.init_trade_params()
 
     @staticmethod
     def send_message(message_body: str, queue='pred_service'):
         # Connect to RabbitMQ
-        connection = pika.BlockingConnection(pika.ConnectionParameters('rabbitmq'))
+        connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
         channel = connection.channel()
         channel.queue_declare(queue=queue)
         channel.basic_publish(exchange='', routing_key=queue, body=message_body)
@@ -41,8 +62,8 @@ class Trader(Wallet):
         self.status = "idle"
         self.prediction = "hold"
         pipe = self.redis_conn.pipeline()
-        pipe.set("stop_loss", 0.0)
-        pipe.set("take_profit", "inf")
+        pipe.set("stop_loss", "nan")
+        pipe.set("take_profit", "nan")
         pipe.execute()
 
     @property
@@ -84,11 +105,11 @@ class Trader(Wallet):
         return float(self.redis_conn.ttl("timer"))
 
     def predict(self):
-        data = json.dumps({"ops", "pred"})
+        data = json.dumps({"ops": "pred"})
         self.send_message(data)
 
     def train(self):
-        data = json.dumps({"ops", "train"})
+        data = json.dumps({"ops": "train"})
         self.send_message(data)
 
     def try_trade(self):
@@ -96,27 +117,51 @@ class Trader(Wallet):
         assert price is not None, "Error fetching price"
 
         prediction = self.prediction
+
+        print(price, prediction, self.status)
+
         if self.status == "idle":
             if prediction == "buy":
+                print("Buy spec...")
                 self.status = "buy_spec"
                 self.take_profit = price * (1 - self.multiplier * self.risk)
                 self.stop_loss = price * (1 + self.risk)
 
             elif prediction == "sell":
-                self.state = "sell_spec"
+                print("Sell spec...")
+                self.status = "sell_spec"
                 self.take_profit = price * (1 + self.risk)
                 self.stop_loss = price * (1 - self.multiplier * self.risk)
+            
+            else: print(f"Doing nothing, networth: {self.net_worth()}")
 
-        elif (self.status == "buy_spec") and (prediction == "buy") and (price >= self.stop_loss or price <= self.take_profit):
-            s = self.buy(self.asset, self.max_buy(self.asset))
+        elif (self.status == "buy_spec") and (price >= self.stop_loss or price <= self.take_profit):
+            if self.fetch_cash() > 0:
+                s = self.buy(self.asset, "max")
+                if s: print(f"Executed buy, networth: {self.net_worth()}")
+            else:
+                print("No funds to buy, doing nothing...")
             self.init_trade_params()
 
-        elif (self.status == "sell_spec") and (prediction == "sell") and (price <= self.stop_loss or price >= self.take_profit):
-            s = self.sell(self.asset, self.fetch_holdings())
+        elif (self.status == "sell_spec") and (price <= self.stop_loss or price >= self.take_profit):
+            if self.fetch_holdings() > 0:
+                s = self.sell(self.asset, self.fetch_holdings())
+                if s: print(f"Executed sell, networth: {self.net_worth()}")
+            else:
+                print("No holdings to sell, doing nothing...")
             self.init_trade_params()
+
+        elif (self.status == "buy_spec") and (prediction == "sell"):
+            self.init_trade_params()
+
+        elif (self.status == "sell_spec") and (prediction == "buy"):
+            self.init_trade_params()
+
+        else: print(f"Doing nothing, networth: {self.net_worth()}")
 
     def run(self):
         for cycle in range(self.max_cycles):
+            print(f"[INFO] Cycle {cycle+1}/{self.max_cycles} Started")
             self.reset_timer()
             self.train()
             clock = self.fetch_timer()
@@ -124,7 +169,9 @@ class Trader(Wallet):
                 self.fill_one(self.asset)
                 self.predict()
 
-                time.sleep(5)
+                time.sleep(1)
                 self.try_trade()
 
-                time.sleep(60 - (clock - self.fetch_timer()))
+                sl = clock - self.fetch_timer()
+                time.sleep(max(self.time_per_pred - sl, 0))
+                clock = self.fetch_timer()

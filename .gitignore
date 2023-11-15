@@ -5,3 +5,4 @@ __pycache__/
 *.log
 *.txt
 */frames
+*.ipynb
