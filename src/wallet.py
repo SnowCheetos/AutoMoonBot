@@ -1,109 +1,249 @@
 import ccxt
-import numpy as np
-import pandas as pd
-from collections import deque
+import redis
+from typing import Union
 
 class Wallet:
-    def __init__(self, exchange, configs={}, timestep="1m", asset="BTC/USDT", max_buffer_size=720, simulation=True, funds=10_000, sim_file="data/data.csv"):
-        self.simulation = simulation
-        self.funds = funds
-        self.assets = 0
-        self.timestep = timestep
+    def __init__(
+            self, 
+            exchange: str, 
+            interval: str = "1m", 
+            asset: str = "BTC/USDT",
+            funds: float = 10_000.0,
+            buffer_size: int = 100,
+            host: str = "localhost",
+            port: int = 6379,
+        ) -> None:
 
+        self.buffer_size = buffer_size
         self.asset = asset
+        self.interval = interval
+
         exchange_mapping = {
-            "BinanceUS": ccxt.binanceus,
-            "Kraken": ccxt.kraken,
-            "CoinbasePro": ccxt.coinbasepro,
+            "binanceus": ccxt.binanceus,
+            "kraken": ccxt.kraken,
+            "coinbasepro": ccxt.coinbasepro,
         }
-        
-        if exchange in exchange_mapping:
-            self.exchange = exchange_mapping[exchange](configs)
-        else:
-            raise NotImplementedError("Modify the Wallet __init__ method to use the exchange you want.")
 
-        self.max_buffer = max_buffer_size
-        self.buffer = deque(maxlen=max_buffer_size)
+        self.redis_conn = redis.Redis(
+            host=host,
+            port=port,
+            decode_responses=True
+        )
+        self.init_redis(exchange, interval, asset, funds)
 
-        self.sim_file = sim_file
-        self.data = None
-        self.data_counter = max_buffer_size
-        if self.sim_file:
-            self.data = pd.read_csv(sim_file)
+        # self.exchange = ccxt.binanceus()
+        if exchange.lower() in exchange_mapping: self.exchange = exchange_mapping[exchange]()
+        else: raise NotImplementedError("Modify the Wallet __init__ method to use the exchange you want.")
 
-        self.fill_buffer(self.asset)
-        self.action = None
+    def init_redis(self, exchange: str, interval: str, asset: str, funds: float) -> None:
+        pipe = self.redis_conn.pipeline()
+        pipe.set("exchange", exchange)
+        pipe.set("interval", interval)
+        pipe.set("asset_class", asset)
+        pipe.set("holdings", 0)
+        pipe.set("cash", funds)
+        pipe.execute()
 
-    def net_worth(self, price):
-        usd = self.funds
-        ass = self.assets * price
-        return ass + usd
+    def fetch_holdings(self) -> float:
+        holdings = self.redis_conn.get("holdings")
+        return float(holdings)
 
-    def check_balance(self, asset):
-        if self.simulation:
-            if asset == "USD" or asset == "USDT" or asset == "USDC":
-                return self.funds
-            return self.assets
-        raise NotImplementedError("Modify the Wallet check_balance method.")
+    def fetch_cash(self) -> float:
+        cash = self.redis_conn.get("cash")
+        return float(cash)
+    
+    def set_holdings(self, amount: float) -> None:
+        self.redis_conn.set("holdings", amount)
 
-    def execute_buy(self, asset, amount, sim_price=None):
-        print("[INFO] Executing buy...")
-        price = self.market_price(asset, "asks")
-        if self.simulation:
-            price = sim_price
-            if amount == "all":
-                amount = (self.funds / price) * 0.9999
-            if amount * price < self.funds:
-                self.assets += amount
-                self.funds -= amount * price
-                self.action = -1
+    def set_cash(self, amount: float) -> None:
+        self.redis_conn.set("cash", amount)
+
+    def get_fee_rate(self) -> float:
+        # TODO Implement it...
+        return 0.01
+
+    def last_traded_price(self, asset: str) -> Union[float, None]:
+        try:
+            ticker = self.exchange.fetch_ticker(asset)
+            return ticker['last']
+        except Exception as e:
+            print(f"Error fetching last traded price: {e}")
+            return None
+
+    def mid_market_price(self, asset: str) -> Union[float, None]:
+        try:
+            order_book = self.exchange.fetch_order_book(asset)
+            best_bid = order_book['bids'][0][0] if order_book['bids'] else 0
+            best_ask = order_book['asks'][0][0] if order_book['asks'] else 0
+            return (best_bid + best_ask) / 2 if best_bid and best_ask else None
+        except Exception as e:
+            print(f"Error fetching order book: {e}")
+            return None
+
+    def depth_weighted_price(self, asset, depth=5) -> Union[float, None]:
+        try:
+            order_book = self.exchange.fetch_order_book(asset, limit=depth)
+            total_volume = sum([bid[1] for bid in order_book['bids'][:depth]]) + sum([ask[1] for ask in order_book['asks'][:depth]])
+            weighted_price = sum([bid[0] * bid[1] for bid in order_book['bids'][:depth]]) + sum([ask[0] * ask[1] for ask in order_book['asks'][:depth]])
+            return weighted_price / total_volume if total_volume else None
+        except Exception as e:
+            print(f"Error fetching order book depth: {e}")
+            return None
+
+    def net_worth(self, pricing_method: str='last_traded_price') -> Union[float, None]:
+        try:
+            asset_price = None
+
+            if pricing_method == 'last_traded_price':
+                asset_price = self.last_traded_price(self.asset)
+            elif pricing_method == 'mid_market_price':
+                asset_price = self.mid_market_price(self.asset)
+            elif pricing_method == 'depth_weighted_price':
+                asset_price = self.depth_weighted_price(self.asset)
             else:
-                print("Not enough funds.")
-        else:
-            raise NotImplementedError("Modify the Wallet execute_buy method.")
+                raise ValueError(f"Invalid pricing method: {pricing_method}")
 
-    def execute_sell(self, asset, amount, sim_price=None):
-        print("[INFO] Executing sell...")
-        price = self.market_price(asset, "bids")
-        if self.simulation:
-            price = sim_price
-            if amount == "all":
-                amount = 0.9999*self.assets
-            if amount <= self.assets:
-                self.assets -= amount
-                self.funds += amount * price
-                self.action = 1
-            print("Not enough assets")
-        else:
-            raise NotImplementedError("Modify the Wallet execute_sell method.")
+            if asset_price is None:
+                raise ValueError("Unable to fetch asset price")
 
-    def fetch_one(self, asset):
-        if self.simulation:
-            data = self.data.iloc[self.data_counter].to_numpy()[1:]
-            data = np.hstack([[1], data]).astype(np.float32)
-            self.buffer.append(data)
-            self.data_counter += 1
-        else:
-            data = self.exchange.fetch_ohlcv(asset, self.timestep, limit=1)
-            self.buffer.append(data[0])
-    
-    def fill_buffer(self, asset):
-        if self.simulation:
-            data = self.data[:self.max_buffer].to_numpy()[:, 1:]
-            data = np.hstack([np.ones((data.shape[0], 1)), data]).astype(np.float32)
-        else:
-            data = self.exchange.fetch_ohlcv(asset, self.timestep, limit=self.max_buffer)
-        for d in data:
-            self.buffer.append(d)
-    
-    def market_price(self, asset, side):
-        data = self.exchange.fetch_order_book(asset)
-        if side == "bids":
-            return data.get(side)[0][0]
-        elif side == "asks":
-            return data.get(side)[0][0]
-        else:
-            return 0.5 * (data.get("bids")[0][0] + data.get("asks")[0][0])
-    
-    def fetch(self):
-        return np.asarray(self.buffer)[:, 1:]
+            holdings_value = self.fetch_holdings() * asset_price
+            cash = self.fetch_cash()
+
+            return holdings_value + cash
+        except Exception as e:
+            print(f"Error calculating net worth with {pricing_method}: {e}")
+            return None
+
+    def buy(self, asset: str, amount: float) -> bool:
+        """
+        Simulates buying an amount of a specified asset.
+        :param asset: The asset to buy (e.g., 'BTC/USD').
+        :param amount: The amount of the asset to buy.
+        :return: True if the buy was successful, False otherwise.
+        """
+        try:
+            price = self.last_traded_price(asset)
+            if price is None:
+                raise ValueError("Unable to fetch asset price")
+
+            fee_rate = self.get_fee_rate()  # Fetch the current fee rate
+            total_cost = amount * price
+            total_cost_incl_fee = total_cost * (1 + fee_rate)
+
+            cash = self.fetch_cash()
+            if cash < total_cost_incl_fee:
+                raise ValueError("Insufficient funds")
+
+            # Update cash and holdings
+            self.set_cash(cash - total_cost_incl_fee)
+            self.set_holdings(self.fetch_holdings() + amount)
+            
+            return True
+        except Exception as e:
+            print(f"Error in buying: {e}")
+            return False
+
+    def sell(self, asset: str, amount: float) -> bool:
+        """
+        Simulates selling an amount of a specified asset.
+        :param asset: The asset to sell (e.g., 'BTC/USD').
+        :param amount: The amount of the asset to sell.
+        :return: True if the sell was successful, False otherwise.
+        """
+        try:
+            price = self.last_traded_price(asset)
+            if price is None:
+                raise ValueError("Unable to fetch asset price")
+
+            fee_rate = self.get_fee_rate()  # Fetch the current fee rate
+            total_revenue = amount * price
+            total_revenue_after_fee = total_revenue * (1 - fee_rate)
+
+            holdings = self.fetch_holdings()
+            if holdings < amount:
+                raise ValueError("Insufficient holdings")
+
+            # Update cash and holdings
+            self.set_cash(self.fetch_cash() + total_revenue_after_fee)
+            self.set_holdings(holdings - amount)
+            
+            return True
+        except Exception as e:
+            print(f"Error in selling: {e}")
+            return False
+
+    def fill_one(self, asset: str) -> None:
+        try:
+            # Fetching the OHLCVC data
+            ohlcvc_data = self.exchange.fetch_ohlcvc(asset, self.interval, limit=2)
+            if not ohlcvc_data:
+                raise ValueError(f"No data received for {asset}")
+
+            latest_data = ohlcvc_data[-1]
+            if len(latest_data) < 6:
+                raise ValueError(f"Incomplete data for {asset}: {latest_data}")
+
+            # Fetch the last timestamp from Redis
+            last_timestamp = self.redis_conn.lindex('timestamp', -1)
+
+            # Check if the new data's timestamp is different from the last timestamp
+            if last_timestamp is None or int(last_timestamp) != latest_data[0]:
+                pipe = self.redis_conn.pipeline()
+                order = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'count']
+                for key, value in zip(order, latest_data):
+                    # Append value to the end of the list
+                    pipe.rpush(key, value)
+
+                    # Trim the list to maintain the maximum length
+                    if self.buffer_size is not None:
+                        pipe.ltrim(key, -self.buffer_size, -1)
+
+                pipe.execute()
+            else:
+                print(f"Duplicate timestamp for {asset}, skipping data insertion.")
+
+        except Exception as e:
+            print(f"Error in fill_one method for {asset}: {e}")
+
+    def fill_buffer(self, asset: str) -> None:
+        try:
+            # Fetching the OHLCVC data
+            ohlcvc_data = self.exchange.fetch_ohlcvc(asset, self.interval, limit=self.buffer_size)
+            if not ohlcvc_data:
+                raise ValueError(f"No data received for {asset}")
+
+            # Transposing the OHLCVC data
+            transposed_data = list(map(list, zip(*ohlcvc_data)))
+
+            # Using Redis pipeline for efficient data storage
+            pipe = self.redis_conn.pipeline()
+            order = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'count']
+
+            # Ensure we have the expected number of components
+            if len(transposed_data) != len(order):
+                raise ValueError(f"Unexpected data structure for {asset}")
+
+            # Push each component to its corresponding Redis list
+            for key, values in zip(order, transposed_data):
+                pipe.rpush(key, *values)
+
+            pipe.execute()
+
+        except Exception as e:
+            print(f"Error in fill_buffer method for {asset}: {e}")
+
+    def max_buy(self, asset: str) -> float:
+        try:
+            cash = self.fetch_cash()
+            current_price = self.last_traded_price(asset)
+            fee_rate = self.get_fee_rate()
+
+            if current_price is None or current_price == 0:
+                raise ValueError("Unable to fetch valid asset price or price is zero.")
+
+            # Calculate the maximum amount that can be bought, accounting for fees
+            max_amount = cash / (current_price * (1 + fee_rate))
+            return max_amount
+        except Exception as e:
+            print(f"Error in max_buy method for {asset}: {e}")
+            return 0.0

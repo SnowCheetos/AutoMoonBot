@@ -1,4 +1,9 @@
+import json
+import pika
+import redis
 import numpy as np
+
+import multiprocessing as mp
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -7,18 +12,21 @@ from sklearn.metrics import accuracy_score
 from src.utils import *
 
 class Trainer:
-    def __init__(self, num_periods=4):
-        # class_weight = 'balanced'
+    def __init__(
+            self, 
+            num_periods=4
+        ) -> None:
+        self.procs = int(mp.cpu_count() * 0.8)
         self.nb = GaussianNB()
         self.rf = RandomForestClassifier(
             n_estimators=321,
             class_weight="balanced",
-            n_jobs=4
+            n_jobs=self.procs
         )
         self.kn = KNeighborsClassifier(
             n_neighbors=5,
             weights="distance",
-            n_jobs=4
+            n_jobs=self.procs
         )
         self.periods = np.logspace(3, num_periods+2, num=num_periods, base=2).astype(int)
         self.col_idx = np.random.permutation(np.arange(5 * self.periods.shape[0]))
@@ -77,5 +85,36 @@ class Trainer:
         ])
         self.confs = accuracies / np.linalg.norm(accuracies)
 
-    def __call__(self, x):
-        return self.predict(x)
+
+    def callback(self, channel, method_frame, header_frame, body):
+        ops = json.loads(body)['ops']
+        if ops == "pred":
+            ...
+
+        elif ops == "train":
+            ...
+
+    def start(self):
+        try:
+            connection = pika.BlockingConnection(pika.ConnectionParameters(host='rabbitmq'))
+            channel = connection.channel()
+            print("Connection success")
+            channel.queue_declare('pred_service')
+            
+            # Set up the consumer
+            channel.basic_consume(queue='pred_service', on_message_callback=self.callback, auto_ack=True)
+            
+            # Start consuming messages
+            channel.start_consuming()
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            # Ensure the connection is closed
+            # if connection:
+            #     connection.close()
+            print("Close connection")
+
+
+    def run_forever(self):
+        while True:
+            self.start()
