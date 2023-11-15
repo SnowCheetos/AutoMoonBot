@@ -5,96 +5,112 @@ from src.wallet import Wallet
 from src.trainer import Trainer
 
 class Trader(Wallet):
-    def __init__(self, asset, model: Trainer, risk=0.05, multiplier=1.025, timestep="1m", exchange="BinanceUS", configs={}):
-        super().__init__(
-            exchange, 
-            configs=configs, 
-            timestep=timestep, 
-            asset=asset, 
-            max_buffer_size= 300, 
-            simulation= True, 
-            funds= 10000, 
-            sim_file="data/data.csv")
+    def __init__(
+            self, 
+            exchange: str, 
+            interval: str = "1m", 
+            asset: str = "BTC/USDT", 
+            funds: float = 10_000.0, 
+            buffer_size: int = 100, 
+            host: str = "localhost", 
+            port: int = 6379,
+            risk: float = 0.05, 
+            multiplier: float = 1.025, 
+            cycle_time: int = 60 * 30,
+            max_cycles: int = 1000
+        ) -> None:
+        super().__init__(exchange, interval, asset, funds, buffer_size, host, port)
 
-        self.DELAY = 60
-        self.state = 0
-        self._take_profit = np.nan
-        self._stop_loss = np.nan
         self.risk = risk
         self.multiplier = multiplier
-        self.model = model
+        self.cycle_time = cycle_time
+        self.max_cycles = max_cycles
 
-        logging.basicConfig(filename='trader.log', level=logging.INFO)
+        self.init_trade_params()
+
+    def init_trade_params(self) -> None:
+        self.status = "idle"
+        pipe = self.redis_conn.pipeline()
+        pipe.set("stop_loss", 0.0)
+        pipe.set("take_profit", "inf")
+        pipe.execute()
 
     @property
-    def take_profit(self):
-        return self._take_profit
-
-    @take_profit.setter
-    def take_profit(self, value):
-        self._take_profit = value
-        logging.info(f'Set take profit to {value}')
-
-    @property
-    def stop_loss(self):
-        return self._stop_loss
+    def stop_loss(self) -> float:
+        return float(self.redis_conn.get("stop_loss"))
 
     @stop_loss.setter
-    def stop_loss(self, value):
-        self._stop_loss = value
-        logging.info(f'Set stop loss to {value}')
+    def stop_loss(self, val: float) -> None:
+        self.redis_conn.set("stop_loss", val)
 
-    def update_state(self, new_state):
-        self.state = new_state
-        logging.info(f'Set state to {new_state}')
+    @property
+    def take_profit(self) -> float:
+        return float(self.redis_conn.get("take_profit"))
 
-    def on_new_data(self, data):
-        try:
-            X = np.array(data)[:,:-1]
-            price = np.array(data['Close'])
-            prediction = self.model.predict(X)
-            self.tryTrade(prediction[-1], price)
-        except Exception as e:
-            logging.error(f'Error occurred during trading: {str(e)}')
+    @take_profit.setter
+    def take_profit(self, val: float) -> None:
+        self.redis_conn.set("take_profit", val)
 
-    def try_trade(self, prediction, price):
-        self.action = None
-        print("[INFO] Trying to trade... \n")
-        print(f"[INFO] Price: {price} | Stop Loss: {self.stop_loss} | Take Profit: {self.take_profit} | State: {self.state}\n")
-        if self.state == 0:  # No current position, so can make a new trade decision
-            if prediction == -1:  # Can buy only if we have USD
-                self.state = prediction
+    @property
+    def status(self) -> str:
+        return self.redis_conn.get("status")
+    
+    @status.setter
+    def status(self, val: str) -> None:
+        return self.redis_conn.set("status", val)
+    
+    @property
+    def prediction(self) -> str:
+        return self.redis_conn.get("prediction")
+    
+    @prediction.setter
+    def prediction(self, val: str) -> None:
+        return self.redis_conn.set("prediction", val)
+
+    def reset_timer(self) -> None:
+        self.redis_conn.setex("timer", self.cycle_time, 1)
+
+    def fetch_timer(self) -> float:
+        return float(self.redis_conn.ttl("timer"))
+
+    def predict(self):
+        # Sends message to message queue, model service will predict and store result in redis
+        pass
+
+    def try_trade(self):
+        price = self.depth_weighted_price(self.asset)
+        assert price is not None, "Error fetching price"
+
+        prediction = self.prediction
+        if self.status == "idle":
+            if prediction == "buy":
+                self.status = "buy_spec"
                 self.take_profit = price * (1 - self.multiplier * self.risk)
                 self.stop_loss = price * (1 + self.risk)
-                print("[INFO] New trading decision made for buying. \n")
-            elif prediction == 1:  # Can sell only if we have the asset
-                self.state = prediction
+
+            elif prediction == "sell":
+                self.state = "sell_spec"
                 self.take_profit = price * (1 + self.risk)
                 self.stop_loss = price * (1 - self.multiplier * self.risk)
-                print("[INFO] New trading decision made for selling. \n")
-        elif self.state != 0:  # Already in a position, check if profit or stop loss hit
-            if (prediction == -1 and (price > self.stop_loss or price < self.take_profit)) or \
-            (prediction == 1 and (price < self.stop_loss or price > self.take_profit)):
-                operation = self.execute_buy if prediction == -1 else self.execute_sell
-                operation(self.asset, "all", sim_price=price)
-                self.state = 0  # reset state after execution
-                self.take_profit = np.nan
-                self.stop_loss = np.nan
-                print("[INFO] Trade executed and position closed. \n")
-            else:
-                print("[INFO] Position still open, profit or stop loss not hit. \n")
-        else:  # state and prediction are not the same, do nothing
-            print("[INFO] No action required. \n")
-    
-    def step(self, train):
-        self.fetch_one(self.asset)
-        x = self.fetch()
-        if train:
-            self.model.fit(x)
-        if self.simulation:
-            self.try_trade(self.model(x)[-1], x[-1, 3])
-        else:
-            self.try_trade(self.model(x)[-1], self.market_price(self.asset, side=None))
-        time.sleep(self.DELAY)
-        return self.net_worth(x[-1, 3]), x[-1, 3], self.action
-        
+
+        elif (self.status == "buy_spec") and (prediction == "buy") and (price >= self.stop_loss or price <= self.take_profit):
+            s = self.buy(self.asset, self.max_buy(self.asset))
+            self.init_trade_params()
+
+        elif (self.status == "sell_spec") and (prediction == "sell") and (price <= self.stop_loss or price >= self.take_profit):
+            s = self.sell(self.asset, self.fetch_holdings())
+            self.init_trade_params()
+
+    def run(self):
+        for cycle in range(self.max_cycles):
+            self.reset_timer()
+
+            clock = self.fetch_timer()
+            while clock > 0:
+                self.fill_one(self.asset)
+                self.predict()
+
+                time.sleep(5)
+                self.try_trade()
+
+                time.sleep(60 - (clock - self.fetch_timer()))
