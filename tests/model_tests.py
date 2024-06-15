@@ -6,7 +6,7 @@ import numpy as np
 from reinforce.model import PolicyNet, select_action, compute_loss
 
 
-input_dim = 16
+input_dim = 50
 output_dim = 3
 holding_dim = 2
 embedding_dim = 8
@@ -18,9 +18,9 @@ def model():
 
 def test_output_shape(model):
     state = torch.randn((1, input_dim))
-    action = torch.tensor([0], dtype=torch.long)
+    position = torch.tensor([0], dtype=torch.long)
 
-    output = model(state, action)
+    output = model(state, position)
     
     assert output.shape == (1, output_dim), "Output shape is incorrect"
     assert torch.all(output >= 0) and torch.all(output <= 1), "Output values are not probabilities"
@@ -28,18 +28,17 @@ def test_output_shape(model):
 
 def test_select_action(model):
     state = np.random.rand(1, input_dim)
-    action = 0
+    position = 0
 
-    new_action, log_prob = select_action(model, state, action, device)
+    action, log_prob = select_action(model, state, position, device)
     log_prob = log_prob.detach().item()
 
     assert log_prob < 0, "Log probability cannot be greater than 1"
-    assert 0 <= new_action < output_dim, "Action value out of bounds"
+    assert 0 <= action < output_dim, "Action value out of bounds"
 
 def test_model_training(model):
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     state = np.random.rand(1, input_dim)
-    action = 0
 
     log_probs = []
 
@@ -49,9 +48,8 @@ def test_model_training(model):
     _, log_prob = select_action(model, state, 1, device)
     log_probs.append(log_prob)
 
-    loss = compute_loss(log_probs, [0.4, 0.6])
-
     optimizer.zero_grad()
+    loss = compute_loss(log_probs, [0.4, 0.6])
     loss.backward()
     optimizer.step()
 

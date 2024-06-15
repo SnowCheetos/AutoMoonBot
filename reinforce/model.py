@@ -41,7 +41,7 @@ def select_action(
             dtype=torch.long, 
             device=device))
     
-    action = np.random.choice(probs.size(-1), p=probs.detach().numpy()[0])
+    action = np.random.choice(probs.size(-1), p=probs.detach().cpu().numpy()[0])
     return action, torch.log(probs[0, action])
 
 def compute_loss(
