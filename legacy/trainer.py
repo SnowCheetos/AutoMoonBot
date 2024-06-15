@@ -13,7 +13,7 @@ from sklearn.metrics import accuracy_score
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from src.utils import *
+from legacy.utils import *
 
 class Trainer:
     def __init__(

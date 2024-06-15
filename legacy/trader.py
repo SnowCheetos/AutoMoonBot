@@ -4,7 +4,7 @@ import pika
 import logging
 
 from typing import Union
-from src.wallet import Wallet
+from legacy.wallet import Wallet
 
 class Trader(Wallet):
     def __init__(
