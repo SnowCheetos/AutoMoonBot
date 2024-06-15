@@ -3,8 +3,4 @@ pytest
 torch
 pandas
 yfinance
-ccxt
-matplotlib
-sklearn
-pika
-redis[hiredis]
+fastapi[standard]

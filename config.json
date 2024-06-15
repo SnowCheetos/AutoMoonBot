@@ -1,0 +1,27 @@
+{
+    "ticker": "SPY",
+    "period": "3mo",
+    "interval": "1h",
+    "queue_size": 100,
+    "state_dim": 40,
+    "action_dim": 3,
+    "embedding_dim": 8,
+    "inaction_cost": -1,
+    "action_cost": 0,
+    "device": "cpu",
+    "return_thresh": 0.9,
+    "feature_params": {
+        "sma": [8, 10, 14, 19, 26, 35, 47, 64],
+        "ema": [8, 10, 14, 19, 26, 35, 47, 64],
+        "rsi": [4, 5, 8, 13, 19, 28, 43, 64],
+        "sto": {
+            "window": [8, 16, 31, 64, 8, 16, 31, 64],
+            "k": [3, 4, 5, 6, 7, 8, 9, 11],
+            "d": [3, 4, 5, 6, 7, 8, 9, 11]
+        }
+    },
+    "db_path": "data/SPY.db",
+    "log_file": "logs/server.log",
+    "log_mode": "a",
+    "log_level": "INFO"
+}

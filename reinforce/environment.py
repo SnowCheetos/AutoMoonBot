@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from gymnasium import spaces
 from collections import deque
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 from reinforce.sampler import DataSampler
 from reinforce.model import PolicyNet, select_action, compute_loss
@@ -34,9 +34,15 @@ class TradeEnv(gym.Env):
                     "k":      np.linspace(3, 11, 8).astype(int).tolist(),
                     "d":      np.linspace(3, 11, 8).astype(int).tolist()
                 }
-            }) -> None:
+            },
+            logger:         Optional[logging.Logger] = None) -> None:
         
         super().__init__()
+
+        if logger:
+            self._logger = logger
+        else:
+            self._logger = logging.getLogger(__name__)
 
         self.action_space = spaces.Discrete(action_dim)
         self.observation_space = spaces.Discrete(state_dim)
@@ -114,7 +120,7 @@ class TradeEnv(gym.Env):
             self._returns.append(net_return)
             self._portfolio *= net_return
             if self._portfolio < self._return_thresh:
-                logging.info("portfolio threshold hit, done")
+                self._logger.info("portfolio threshold hit, done")
                 done = True
             
             self._risk_free_rate = close / self._init_close
@@ -141,7 +147,7 @@ def train(
         max_grad_norm:  float=1.0,
         portfolio_size: int=5) -> List[float]:
     
-    logging.info("training starts")
+    env._logger.info("training starts")
     optimizer = optim.SGD(
         env.model.parameters(), 
         lr=learning_rate, 
@@ -152,7 +158,7 @@ def train(
     portfolios = deque(maxlen=portfolio_size)
 
     for e in range(episodes):
-        logging.info(f"episode {e+1}/{episodes} began")
+        env._logger.info(f"episode {e+1}/{episodes} began")
         _ = env.reset()
         env.model.train()
         action, reward, done, _, close = env.step(1)
@@ -173,7 +179,7 @@ def train(
         if not buy_and_hold:
             buy_and_hold = (close["price"] / env.init_close - 1)
 
-        logging.info(f"""\n
+        env._logger.info(f"""\n
         episode {e+1}/{episodes} done
         loss:            {' ' if loss.item() > 0 else ''}{loss.item():.4f}
         model portfolio: {'+' if env.portfolio > 1 else ''}{(env.portfolio-1) * 100:.4f}%
@@ -183,8 +189,8 @@ def train(
 
         avg_port = np.mean(portfolios) - 1
         if avg_port > buy_and_hold and portfolios[-1] > buy_and_hold and len(portfolios) == portfolio_size:
-            logging.info(f"average target reached, last {portfolio_size} averaged {'+' if avg_port > 1 else ''}{avg_port * 100:.4f}%, exiting.")
+            env._logger.info(f"average target reached, last {portfolio_size} averaged {'+' if avg_port > 1 else ''}{avg_port * 100:.4f}%, exiting.")
             return reward_history
 
-    logging.info(f"training complete, last {portfolio_size} averaged {'+' if avg_port > 1 else ''}{avg_port * 100:.4f}%")
+    env._logger.info(f"training complete, last {portfolio_size} averaged {'+' if avg_port > 1 else ''}{avg_port * 100:.4f}%")
     return reward_history
