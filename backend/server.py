@@ -44,7 +44,8 @@ class Server:
             interval=interval, 
             queue_size=queue_size, 
             db_path=db_path,
-            feature_params=feature_params)
+            feature_params=feature_params,
+            logger=logger)
         
         self._buffer.write_queue_to_db(flush=True)
 

@@ -3,7 +3,7 @@ import sqlite3
 import numpy as np
 import yfinance as yf
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 from collections import deque
 
 from reinforce.utils import *
@@ -17,7 +17,13 @@ class DataBuffer:
             interval:       str,
             queue_size:     int,
             db_path:        str,
-            feature_params: Dict[str, List[int] | Dict[str, List[int]]]) -> None:
+            feature_params: Dict[str, List[int] | Dict[str, List[int]]],
+            logger:         Optional[logging.Logger] = None) -> None:
+        
+        if logger:
+            self._logger = logger
+        else:
+            self._logger = logging.getLogger(__name__)
         
         self._ticker   = ticker
         self._period   = period
@@ -134,9 +140,9 @@ class DataBuffer:
                 table_name = table[0]
                 cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
                 con.commit()
-                logging.info(f"Table {table_name} dropped successfully")
+                self._logger.info(f"Table {table_name} dropped successfully")
 
-            logging.info("All user tables dropped successfully")
+            self._logger.info("All user tables dropped successfully")
 
             query = """
             CREATE TABLE IF NOT EXISTS data (
