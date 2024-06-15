@@ -1,3 +1,4 @@
+import time
 import pytest
 import numpy as np
 
@@ -36,5 +37,32 @@ def test_inference(server: Server):
     assert a is not None, "Inference returned None"
 
 def test_training(server: Server):
+    start = time.time()
     server.train_model(1)
+    stop = time.time()
+
     assert server.busy, "Server should be busy"
+    assert stop - start < 1, "Main thread should be free"
+
+    time.sleep(10) # kinda wack...
+    assert not server.busy, "Server should be free"
+
+def test_pipeline(server: Server):
+    server.train_model(10)
+
+    a = server.run_inference(True)
+    assert a is not None, "Inference returned None"
+    assert server.busy, "Server should be busy"
+
+    m = server.update_model()
+
+    assert not m, "Server should not have copied weights"
+
+    t = server.join_train_thread()
+
+    assert t, "Server did not properly join training thread"
+    assert not server.busy, "Server should be free"
+
+    m = server.update_model()
+
+    assert m, "Server should have copied weights"

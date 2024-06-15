@@ -60,11 +60,13 @@ class Server:
     def busy(self):
         return self._training
 
-    def _update_model(self) -> None:
+    def update_model(self) -> bool:
         if not self._training:
             self._model.load_state_dict(self._env.model_weights)
+            return True
         else:
             logging.warning("model currently being trained, cannot copy weights")
+            return False
 
     def _train(
             self,
@@ -108,6 +110,14 @@ class Server:
         thread.start()
         self._train_thread = thread
     
+    def join_train_thread(self) -> bool:
+        if not self._training:
+            logging.warning("model not training, nothing to end...")
+            return False
+        
+        self._train_thread.join()
+        return True
+
     def run_inference(self, update: bool=True) -> Action | None:
         state = self._buffer.fetch_state(update)
         if len(state) == 0:
