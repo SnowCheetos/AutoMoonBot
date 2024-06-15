@@ -1,5 +1,8 @@
+import numpy as np
 import gymnasium as gym
+
 from gymnasium import spaces
+from typing import Dict, List
 
 from reinforce.sampler import DataSampler
 from reinforce.model import PolicyNet, select_action
@@ -12,16 +15,27 @@ class TradeEnv(gym.Env):
             state_dim: int, 
             action_dim: int, 
             embedding_dim: int,
+            queue_size: int,
             device: str,
             db_path: str,
-            return_thresh: float) -> None:
+            return_thresh: float,
+            feature_params: Dict[str, List[int] | Dict[str, List[int]]]={
+                "sma": np.geomspace(8, 64, 8).astype(int).tolist(),
+                "ema": np.geomspace(8, 64, 8).astype(int).tolist(),
+                "rsi": np.geomspace(4, 64, 8).astype(int).tolist(),
+                "sto": {
+                    "window": np.geomspace(8, 64, 4).astype(int).tolist() + np.geomspace(8, 64, 4).astype(int).tolist(),
+                    "k": np.linspace(3, 11, 8).astype(int).tolist(),
+                    "d": np.linspace(3, 11, 8).astype(int).tolist()
+                }
+            }) -> None:
         super().__init__()
 
         self.action_space = spaces.Discrete(action_dim)
         self.observation_space = spaces.Discrete(state_dim)
 
         self._device = device
-        self._sampler = DataSampler(db_path)
+        self._sampler = DataSampler(db_path, queue_size, feature_params=feature_params)
         self._policy_net = PolicyNet(state_dim, action_dim, len(Position), embedding_dim).to(device)
         self._return_thresh = return_thresh
         self._position = Position.Cash

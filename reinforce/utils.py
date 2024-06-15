@@ -16,17 +16,17 @@ def compute_sharpe_ratio(returns: List[float], risk_free_rate: float) -> float:
     
     return mean_excess_return / std_excess_return
 
-def compute_sma(prices: np.ndarray, window: int=64) -> np.ndarray | None:
+def compute_sma(prices: np.ndarray, window: int=64) -> np.ndarray:
     if len(prices) < window:
-        return None
+        return np.array([])
     
     sma = np.convolve(prices, np.ones(window), 'valid') / window
     sma = np.concatenate((np.full(window-1, np.nan), sma)) / prices
     return sma - 1
 
-def compute_ema(prices: np.ndarray, window: int=64) -> np.ndarray | None:
+def compute_ema(prices: np.ndarray, window: int=64) -> np.ndarray:
     if len(prices) < window:
-        return None
+        return np.array([])
     
     ema = np.zeros_like(prices)
     alpha = 2 / (window + 1)
@@ -36,9 +36,9 @@ def compute_ema(prices: np.ndarray, window: int=64) -> np.ndarray | None:
     ema = ema / prices
     return ema - 1
 
-def compute_rsi(prices: np.ndarray, window: int=14) -> np.ndarray | None:
+def compute_rsi(prices: np.ndarray, window: int=14) -> np.ndarray:
     if len(prices) < window + 1:
-        return None
+        return np.array([])
 
     deltas = np.diff(prices)
     seed = deltas[:window]
@@ -66,12 +66,12 @@ def compute_rsi(prices: np.ndarray, window: int=14) -> np.ndarray | None:
 
     return rsi
 
-def compute_stochastic_np(prices: np.ndarray, highs: np.ndarray, lows: np.ndarray, window:int=14, smooth_k:int=3, smooth_d:int=3) -> Tuple[np.ndarray | None]:
+def compute_stochastic_np(prices: np.ndarray, highs: np.ndarray, lows: np.ndarray, window:int=14, smooth_k:int=3, smooth_d:int=3) -> Tuple[np.ndarray]:
     if len(prices) < window:
-        return None, None
+        return np.array([]), np.array([])
     
     if len(highs) != len(lows) != len(prices):
-        return None, None
+        return np.array([]), np.array([])
     
     k_values = []
     for i in range(window - 1, len(prices)):
