@@ -2,7 +2,7 @@ import ccxt
 import redis
 from typing import Union
 
-from src.simulator import Simulator
+from legacy.simulator import Simulator
 
 class Wallet:
     def __init__(

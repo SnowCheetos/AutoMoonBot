@@ -1,7 +1,7 @@
-from src.trader import Trader
-from src.trainer import Trainer
+from legacy.trader import Trader
+from legacy.trainer import Trainer
 import matplotlib.pyplot as plt
-from src.utils import generate_plot
+from legacy.utils import generate_plot
 from collections import deque
 
 plt.ion()  # Turn on interactive mode
