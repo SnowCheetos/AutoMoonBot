@@ -1,4 +1,6 @@
 numpy
+pytest
+torch
 pandas
 ccxt
 matplotlib
