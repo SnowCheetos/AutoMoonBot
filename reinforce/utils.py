@@ -44,9 +44,9 @@ def compute_rsi(prices: np.ndarray, window: int=14) -> np.ndarray:
     seed = deltas[:window]
     up = seed[seed >= 0].sum() / window
     down = -seed[seed < 0].sum() / window
-    rs = up / down
+    rs = up / (down + 1e-9)
     rsi = np.zeros_like(prices)
-    rsi[:window] = 100. - 100. / (1. + rs)
+    rsi[:window] = 0.5 - 0.5 / (1. + rs)
 
     for i in range(window, len(prices)):
         delta = deltas[i - 1]
@@ -61,7 +61,7 @@ def compute_rsi(prices: np.ndarray, window: int=14) -> np.ndarray:
         up = (up * (window - 1) + upval) / window
         down = (down * (window - 1) + downval) / window
 
-        rs = up / down
+        rs = up / (down + 1e-9)
         rsi[i] = 0.5 - 1 / (1. + rs)
 
     return rsi
