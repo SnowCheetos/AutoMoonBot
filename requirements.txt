@@ -2,6 +2,7 @@ numpy
 pytest
 torch
 pandas
+yfinance
 ccxt
 matplotlib
 sklearn
