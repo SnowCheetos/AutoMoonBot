@@ -1,7 +1,12 @@
 import sqlite3
 import yfinance as yf
 
-def download_example(db_path: str, ticker: str, period: str, interval: str) -> None:
+def download_example(
+        db_path:  str, 
+        ticker:   str, 
+        period:   str, 
+        interval: str) -> None:
+    
     con = sqlite3.connect(db_path)
     cursor = con.cursor()
     query = """

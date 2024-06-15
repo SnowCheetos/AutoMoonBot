@@ -10,10 +10,10 @@ from reinforce.utils import *
 class DataBuffer:
     def __init__(
             self,
-            ticker: str,
-            period: str,
-            interval: str,
-            queue_size: int,
+            ticker:         str,
+            period:         str,
+            interval:       str,
+            queue_size:     int,
             feature_params: Dict[str, List[int] | Dict[str, List[int]]]) -> None:
         
         self._ticker   = ticker
