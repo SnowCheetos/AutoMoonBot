@@ -4,8 +4,3 @@ torch
 pandas
 yfinance
 fastapi[standard]
-ccxt
-matplotlib
-sklearn
-pika
-redis[hiredis]
