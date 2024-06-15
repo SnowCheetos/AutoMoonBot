@@ -3,6 +3,7 @@ pytest
 torch
 pandas
 yfinance
+fastapi[standard]
 ccxt
 matplotlib
 sklearn

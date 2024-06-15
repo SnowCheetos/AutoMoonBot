@@ -8,6 +8,7 @@ from reinforce.utils import Position, Action
 from reinforce.environment import TradeEnv, train
 from reinforce.model import PolicyNet, inference
 
+
 class Server:
     def __init__(
             self, 
@@ -23,8 +24,14 @@ class Server:
             device:         str,
             return_thresh:  float,
             feature_params: Dict[str, List[int] | Dict[str, List[int]]],
-            db_path:        Optional[str] = None) -> None:
+            db_path:        Optional[str] = None,
+            logger:         Optional[logging.Logger] = None) -> None:
         
+        if logger:
+            self._logger = logger
+        else:
+            self._logger = logging.getLogger(__name__)
+
         self._position = Position.Cash
         self._device = device
 
@@ -62,16 +69,23 @@ class Server:
         self._training = False
         self._train_thread = None
 
+    def __del__(self):
+        if self._training:
+            self.join_train_thread()
+
     @property
     def busy(self):
         return self._training
+
+    def tohlcv(self) -> Dict[str, float]:
+        return self._buffer.last_tohlcv()
 
     def update_model(self) -> bool:
         if not self._training:
             self._model.load_state_dict(self._env.model_weights)
             return True
         else:
-            logging.warning("model currently being trained, cannot copy weights")
+            self._logger.warning("model currently being trained, cannot copy weights")
             return False
 
     def _train(
@@ -114,11 +128,12 @@ class Server:
                 portfolio_size))
         
         thread.start()
+        self._logger.info(f"training started, thread id: {thread}")
         self._train_thread = thread
     
     def join_train_thread(self) -> bool:
         if not self._training:
-            logging.warning("model not training, nothing to end...")
+            self._logger.warning("model not training, nothing to end...")
             return False
         
         self._train_thread.join()
@@ -127,7 +142,7 @@ class Server:
     def run_inference(self, update: bool=True) -> Action | None:
         state = self._buffer.fetch_state(update)
         if len(state) == 0:
-            logging.warning("no data available, not running inference")
+            self._logger.warning("no data available, not running inference")
             return None
 
         result = inference(
@@ -139,10 +154,10 @@ class Server:
 
         if self._position == Position.Cash and action == Action.Sell:
             self._position = Position.Asset
-            logging.info("sell signal predicted")
+            self._logger.debug("sell signal predicted")
 
         elif self._position == Position.Asset and action == Action.Buy:
             self._position = Position.Cash
-            logging.info("buy signal predicted")
+            self._logger.debug("buy signal predicted")
 
         return action
