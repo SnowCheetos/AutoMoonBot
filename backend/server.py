@@ -1,7 +1,7 @@
 import logging
-import multiprocessing
+import threading
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from backend.buffer import DataBuffer
 from reinforce.utils import Position, Action
@@ -21,18 +21,26 @@ class Server:
             inaction_cost:  float,
             action_cost:    float,
             device:         str,
-            feature_params: Dict[str, List[int] | Dict[str, List[int]]]) -> None:
+            return_thresh:  float,
+            feature_params: Dict[str, List[int] | Dict[str, List[int]]],
+            db_path:        Optional[str] = None) -> None:
         
         self._position = Position.Cash
         self._device = device
+
+        if not db_path:
+            db_path = f"../data/{ticker}.db"
 
         self._buffer = DataBuffer(
             ticker=ticker, 
             period=period, 
             interval=interval, 
             queue_size=queue_size, 
+            db_path=db_path,
             feature_params=feature_params)
         
+        self._buffer.write_queue_to_db(flush=True)
+
         self._model = PolicyNet(
             input_dim=state_dim, 
             output_dim=action_dim, 
@@ -46,16 +54,25 @@ class Server:
             queue_size=queue_size, 
             inaction_cost=inaction_cost,
             action_cost=action_cost,
-            device=device,)
-        
-        self._training = False
-        self._train_process = None
+            device=device,
+            db_path=db_path,
+            return_thresh=return_thresh)
 
-    def _update_model(self) -> None:
+        self._ready = False
+        self._training = False
+        self._train_thread = None
+
+    @property
+    def busy(self):
+        return self._training
+
+    def update_model(self) -> bool:
         if not self._training:
             self._model.load_state_dict(self._env.model_weights)
+            return True
         else:
             logging.warning("model currently being trained, cannot copy weights")
+            return False
 
     def _train(
             self,
@@ -66,6 +83,7 @@ class Server:
             portfolio_size: int) -> None:
         
         self._training = True
+        
         train(
             env=self._env, 
             episodes=episodes, 
@@ -73,7 +91,10 @@ class Server:
             momentum=momentum,
             max_grad_norm=max_grad_norm,
             portfolio_size=portfolio_size)
+        
         self._training = False
+        if not self._ready:
+            self._ready = True
 
     def train_model(
             self,
@@ -83,7 +104,7 @@ class Server:
             max_grad_norm:  float=1.0,
             portfolio_size: int=5):
         
-        p = multiprocessing.Process(
+        thread = threading.Thread(
             target=self._train, 
             args=(
                 episodes, 
@@ -92,11 +113,23 @@ class Server:
                 max_grad_norm, 
                 portfolio_size))
         
-        p.start()
-        self._train_process = p
+        thread.start()
+        self._train_thread = thread
+    
+    def join_train_thread(self) -> bool:
+        if not self._training:
+            logging.warning("model not training, nothing to end...")
+            return False
+        
+        self._train_thread.join()
+        return True
 
-    def run_inference(self, update: bool=True) -> Action:
+    def run_inference(self, update: bool=True) -> Action | None:
         state = self._buffer.fetch_state(update)
+        if len(state) == 0:
+            logging.warning("no data available, not running inference")
+            return None
+
         result = inference(
             self._model,
             state,
