@@ -7,7 +7,7 @@ def download_example():
     query = """
     CREATE TABLE IF NOT EXISTS data (
         id         INTEGER PRIMARY KEY,
-        timestamp  INTEGER,
+        timestamp  REAL,
         open       REAL,
         high       REAL,
         low        REAL,
@@ -19,7 +19,7 @@ def download_example():
 
     data = yf.download("BTC-USD", period="5d", interval="1m")
     for idx in data.index:
-        ts = int(idx.timestamp())
+        ts = idx.timestamp()
         row = data.loc[idx]
         cursor.execute("""
         INSERT INTO data (timestamp, open, high, low, close, volume)
