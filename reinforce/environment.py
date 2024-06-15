@@ -143,7 +143,7 @@ def train(
         env:            TradeEnv, 
         episodes:       int, 
         learning_rate:  float=1e-3, 
-        momentum:       float=1e-3,
+        momentum:       float=0.9,
         max_grad_norm:  float=1.0,
         portfolio_size: int=5) -> List[float]:
     
