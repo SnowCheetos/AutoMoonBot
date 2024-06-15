@@ -17,7 +17,7 @@ def download_example():
     """
     cursor.execute(query)
 
-    data = yf.download("BTC-USD", period="5d", interval="1m")
+    data = yf.download("BTC-USD", period="1mo", interval="15m")
     for idx in data.index:
         ts = idx.timestamp()
         row = data.loc[idx]
