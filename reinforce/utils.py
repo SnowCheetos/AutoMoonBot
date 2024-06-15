@@ -6,7 +6,15 @@ class Position(Enum):
     Cash  = 0
     Asset = 1
 
-def compute_sharpe_ratio(returns: List[float], risk_free_rate: float) -> float:
+class Action(Enum):
+    Buy  = 0
+    Hold = 1
+    Sell = 2
+
+def compute_sharpe_ratio(
+        returns:        List[float], 
+        risk_free_rate: float) -> float:
+    
     returns = np.asarray(returns)
     excess_returns = returns - risk_free_rate
     mean_excess_return = np.mean(excess_returns)
@@ -16,7 +24,10 @@ def compute_sharpe_ratio(returns: List[float], risk_free_rate: float) -> float:
     
     return mean_excess_return / std_excess_return
 
-def compute_sma(prices: np.ndarray, window: int=64) -> np.ndarray:
+def compute_sma(
+        prices: np.ndarray, 
+        window: int=64) -> np.ndarray:
+    
     if len(prices) < window:
         return np.array([])
     
@@ -24,7 +35,10 @@ def compute_sma(prices: np.ndarray, window: int=64) -> np.ndarray:
     sma = np.concatenate((np.full(window-1, np.nan), sma)) / prices
     return sma - 1
 
-def compute_ema(prices: np.ndarray, window: int=64) -> np.ndarray:
+def compute_ema(
+        prices: np.ndarray, 
+        window: int=64) -> np.ndarray:
+    
     if len(prices) < window:
         return np.array([])
     
@@ -36,7 +50,10 @@ def compute_ema(prices: np.ndarray, window: int=64) -> np.ndarray:
     ema = ema / prices
     return ema - 1
 
-def compute_rsi(prices: np.ndarray, window: int=14) -> np.ndarray:
+def compute_rsi(
+        prices: np.ndarray, 
+        window: int=14) -> np.ndarray:
+    
     if len(prices) < window + 1:
         return np.array([])
 
@@ -66,7 +83,14 @@ def compute_rsi(prices: np.ndarray, window: int=14) -> np.ndarray:
 
     return rsi
 
-def compute_stochastic_np(prices: np.ndarray, highs: np.ndarray, lows: np.ndarray, window:int=14, smooth_k:int=3, smooth_d:int=3) -> Tuple[np.ndarray]:
+def compute_stochastic_np(
+        prices:   np.ndarray, 
+        highs:    np.ndarray, 
+        lows:     np.ndarray, 
+        window:   int=14, 
+        smooth_k: int=3, 
+        smooth_d: int=3) -> Tuple[np.ndarray]:
+    
     if len(prices) < window:
         return np.array([]), np.array([])
     
