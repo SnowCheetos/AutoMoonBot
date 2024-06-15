@@ -10,9 +10,10 @@ from reinforce.utils import *
 class DataSampler:
     def __init__(
             self, 
-            db_path: str, 
-            queue_size: int,
+            db_path:        str, 
+            queue_size:     int,
             feature_params: Dict[str, List[int] | Dict[str, List[int]]]) -> None:
+        
         self._connection = sqlite3.connect(db_path)
         self._cursor = self._connection.cursor()
         self._feature_params = feature_params
