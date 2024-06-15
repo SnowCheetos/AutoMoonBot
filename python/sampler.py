@@ -14,10 +14,10 @@ class DataSampler:
     def reset(self) -> None:
         self._counter = 0
 
-    def sample_next(self) -> np.ndarray:
+    def sample_next(self) -> Tuple[float, np.ndarray]:
         row = self._fetch_row(self._counter)
         self._counter += 1
-        return self._construct_state(row)
+        return row[3], self._construct_state(row)
 
     def _fetch_row(self, index: int) -> Tuple[float]:
         res = self._cursor.execute("SELECT * FROM data WHERE id = ?", (index,))
