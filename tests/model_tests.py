@@ -3,19 +3,20 @@ import torch.optim as optim
 import pytest
 import numpy as np
 
-from python.model import PolicyNet, select_action
+from python.model import PolicyNet, select_action, compute_loss
 
 
 input_dim = 16
 output_dim = 3
+holding_dim = 2
 embedding_dim = 8
 device = "cpu"
 
 @pytest.fixture
 def model():
-    return PolicyNet(input_dim, output_dim, embedding_dim)
+    return PolicyNet(input_dim, output_dim, holding_dim, embedding_dim)
 
-def test_policy_net_output_shape(model):
+def test_output_shape(model):
     state = torch.randn((1, input_dim))
     action = torch.tensor([0], dtype=torch.long)
 
@@ -42,16 +43,16 @@ def test_model_training(model):
 
     log_probs = []
 
-    action, log_prob = select_action(model, state, action, device)
+    _, log_prob = select_action(model, state, 0, device)
     log_probs.append(log_prob)
 
-    action, log_prob = select_action(model, state, action, device)
+    _, log_prob = select_action(model, state, 1, device)
     log_probs.append(log_prob)
 
-    loss = (-torch.stack(log_probs) * 1.0).sum()
+    loss = compute_loss(log_probs, [0.4, 0.6])
 
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
 
-    assert loss.detach().item() > 0, "Loss value less than 0"
+    assert loss.detach().item() > 0, "Negative loss value"
