@@ -1,7 +1,7 @@
 import logging
 import threading
 
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from backend.buffer import DataBuffer
 from reinforce.utils import Position, Action
@@ -21,20 +21,26 @@ class Server:
             inaction_cost:  float,
             action_cost:    float,
             device:         str,
-            db_path:        str,
             return_thresh:  float,
-            feature_params: Dict[str, List[int] | Dict[str, List[int]]]) -> None:
+            feature_params: Dict[str, List[int] | Dict[str, List[int]]],
+            db_path:        Optional[str] = None) -> None:
         
         self._position = Position.Cash
         self._device = device
+
+        if not db_path:
+            db_path = f"../data/{ticker}.db"
 
         self._buffer = DataBuffer(
             ticker=ticker, 
             period=period, 
             interval=interval, 
             queue_size=queue_size, 
+            db_path=db_path,
             feature_params=feature_params)
         
+        self._buffer.write_queue_to_db(flush=True)
+
         self._model = PolicyNet(
             input_dim=state_dim, 
             output_dim=action_dim, 
@@ -51,7 +57,7 @@ class Server:
             device=device,
             db_path=db_path,
             return_thresh=return_thresh)
-        
+
         self._ready = False
         self._training = False
         self._train_thread = None
