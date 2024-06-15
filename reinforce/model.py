@@ -1,4 +1,3 @@
-import logging
 import torch
 import torch.nn as nn
 import numpy as np
@@ -17,21 +16,23 @@ class PolicyNet(nn.Module):
 
         self._embedding = nn.Embedding(holding_dim, embedding_dim)
         self._f1 = nn.Linear(input_dim + embedding_dim, 512)
-        self._f2 = nn.Linear(512, 128)
-        self._f3 = nn.Linear(128, output_dim)
+        self._f2 = nn.Linear(512, 256)
+        self._f3 = nn.Linear(256, 128)
+        self._f4 = nn.Linear(128, output_dim)
 
     def forward(self, x: torch.Tensor, p: torch.Tensor) -> torch.Tensor:
         x = torch.cat((x, self._embedding(p).squeeze(1)), dim=-1)
         x = torch.relu(self._f1(x))
         x = torch.relu(self._f2(x))
-        return torch.softmax(self._f3(x), dim=-1)
+        x = torch.relu(self._f3(x))
+        return torch.softmax(self._f4(x), dim=-1)
 
 def select_action(
-        model: nn.Module, 
-        state: np.ndarray, 
+        model:    nn.Module, 
+        state:    np.ndarray, 
         position: int, 
-        device: str
-) -> Tuple[int, torch.Tensor]:
+        device:   str) -> Tuple[int, torch.Tensor]:
+    
     probs = model(
         torch.tensor(
             state,
@@ -45,7 +46,10 @@ def select_action(
     action = np.random.choice(probs.size(-1), p=probs.detach().cpu().numpy()[0])
     return action, torch.log(probs[0, action])
 
-def compute_discounted_rewards(rewards: List[float], gamma: float) -> List[float]:
+def compute_discounted_rewards(
+        rewards: List[float], 
+        gamma:   float) -> List[float]:
+    
     discounted_rewards = []
     cumulative = 0
     for reward in reversed(rewards):
@@ -55,9 +59,10 @@ def compute_discounted_rewards(rewards: List[float], gamma: float) -> List[float
 
 def compute_loss(
         log_probs: List[torch.Tensor], 
-        rewards: List[float],
-        gamma: float=0.99,
-        device: str="cpu") -> torch.Tensor:
+        rewards:   List[float],
+        gamma:     float=0.99,
+        device:    str="cpu") -> torch.Tensor:
+    
     log_probs = torch.stack(log_probs)
     rewards = torch.tensor(rewards, dtype=torch.float32, device=device)
 
@@ -67,3 +72,22 @@ def compute_loss(
 
     policy_gradient = -log_probs * normalized_rewards
     return policy_gradient.sum()
+
+def inference(
+        model:    nn.Module,
+        state:    np.ndarray,
+        position: int,
+        device:   str="cpu") -> int:
+    
+    model.eval()
+    probs = model(
+        torch.tensor(
+            state,
+            dtype=torch.float32,
+            device=device),
+        torch.tensor(
+            [[position]], 
+            dtype=torch.long, 
+            device=device))
+    
+    return probs.argmax(1)

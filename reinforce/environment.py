@@ -6,11 +6,11 @@ import torch.nn as nn
 
 from gymnasium import spaces
 from collections import deque
-from typing import Dict, List
+from typing import Dict, List, Any
 
 from reinforce.sampler import DataSampler
 from reinforce.model import PolicyNet, select_action, compute_loss
-from reinforce.utils import Position, compute_sharpe_ratio
+from reinforce.utils import Position, Action, compute_sharpe_ratio
 
 
 class TradeEnv(gym.Env):
@@ -60,7 +60,8 @@ class TradeEnv(gym.Env):
         return self._policy_net
 
     @property
-    def model_weights(self):
+    def model_weights(self) -> Dict[str, Any]:
+        self._policy_net.eval()
         return self._policy_net.state_dict()
 
     @property
@@ -97,19 +98,19 @@ class TradeEnv(gym.Env):
         reward, done = self._inaction_cost, False
 
         # Valid buy
-        if self._position == Position.Cash and action == 0:
+        if self._position == Position.Cash and Action(action) == Action.Sell:
             self._position = Position.Asset
             self._entry = close
             self._exit = 0.0
             self._portfolio *= (1-self._action_cost)
         
         # Valid sell
-        elif self._position == Position.Asset and action == 2:
+        elif self._position == Position.Asset and Action(action) == Action.Buy:
             self._position = Position.Cash
             self._exit = close
             gross_return = close / self._entry
-            net_return = gross_return * (1 - self._action_cost)  # Adjust return by action cost
-            self._returns.append(net_return)  # Store the net return (subtracting 1 to get the actual return)
+            net_return = gross_return * (1 - self._action_cost)
+            self._returns.append(net_return)
             self._portfolio *= net_return
             if self._portfolio < self._return_thresh:
                 logging.info("portfolio threshold hit, done")
