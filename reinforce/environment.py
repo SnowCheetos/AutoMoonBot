@@ -1,11 +1,13 @@
+import logging
 import numpy as np
 import gymnasium as gym
+import torch.optim as optim
 
 from gymnasium import spaces
 from typing import Dict, List
 
 from reinforce.sampler import DataSampler
-from reinforce.model import PolicyNet, select_action
+from reinforce.model import PolicyNet, select_action, compute_loss
 from reinforce.utils import Position, compute_sharpe_ratio
 
 
@@ -48,6 +50,10 @@ class TradeEnv(gym.Env):
         self._exit = 0.0
 
     @property
+    def model(self):
+        return self._policy_net
+
+    @property
     def model_weights(self):
         return self._policy_net.state_dict()
 
@@ -58,6 +64,9 @@ class TradeEnv(gym.Env):
     def reset(self):
         self._sampler.reset()
         _, close, state = self._sampler.sample_next()
+
+        while len(state) == 0:
+            _, close, state = self._sampler.sample_next()
 
         self._position = Position.Cash
         self._portfolio = 1.0
@@ -103,3 +112,28 @@ class TradeEnv(gym.Env):
         if end: done = True
 
         return action, reward, done, False, {}
+
+def train(env: TradeEnv, episodes: int, learning_rate: float=1e-3) -> List[float]:
+    logging.info("Training starts")
+    env.reset()
+    optimizer = optim.SGD(env.model.parameters(), lr=learning_rate)
+
+    reward_history = []
+    for e in range(episodes):
+        logging.info(f"Episode {e+1}/{episodes} began")
+        action, reward, done, _, _ = env.step(1)
+        rewards = [reward]
+        while not done:
+            action, reward, done, _, _ = env.step(action)
+            rewards += [reward]
+
+        optimizer.zero_grad()
+        loss = compute_loss(env.log_probs, rewards)
+        loss.backward()
+        optimizer.step()
+
+        reward_history += [sum(rewards)]
+        env.reset()
+        logging.info(f"Episode {e+1}/{episodes} done, sum reward: {reward_history[-1]:.5f}")
+
+    return reward_history
