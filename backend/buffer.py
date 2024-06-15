@@ -1,3 +1,5 @@
+import logging
+import sqlite3
 import numpy as np
 import yfinance as yf
 
@@ -14,12 +16,14 @@ class DataBuffer:
             period:         str,
             interval:       str,
             queue_size:     int,
+            db_path:        str,
             feature_params: Dict[str, List[int] | Dict[str, List[int]]]) -> None:
         
         self._ticker   = ticker
         self._period   = period
         self._interval = interval
         self._queue = deque(maxlen=queue_size)
+        self._db_path = db_path
         self._feature_params = feature_params
 
         self._feature_funcs = {
@@ -48,9 +52,12 @@ class DataBuffer:
                 row.Volume
             ])
 
-    def update_queue(self) -> None:
+    def update_queue(self, write_to_db: bool=False) -> None:
         data = self.last_tohlcv()
         self._queue.append(list(data.values()))
+
+        if write_to_db:
+            self.write_last_row_to_db()
 
     def last_tohlcv(self) -> Dict[str, float]:
         data = yf.download(
@@ -101,3 +108,54 @@ class DataBuffer:
             return np.array([])
         
         return np.asarray(features)[None, :]
+    
+    def _write_last_row_to_db(self):
+        con = sqlite3.connect(self._db_path, check_same_thread=True)
+        cursor = con.cursor()
+
+        row = self._queue[-1]
+        cursor.execute("""
+            INSERT INTO data (timestamp, open, high, low, close, volume)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, (row[0], row[1], row[2], row[3], row[4], row[5]))
+        
+        con.commit()
+        con.close()
+
+    def write_queue_to_db(self, flush: bool=True):
+        con = sqlite3.connect(self._db_path, check_same_thread=True)
+        cursor = con.cursor()
+
+        if flush:
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+            tables = cursor.fetchall()
+
+            for table in tables:
+                table_name = table[0]
+                cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+                con.commit()
+                logging.info(f"Table {table_name} dropped successfully")
+
+            logging.info("All user tables dropped successfully")
+
+            query = """
+            CREATE TABLE IF NOT EXISTS data (
+                id         INTEGER PRIMARY KEY,
+                timestamp  REAL,
+                open       REAL,
+                high       REAL,
+                low        REAL,
+                close      REAL,
+                volume     REAL
+            )
+            """
+            cursor.execute(query)
+
+        for row in self._queue:
+            cursor.execute("""
+            INSERT INTO data (timestamp, open, high, low, close, volume)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, (row[0], row[1], row[2], row[3], row[4], row[5]))
+
+        con.commit()
+        con.close()

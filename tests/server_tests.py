@@ -18,7 +18,7 @@ def server():
         inaction_cost=-1,
         action_cost=0,
         device="cpu",
-        db_path="../data/example.db",
+        # db_path="../data/example.db",
         return_thresh=0.9,
         feature_params={
             "sma": np.geomspace(8, 64, 8).astype(int).tolist(),
