@@ -14,7 +14,7 @@ class DataSampler:
             queue_size:     int,
             feature_params: Dict[str, List[int] | Dict[str, List[int]]]) -> None:
         
-        self._connection = sqlite3.connect(db_path)
+        self._connection = sqlite3.connect(db_path, check_same_thread=False)
         self._cursor = self._connection.cursor()
         self._feature_params = feature_params
 
