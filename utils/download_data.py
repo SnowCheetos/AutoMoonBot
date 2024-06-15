@@ -1,8 +1,8 @@
 import sqlite3
 import yfinance as yf
 
-def download_example():
-    con = sqlite3.connect("data/example.db")
+def download_example(db_path: str, ticker: str, period: str, interval: str) -> None:
+    con = sqlite3.connect(db_path)
     cursor = con.cursor()
     query = """
     CREATE TABLE IF NOT EXISTS data (
@@ -17,7 +17,7 @@ def download_example():
     """
     cursor.execute(query)
 
-    data = yf.download("BTC-USD", period="1mo", interval="15m")
+    data = yf.download(ticker, period=period, interval=interval)
     for idx in data.index:
         ts = idx.timestamp()
         row = data.loc[idx]
@@ -29,5 +29,10 @@ def download_example():
     con.commit()
     con.close()
 
+
 if __name__ == "__main__":
-    download_example()
+    download_example(
+        db_path="data/example.db", 
+        ticker="SPY", 
+        period="3mo", 
+        interval="1h")
