@@ -4,6 +4,8 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from backend.server import Server
 
@@ -19,6 +21,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+app.mount("/static", StaticFiles(directory="./static/"), name="static")
+app.mount("/data", StaticFiles(directory="data"), name="data")
+app.mount("/media", StaticFiles(directory="media"), name="media")
 
 server = Server(
     ticker=config["ticker"],
@@ -36,6 +42,10 @@ server = Server(
     db_path=config["db_path"],
     logger=logger
 )
+
+@app.websocket("/connect")
+async def ws_handler(ws: WebSocket):
+    ws.accept()
 
 @app.get("/tohlcv")
 async def tohlcv():
@@ -65,12 +75,12 @@ async def train(request: Request):
         max_grad_norm=float(header["max_grad_norm"]),
         portfolio_size=int(header["portfolio_size"])
     )
-    return JSONResponse({"success": "training started"})
+    return JSONResponse({"success": "training started, check server logs for more details"})
 
 @app.get("/inference")
 async def inference(request: Request):
     header = dict(request.headers)
-    update = True
+    update = False
     if "update" in list(header.keys()):
         update = header["update"]
 
