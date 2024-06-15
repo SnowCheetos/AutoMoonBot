@@ -1,9 +1,9 @@
+import pytest
 import torch
 import torch.optim as optim
-import pytest
 import numpy as np
 
-from python.model import PolicyNet, select_action, compute_loss
+from reinforce.model import PolicyNet, select_action, compute_loss
 
 
 input_dim = 16

@@ -13,4 +13,5 @@ def compute_sharpe_ratio(returns: List[float], risk_free_rate: float) -> float:
     std_excess_return = np.std(excess_returns)
     if std_excess_return == 0:
         return 0
+    
     return mean_excess_return / std_excess_return

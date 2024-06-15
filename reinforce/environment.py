@@ -1,9 +1,9 @@
 import gymnasium as gym
 from gymnasium import spaces
 
-from python.sampler import DataSampler
-from python.model import PolicyNet, select_action
-from python.utils import Position, compute_sharpe_ratio
+from reinforce.sampler import DataSampler
+from reinforce.model import PolicyNet, select_action
+from reinforce.utils import Position, compute_sharpe_ratio
 
 
 class TradeEnv(gym.Env):
@@ -43,7 +43,7 @@ class TradeEnv(gym.Env):
 
     def reset(self):
         self._sampler.reset()
-        close, state = self._sampler.sample_next()
+        _, close, state = self._sampler.sample_next()
 
         self._position = Position.Cash
         self._portfolio = 1.0
@@ -56,7 +56,7 @@ class TradeEnv(gym.Env):
         return state
 
     def step(self, action: int):
-        close, state = self._sampler.sample_next()
+        end, close, state = self._sampler.sample_next()
         reward, done = 0.0, False
 
         # Valid buy
@@ -85,5 +85,7 @@ class TradeEnv(gym.Env):
             self._device)
         
         self._log_probs += [log_prob]
+
+        if end: done = True
 
         return action, reward, done, False, {}
