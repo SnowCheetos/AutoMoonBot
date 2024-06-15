@@ -8,13 +8,14 @@ from typing import Tuple, List
 class PolicyNet(nn.Module):
     def __init__(
             self, 
-            input_dim: int,
-            output_dim: int, 
-            holding_dim: int,
+            input_dim:     int,
+            output_dim:    int, 
+            position_dim:   int,
             embedding_dim: int) -> None:
+        
         super().__init__()
 
-        self._embedding = nn.Embedding(holding_dim, embedding_dim)
+        self._embedding = nn.Embedding(position_dim, embedding_dim)
         self._f1 = nn.Linear(input_dim + embedding_dim, 512)
         self._f2 = nn.Linear(512, 256)
         self._f3 = nn.Linear(256, 128)
