@@ -3,7 +3,7 @@ import numpy as np
 
 from reinforce.utils import *
 
-data_rows = 64
+data_rows = 65
 data_cols = 7
 close_col = 4
 high_col  = 2
