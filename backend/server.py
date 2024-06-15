@@ -1,5 +1,5 @@
 import logging
-import multiprocessing
+import threading
 
 from typing import Dict, List
 
@@ -21,6 +21,8 @@ class Server:
             inaction_cost:  float,
             action_cost:    float,
             device:         str,
+            db_path:        str,
+            return_thresh:  float,
             feature_params: Dict[str, List[int] | Dict[str, List[int]]]) -> None:
         
         self._position = Position.Cash
@@ -46,10 +48,17 @@ class Server:
             queue_size=queue_size, 
             inaction_cost=inaction_cost,
             action_cost=action_cost,
-            device=device,)
+            device=device,
+            db_path=db_path,
+            return_thresh=return_thresh)
         
+        self._ready = False
         self._training = False
-        self._train_process = None
+        self._train_thread = None
+
+    @property
+    def busy(self):
+        return self._training
 
     def _update_model(self) -> None:
         if not self._training:
@@ -66,6 +75,7 @@ class Server:
             portfolio_size: int) -> None:
         
         self._training = True
+        
         train(
             env=self._env, 
             episodes=episodes, 
@@ -73,7 +83,10 @@ class Server:
             momentum=momentum,
             max_grad_norm=max_grad_norm,
             portfolio_size=portfolio_size)
+        
         self._training = False
+        if not self._ready:
+            self._ready = True
 
     def train_model(
             self,
@@ -83,7 +96,7 @@ class Server:
             max_grad_norm:  float=1.0,
             portfolio_size: int=5):
         
-        p = multiprocessing.Process(
+        thread = threading.Thread(
             target=self._train, 
             args=(
                 episodes, 
@@ -92,11 +105,15 @@ class Server:
                 max_grad_norm, 
                 portfolio_size))
         
-        p.start()
-        self._train_process = p
-
-    def run_inference(self, update: bool=True) -> Action:
+        thread.start()
+        self._train_thread = thread
+    
+    def run_inference(self, update: bool=True) -> Action | None:
         state = self._buffer.fetch_state(update)
+        if len(state) == 0:
+            logging.warning("no data available, not running inference")
+            return None
+
         result = inference(
             self._model,
             state,

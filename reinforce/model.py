@@ -10,7 +10,7 @@ class PolicyNet(nn.Module):
             self, 
             input_dim:     int,
             output_dim:    int, 
-            position_dim:   int,
+            position_dim:  int,
             embedding_dim: int) -> None:
         
         super().__init__()
@@ -91,4 +91,4 @@ def inference(
             dtype=torch.long, 
             device=device))
     
-    return probs.argmax(1)
+    return probs.argmax(1).item()

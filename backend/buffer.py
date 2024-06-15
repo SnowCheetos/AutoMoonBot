@@ -40,7 +40,7 @@ class DataBuffer:
         for idx in data.index:
             row = data.loc[idx]
             self._queue.append([
-                row.index.timestamp(),
+                idx.timestamp(),
                 row.Open,
                 row.High,
                 row.Low,
@@ -58,9 +58,9 @@ class DataBuffer:
             period="1d",
             interval=self._interval)
         
-        last = data.tail(1)
+        last = data.loc[data.index[-1]]
         return {
-            "timestamp": last.index.timestamp(),
+            "timestamp": data.index[-1].timestamp(),
             "open":      last.Open,
             "high":      last.High,
             "low":       last.Low,
@@ -70,6 +70,7 @@ class DataBuffer:
     
     def fetch_state(self, update: bool=True) -> np.ndarray:
         if update: self.update_queue()
+
         return self._construct_state()
 
     def _construct_state(self) -> np.ndarray:
