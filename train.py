@@ -15,6 +15,4 @@ if __name__ == "__main__":
         return_thresh=0.9
     )
 
-    history = train(env, 1000, 1e-3)
-
-    print(history)
+    _ = train(env, 1000, 1e-4)
