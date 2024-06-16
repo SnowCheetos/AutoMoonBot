@@ -27,7 +27,7 @@
     "live_data": false,
     "training_params": {
         "episodes": 100,
-        "learning_rate":0.0001,
+        "learning_rate":0.001,
         "momentum": 0.9,
         "max_grad_norm": 1.0,
         "portfolio_size": 10
