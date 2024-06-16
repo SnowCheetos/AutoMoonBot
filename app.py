@@ -3,11 +3,12 @@ import logging
 import uvicorn
 from fastapi import FastAPI
 from fastapi.requests import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from backend.server import Server
+from utils.helpers import interval_map
 
 
 with open("config.json", "r") as f:
@@ -43,14 +44,29 @@ server = Server(
     logger=logger
 )
 
+@app.on_event("startup")
+async def startup():
+    server.start_timer(interval_map[config["interval"]])
+
+@app.get("/")
+async def home():
+    return FileResponse("./static/index.html")
+
 @app.websocket("/connect")
 async def ws_handler(ws: WebSocket):
     ws.accept()
+    while ws.client_state != WebSocketState.DISCONNECTED:
+        pass
 
-@app.get("/tohlcv")
-async def tohlcv():
+@app.get("/tohlcv/last")
+async def tohlcv_last():
     data = server.tohlcv()
-    return JSONResponse(content=json.dumps(data))
+    return JSONResponse(content=data)
+
+@app.get("/tohlcv/all")
+async def tohlcv_all():
+    data = server.fetch_buffer()
+    return JSONResponse(content=data)
 
 @app.get("/train")
 async def train(request: Request):
@@ -67,6 +83,9 @@ async def train(request: Request):
     for key in required_keys:
         if key not in keys:
             return JSONResponse(status_code=400, content={"error": f"{key} not found in header"})
+
+    if server.busy:
+        return JSONResponse(status_code=400, content={"error": "there is another training thread running, wait for it to finish first"})
 
     server.train_model(
         episodes=int(header["episodes"]),

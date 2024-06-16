@@ -3,13 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="preload" href="./media/background.jpeg" as="image">
     <link rel="stylesheet" href="./static/style.css">
     <link rel="icon" href="./media/icon.ico" type="image/x-icon">
     <link rel="shortcut icon" href="./media/icon.ico" type="image/x-icon">
+
 </head>
 <body>
 
-    <script src="./static/script.js"></script>
+    <div id="main-holder">
+        <div id="top-holder">
+            <div id="left-holder">
+
+                <div id="status-outer-holder">
+                    
+                    <div id="status-top-holder">
+                        Status
+                    </div>
+
+                    <div id="status-holder">
+                        <div id="model-status"></div>
+                        <div id="server-status"></div>
+                    </div>
+                
+                </div>
+
+                <div id="logs-outer-holder">
+                    
+                    <div id="logs-top-holder">
+                        Logs
+                    </div>
+
+                    <div id="logs-holder">
+                        <ol id=""logs></ol>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div id="chart-outer-holder">
+                <div id="chart-top-holder">
+                    Words...
+                </div>
+                <div id="chart-holder"></div>
+            </div>
+            
+            <div id="right-holder">
+                
+                <div id="portfolio-outer-holder">
+                    <div id="portfolio-top-holder">
+                        Portfolio
+                    </div>
+                    <div id="portfolio-holder">
+
+                    </div>
+                </div>
+                
+                <div id="actions-outer-holder">
+                    
+                    <div id="actions-top-holder">
+                        Predicted Actions
+                    </div>
+
+                    <div id="actions-holder">
+                        <ol id="actions-list"></ol>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.canvasjs.com/canvasjs.min.js"></script>
+    <script src="https://canvasjs.com/assets/script/jquery-1.11.1.min.js"></script>
+    <script type="module" src="./static/script.js"></script>
+
 </body>
 </html>

@@ -1,7 +1,7 @@
 {
     "ticker": "SPY",
-    "period": "3mo",
-    "interval": "1h",
+    "period": "5d",
+    "interval": "1m",
     "queue_size": 100,
     "state_dim": 40,
     "action_dim": 3,

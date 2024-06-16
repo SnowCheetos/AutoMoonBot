@@ -1,0 +1,151 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: Courier New, monospace;
+    background-color: #f3f3f3b4;
+    overflow: hidden;
+}
+
+#main-holder {
+    height: 95%;
+    width: 95%;
+    position: relative;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#top-holder {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    flex-direction: row;
+    gap: 5px;
+
+}
+
+#left-holder {
+    height: 100%;
+    width: 30%;
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    gap: 5px; 
+}
+
+#status-outer-holder {
+    height: 40%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 12px;
+    background-color: white;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#status-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    background-color: beige;
+}
+
+#logs-outer-holder {
+    height: 60%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 12px;
+    background-color: white;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#logs-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    background-color: beige;
+}
+
+#chart-outer-holder {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid black;
+    border-radius: 12px;
+    flex-direction: column;
+}
+
+#chart-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    background-color: beige;
+}
+
+#chart-holder {
+    height: 100%;
+    width: 100%;
+    display: inline;
+    position: relative;
+}
+
+#right-holder {
+    height: 100%;
+    width: 30%;
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    gap: 5px; 
+}
+
+#portfolio-outer-holder {
+    height: 30%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 12px;
+    background-color: white;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#portfolio-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    background-color: beige;
+}
+
+#actions-outer-holder {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 12px;
+    background-color: white;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#actions-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    background-color: beige;
+}
+
+#actions-holder {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    position: relative;
+}
