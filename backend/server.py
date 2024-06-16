@@ -15,23 +15,25 @@ from reinforce.model import PolicyNet, inference
 class Server:
     def __init__(
             self, 
-            ticker:          str,
-            period:          str,
-            interval:        str,
-            queue_size:      int,
-            state_dim:       int,
-            action_dim:      int,
-            embedding_dim:   int,
-            inaction_cost:   float,
-            action_cost:     float,
-            device:          str,
-            return_thresh:   float,
-            retrain_freq:    int,
-            training_params: Dict[str, int | float],
-            feature_params:  Dict[str, List[int] | Dict[str, List[int]]],
-            db_path:         Optional[str] = None,
-            live_data:       bool=False,
-            logger:          Optional[logging.Logger] = None) -> None:
+            ticker:            str,
+            period:            str,
+            interval:          str,
+            queue_size:        int,
+            state_dim:         int,
+            action_dim:        int,
+            embedding_dim:     int,
+            inaction_cost:     float,
+            action_cost:       float,
+            device:            str,
+            return_thresh:     float,
+            retrain_freq:      int,
+            training_params:   Dict[str, int | float],
+            feature_params:    Dict[str, List[int] | Dict[str, List[int]]],
+            db_path:           Optional[str] = None,
+            live_data:         bool=False,
+            inference_method:  str="prob",
+            logger:            Optional[logging.Logger] = None,
+            max_training_data: int | None = None) -> None:
         
         if logger:
             self._logger = logger
@@ -42,6 +44,7 @@ class Server:
         self._position = Position.Cash
         self._device = device
         self._status = Status(0.005, 1.0025)
+        self._inference_method = inference_method
 
         if not db_path:
             db_path = f"../data/{ticker}.db"
@@ -60,37 +63,35 @@ class Server:
             self._buffer.write_queue_to_db(flush=True)
 
         self._model = PolicyNet(
-            input_dim=state_dim, 
-            output_dim=action_dim, 
-            position_dim=len(Position), 
-            embedding_dim=embedding_dim)
+            input_dim     = state_dim, 
+            output_dim    = action_dim, 
+            position_dim  = len(Position), 
+            embedding_dim = embedding_dim)
         
         self._env = TradeEnv(
-            state_dim=state_dim, 
-            action_dim=action_dim, 
-            embedding_dim=embedding_dim, 
-            queue_size=queue_size, 
-            inaction_cost=inaction_cost,
-            action_cost=action_cost,
-            device=device,
-            db_path=db_path,
-            return_thresh=return_thresh)
+            state_dim         = state_dim, 
+            action_dim        = action_dim, 
+            embedding_dim     = embedding_dim, 
+            queue_size        = queue_size, 
+            inaction_cost     = inaction_cost,
+            action_cost       = action_cost,
+            device            = device,
+            db_path           = db_path,
+            return_thresh     = return_thresh,
+            testing           = not live_data,
+            max_training_data = max_training_data)
 
-        self._training_params = training_params
-
-        self._ready = False
-        self._training = False
-        self._train_thread = None
-
-        self._inferencing = False
+        self._training_params  = training_params
+        self._ready            = False
+        self._training         = False
+        self._train_thread     = None
+        self._inferencing      = False
         self._inference_thread = None
-
-        self._timer_thread  = None
-        self._train_counter = retrain_freq
-        self._retrain_freq  = retrain_freq
-
-        self._terminate = False
-        self._actions_queue = deque(maxlen=5)
+        self._timer_thread     = None
+        self._train_counter    = retrain_freq
+        self._retrain_freq     = retrain_freq
+        self._terminate        = False
+        self._actions_queue    = deque(maxlen=5)
 
     def __del__(self):
         self.join_timer_thread()
@@ -151,6 +152,7 @@ class Server:
             self._timer_thread = thread
 
     def tohlcv(self) -> Dict[str, float]:
+        self._env.sampler.max_access += 1
         return self._buffer.last_tohlcv()
 
     def fetch_buffer(self) -> Dict[str, Dict[str, float]]:
@@ -286,10 +288,11 @@ class Server:
 
         self._logger.info(f"running void inferencing, queue size: {len(self._actions_queue)}")
         result = inference(
-            self._model,
-            state,
-            int(self._position.value),
-            self._device)
+            model=self._model,
+            state=state,
+            position=int(self._position.value),
+            device=self._device,
+            method=self._inference_method)
         action = Action(result)
 
         actual_action = Action.Hold
@@ -331,6 +334,8 @@ class Server:
 
     def run_inference(self, update: bool=True) -> Action | None:
         state = self._buffer.fetch_state(update)
+        ohlcv = self._buffer.queue["data"][-1]
+
         if len(state) == 0:
             self._logger.warning("no data available, not running inference")
             return None
@@ -355,14 +360,31 @@ class Server:
             self._device)
         action = Action(result)
 
+        actual_action = Action.Hold
         with self._mutex:
-            if self._position == Position.Cash and action == Action.Sell:
-                self._position = Position.Asset
-                self._logger.debug("sell signal predicted")
+            if self._position == Position.Cash and action == Action.Buy:
+                if self._status.signal == Signal.Idle:
+                    self._status.signal      = action.value
+                    self._status.take_profit = ohlcv["close"]
+                    self._status.stop_loss   = ohlcv["close"]
+                elif self._status.signal == Signal.Buy:
+                    if self._status.confirm_buy(ohlcv["close"]):
+                        self._position = Position.Asset
+                        self._logger.debug("buy signal predicted")
+                        actual_action = Action.Buy
+                        self._status.reset()
 
-            elif self._position == Position.Asset and action == Action.Buy:
-                self._position = Position.Cash
-                self._logger.debug("buy signal predicted")
+            elif self._position == Position.Asset and action == Action.Sell:
+                if self._status.signal == Signal.Idle:
+                    self._status.signal      = action.value
+                    self._status.take_profit = ohlcv["close"]
+                    self._status.stop_loss   = ohlcv["close"]
+                elif self._status.signal == Signal.Sell:
+                    if self._status.confirm_sell(ohlcv["close"]):
+                        self._position = Position.Cash
+                        self._logger.debug("sell signal predicted")
+                        actual_action = Action.Sell
+                        self._status.reset()
 
             self._inferencing = False
-        return action
+        return actual_action

@@ -1,3 +1,4 @@
+import logging
 import torch
 import torch.nn as nn
 import numpy as np
@@ -78,8 +79,13 @@ def inference(
         model:    nn.Module,
         state:    np.ndarray,
         position: int,
-        device:   str="cpu") -> int:
+        device:   str="cpu",
+        method:   str="argmax") -> int:
     
+    if method not in {"argmax", "prob"}:
+        logging.error("Method must be in one of [argmax, prob]")
+        return 1
+
     model.eval()
     probs = model(
         torch.tensor(
@@ -91,4 +97,7 @@ def inference(
             dtype=torch.long, 
             device=device))
     
-    return probs.argmax(1).item()
+    if method == "argmax":
+        return probs.argmax(1).item()
+    else:
+        return np.random.choice(probs.size(-1), p=probs.detach().cpu().numpy()[0])
