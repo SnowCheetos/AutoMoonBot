@@ -7,7 +7,7 @@ from collections import deque
 from typing import Dict, List, Optional
 
 from backend.buffer import DataBuffer
-from reinforce.utils import Position, Action
+from reinforce.utils import Position, Action, Status, Signal
 from reinforce.environment import TradeEnv, train
 from reinforce.model import PolicyNet, inference
 
@@ -15,21 +15,23 @@ from reinforce.model import PolicyNet, inference
 class Server:
     def __init__(
             self, 
-            ticker:         str,
-            period:         str,
-            interval:       str,
-            queue_size:     int,
-            state_dim:      int,
-            action_dim:     int,
-            embedding_dim:  int,
-            inaction_cost:  float,
-            action_cost:    float,
-            device:         str,
-            return_thresh:  float,
-            feature_params: Dict[str, List[int] | Dict[str, List[int]]],
-            db_path:        Optional[str] = None,
-            live_data:      bool=False,
-            logger:         Optional[logging.Logger] = None) -> None:
+            ticker:          str,
+            period:          str,
+            interval:        str,
+            queue_size:      int,
+            state_dim:       int,
+            action_dim:      int,
+            embedding_dim:   int,
+            inaction_cost:   float,
+            action_cost:     float,
+            device:          str,
+            return_thresh:   float,
+            retrain_freq:    int,
+            training_params: Dict[str, int | float],
+            feature_params:  Dict[str, List[int] | Dict[str, List[int]]],
+            db_path:         Optional[str] = None,
+            live_data:       bool=False,
+            logger:          Optional[logging.Logger] = None) -> None:
         
         if logger:
             self._logger = logger
@@ -39,6 +41,7 @@ class Server:
         self._mutex = Lock()
         self._position = Position.Cash
         self._device = device
+        self._status = Status(0.005, 1.0025)
 
         if not db_path:
             db_path = f"../data/{ticker}.db"
@@ -73,6 +76,8 @@ class Server:
             db_path=db_path,
             return_thresh=return_thresh)
 
+        self._training_params = training_params
+
         self._ready = False
         self._training = False
         self._train_thread = None
@@ -80,8 +85,9 @@ class Server:
         self._inferencing = False
         self._inference_thread = None
 
-        self._timer_thread = None
-        self._train_counter = 5
+        self._timer_thread  = None
+        self._train_counter = retrain_freq
+        self._retrain_freq  = retrain_freq
 
         self._terminate = False
         self._actions_queue = deque(maxlen=5)
@@ -111,13 +117,23 @@ class Server:
 
     def _timer_loop(self, interval: int):
         self._logger.info("starting timer thread")
-        self.train_model(100)
+        self.train_model(
+            episodes=self._training_params["episodes"],
+            learning_rate=self._training_params["learning_rate"],
+            momentum=self._training_params["momentum"],
+            max_grad_norm=self._training_params["max_grad_norm"],
+            portfolio_size=self._training_params["portfolio_size"])
 
         while not self._terminate:
             if self._train_counter == 0:
                 self._logger.info("running scheduled training")
-                self.train_model(100)
-                self._train_counter = 5
+                self.train_model(
+                    episodes=self._training_params["episodes"],
+                    learning_rate=self._training_params["learning_rate"],
+                    momentum=self._training_params["momentum"],
+                    max_grad_norm=self._training_params["max_grad_norm"],
+                    portfolio_size=self._training_params["portfolio_size"])
+                self._train_counter = self._retrain_freq
 
             time.sleep(interval)
             self._logger.info("running scheduled inference")
@@ -276,19 +292,40 @@ class Server:
             self._device)
         action = Action(result)
 
+        actual_action = Action.Hold
         with self._mutex:
             if self._position == Position.Cash and action == Action.Buy:
-                self._position = Position.Asset
-                self._logger.debug("buy signal predicted")
+                if self._status.signal == Signal.Idle:
+                    self._status.signal      = action.value
+                    self._status.take_profit = ohlcv["close"]
+                    self._status.stop_loss   = ohlcv["close"]
+                elif self._status.signal == Signal.Buy:
+                    if self._status.confirm_buy(ohlcv["close"]):
+                        self._position = Position.Asset
+                        self._logger.debug("buy signal predicted")
+                        actual_action = Action.Buy
+                        self._status.reset()
 
             elif self._position == Position.Asset and action == Action.Sell:
-                self._position = Position.Cash
-                self._logger.debug("sell signal predicted")
+                if self._status.signal == Signal.Idle:
+                    self._status.signal      = action.value
+                    self._status.take_profit = ohlcv["close"]
+                    self._status.stop_loss   = ohlcv["close"]
+                elif self._status.signal == Signal.Sell:
+                    if self._status.confirm_sell(ohlcv["close"]):
+                        self._position = Position.Cash
+                        self._logger.debug("sell signal predicted")
+                        actual_action = Action.Sell
+                        self._status.reset()
 
+            take_profit = self._status.take_profit if self._status.take_profit > 0 else None
+            stop_loss = self._status.stop_loss if self._status.stop_loss > 0 else None
             self._actions_queue.append({
-                "timestamp": ohlcv["timestamp"],
-                "action":    action.name,
-                "close":     ohlcv["close"]
+                "timestamp":   ohlcv["timestamp"],
+                "action":      actual_action.name,
+                "close":       ohlcv["close"],
+                "take_profit": take_profit,
+                "stop_loss":   stop_loss
             })
             self._inferencing = False
 
