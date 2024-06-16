@@ -208,3 +208,26 @@ html, body {
 {
     font-size: medium;
 }
+
+#performance-holder {
+    align-items: center;
+}
+
+#total-gain-holder,
+#buy-and-hold-holder
+{
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.total-gain-tag,
+.buy-and-hold-tag
+{
+    font-size: x-small;
+    height: 100%;
+    width: 80px;
+    border-radius: 3px;
+    border: 1px solid black;
+}

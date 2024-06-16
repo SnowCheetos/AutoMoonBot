@@ -2,7 +2,7 @@
     "ticker": "SPY",
     "period": "5d",
     "interval": "1s",
-    "queue_size": 200,
+    "queue_size": 100,
     "state_dim": 40,
     "action_dim": 3,
     "embedding_dim": 8,

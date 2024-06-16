@@ -59,10 +59,10 @@ function initClientWebSocket() {
         if (data.type === "action") {
             // Handle action data
             if (data.action === "Buy") {
-                appendAction(data.action, data.close, 100)
+                appendAction(data.action, data.close, data.probability)
                 startTrade(data.timestamp, data.close)
             } else if (data.action === "Sell") {
-                appendAction(data.action, data.close, 100)
+                appendAction(data.action, data.close, data.probability)
                 finishTrade(data.close)
             }
         } else if (data.type === "ohlc") {
@@ -189,7 +189,7 @@ function appendAction(action, close, probability) {
         ${tag}${action}</div>
         <div>
             <div>${(close).toFixed(2)}</div>
-            <div>${probability}</div>
+            <div>${(probability*100).toFixed(2)}%</div>
         </div>
     </div>
     `
