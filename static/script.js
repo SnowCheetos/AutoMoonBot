@@ -1,5 +1,8 @@
+const ws_protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+var client_ws;
 
 var dataPoints = [];
+var maxPoints = 40;
 var counter = 0
 
 var chart = new CanvasJS.Chart("chart-holder", {
@@ -36,6 +39,51 @@ var chart = new CanvasJS.Chart("chart-holder", {
     }]
 });
 
+function initClientWebSocket() {
+    client_ws = new WebSocket(`${ws_protocol}//${window.location.host}/connect`);
+    
+    client_ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        console.log(data);
+        
+        if (data.type === "action") {
+            // Handle action data
+            console.log(data);
+        } else if (data.type === "ohlc") {
+            // Handle OHLC price data
+            dataPoints.push({
+                x: counter, // or use new Date(data.timestamp * 1000) if you need actual dates
+                y: [
+                    data.open,
+                    data.high,
+                    data.low,
+                    data.close
+                ]
+            });
+            counter++;
+
+            if (dataPoints.length > maxPoints) {
+                dataPoints.shift();
+            }
+
+            chart.render();
+        }
+    };
+    
+    client_ws.onclose = function(event) {
+        console.error('WebSocket closed:', event);
+        // Optionally attempt to reconnect after a delay
+        setTimeout(initClientWebSocket, 1000);
+    };
+
+    client_ws.onerror = function(event) {
+        console.error('WebSocket error:', event);
+        // Optionally close the WebSocket to trigger the onclose event
+        client_ws.close();
+    };
+}
+
+initClientWebSocket()
 await fetchBuffer()
 
 async function fetchBuffer() {
@@ -57,34 +105,12 @@ async function fetchBuffer() {
                 ]
             });
             counter ++
-        });
 
-    } catch (err) {
-        console.error("Error initializing session:", err);
-    }
+            if (dataPoints.length > maxPoints) {
+                dataPoints.shift();
+            }
 
-    chart.render();
-}
-
-async function fetchLatest() {
-    try {
-        const response = await fetch("/tohlcv/last", {
-            method: "GET",
-            credentials: 'include',
         });
-        
-        const data = await response.json();
-        
-        dataPoints.push({
-            x: counter, // new Date(element.timestamp * 1000),
-            y: [
-                data.open,
-                data.high,
-                data.low,
-                data.close
-            ]
-        });
-        counter ++
 
     } catch (err) {
         console.error("Error initializing session:", err);

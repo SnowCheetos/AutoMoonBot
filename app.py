@@ -1,4 +1,5 @@
 import json
+import asyncio
 import logging
 import uvicorn
 from fastapi import FastAPI
@@ -27,6 +28,9 @@ app.mount("/static", StaticFiles(directory="./static/"), name="static")
 app.mount("/data", StaticFiles(directory="data"), name="data")
 app.mount("/media", StaticFiles(directory="media"), name="media")
 
+if config["live_data"] and "s" in config["interval"]:
+    raise Exception("intervals less than 1 minute can only be used for back testing, not live data")
+
 server = Server(
     ticker=config["ticker"],
     period=config["period"],
@@ -41,6 +45,7 @@ server = Server(
     return_thresh=config["return_thresh"],
     feature_params=config["feature_params"],
     db_path=config["db_path"],
+    live_data=config["live_data"],
     logger=logger
 )
 
@@ -54,9 +59,27 @@ async def home():
 
 @app.websocket("/connect")
 async def ws_handler(ws: WebSocket):
-    ws.accept()
-    while ws.client_state != WebSocketState.DISCONNECTED:
-        pass
+    await ws.accept()
+    try:
+        while ws.client_state != WebSocketState.DISCONNECTED:
+            await asyncio.sleep(interval_map[config["interval"]])
+            action = server.consume_queue()
+            if action:
+                action["type"] = "action"
+                await ws.send_json(data=action)
+
+            data = server.tohlcv()
+            data["type"] = "ohlc"
+            await ws.send_json(data=data)
+
+    except WebSocketDisconnect as e:
+        logger.error(str(e))
+
+    except Exception as e:
+        logger.error(str(e))
+
+    finally:
+        await ws.close()
 
 @app.get("/tohlcv/last")
 async def tohlcv_last():

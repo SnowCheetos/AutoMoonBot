@@ -28,6 +28,7 @@ class Server:
             return_thresh:  float,
             feature_params: Dict[str, List[int] | Dict[str, List[int]]],
             db_path:        Optional[str] = None,
+            live_data:      bool=False,
             logger:         Optional[logging.Logger] = None) -> None:
         
         if logger:
@@ -49,9 +50,11 @@ class Server:
             queue_size=queue_size, 
             db_path=db_path,
             feature_params=feature_params,
-            logger=logger)
+            logger=logger,
+            live_data=live_data)
         
-        self._buffer.write_queue_to_db(flush=True)
+        if live_data:
+            self._buffer.write_queue_to_db(flush=True)
 
         self._model = PolicyNet(
             input_dim=state_dim, 
@@ -78,16 +81,19 @@ class Server:
         self._inference_thread = None
 
         self._timer_thread = None
+        self._train_counter = 5
 
         self._terminate = False
-        self._actions_queue = deque(maxlen=25)
+        self._actions_queue = deque(maxlen=5)
 
     def __del__(self):
-        if self._training:
-            self.join_train_thread()
+        self.join_timer_thread()
 
         if self._inferencing:
             self.join_inference_thread()
+
+        if self._training:
+            self.join_train_thread()
 
     @property
     def busy(self):
@@ -105,10 +111,18 @@ class Server:
 
     def _timer_loop(self, interval: int):
         self._logger.info("starting timer thread")
+        self.train_model(100)
+
         while not self._terminate:
+            if self._train_counter == 0:
+                self._logger.info("running scheduled training")
+                self.train_model(100)
+                self._train_counter = 5
+
             time.sleep(interval)
             self._logger.info("running scheduled inference")
             self._inference()
+            self._train_counter -= 1
 
     def start_timer(self, interval: int):
         thread = threading.Thread(
@@ -132,6 +146,7 @@ class Server:
         if not self._training and not self._inferencing:
             self._model.load_state_dict(self._env.model_weights)
             self._mutex.release_lock()
+            self._logger.info("model updated successfully")
             return True
         else:
             self._logger.warning("model currently being trained, cannot copy weights")
@@ -162,6 +177,8 @@ class Server:
             if not self._ready:
                 self._ready = True
 
+        self.update_model()
+
     def train_model(
             self,
             episodes:       int, 
@@ -190,6 +207,15 @@ class Server:
         with self._mutex:
             self._train_thread = thread
     
+    def join_timer_thread(self) -> bool:
+        with self._mutex:
+            if not self._timer_thread:
+                self._logger.warning("no running timer thread, nothing to end...")
+                return False
+        
+        self._timer_thread.join()
+        return True
+
     def join_train_thread(self) -> bool:
         with self._mutex:
             if not self._training:
@@ -242,7 +268,7 @@ class Server:
             
             self._inferencing = True
 
-        self._logger.info(f"running void inferencing...")
+        self._logger.info(f"running void inferencing, queue size: {len(self._actions_queue)}")
         result = inference(
             self._model,
             state,
@@ -251,13 +277,13 @@ class Server:
         action = Action(result)
 
         with self._mutex:
-            if self._position == Position.Cash and action == Action.Sell:
+            if self._position == Position.Cash and action == Action.Buy:
                 self._position = Position.Asset
-                self._logger.debug("sell signal predicted")
-
-            elif self._position == Position.Asset and action == Action.Buy:
-                self._position = Position.Cash
                 self._logger.debug("buy signal predicted")
+
+            elif self._position == Position.Asset and action == Action.Sell:
+                self._position = Position.Cash
+                self._logger.debug("sell signal predicted")
 
             self._actions_queue.append({
                 "timestamp": ohlcv["timestamp"],
