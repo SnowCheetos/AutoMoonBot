@@ -3,7 +3,7 @@ import logging
 import uvicorn
 from fastapi import FastAPI
 from fastapi.requests import Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
@@ -43,14 +43,23 @@ server = Server(
     logger=logger
 )
 
+@app.get("/")
+async def home():
+    return FileResponse("./static/index.html")
+
 @app.websocket("/connect")
 async def ws_handler(ws: WebSocket):
     ws.accept()
 
-@app.get("/tohlcv")
-async def tohlcv():
+@app.get("/tohlcv/last")
+async def tohlcv_last():
     data = server.tohlcv()
-    return JSONResponse(content=json.dumps(data))
+    return JSONResponse(content=data)
+
+@app.get("/tohlcv/all")
+async def tohlcv_all():
+    data = server.fetch_buffer()
+    return JSONResponse(content=data)
 
 @app.get("/train")
 async def train(request: Request):

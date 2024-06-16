@@ -81,6 +81,9 @@ class Server:
     def tohlcv(self) -> Dict[str, float]:
         return self._buffer.last_tohlcv()
 
+    def fetch_buffer(self) -> Dict[str, Dict[str, float]]:
+        return self._buffer.queue
+
     def update_model(self) -> bool:
         if not self._training:
             self._model.load_state_dict(self._env.model_weights)

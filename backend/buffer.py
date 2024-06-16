@@ -41,6 +41,20 @@ class DataBuffer:
 
         self._fill_queue()
 
+    @property
+    def queue(self) -> Dict[str, Dict[str, float]]:
+        data = {"data": []}
+        for row in self._queue:
+            data["data"] += [{
+                "timestamp": row[0],
+                "open":      row[1],
+                "high":      row[2],
+                "low":       row[3],
+                "close":     row[4],
+                "volume":    row[5]
+            }]
+        return data
+
     def _fill_queue(self) -> None:
         data = yf.download(
             tickers=self._ticker, 

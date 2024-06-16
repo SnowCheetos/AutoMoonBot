@@ -1,0 +1,74 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    display: inline;
+    font-family: Courier New, monospace;
+    background-color: #646262b4;
+    overflow: hidden;
+}
+
+#main-holder {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#top-holder {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    flex-direction: row;
+    gap: 10px;
+
+}
+
+#chart-outer-holder {
+    height: 100%;
+    width: 70%;
+    display: flex;
+    position: relative;
+
+}
+
+.canvasjs-chart-canvas {
+    border-radius: 12px;
+}
+
+#chart-holder {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 12px;
+}
+
+#actions-outer-holder {
+    height: 100%;
+    width: 30%;
+    display: flex;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 12px;
+    background-color: white;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#actions-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    background-color: beige;
+}
+
+#actions-holder {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    position: relative;
+}
