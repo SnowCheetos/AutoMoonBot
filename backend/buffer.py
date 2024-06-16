@@ -37,7 +37,7 @@ class DataBuffer:
 
         self._con     = None
         self._cursor  = None
-        self._counter = 0
+        self._counter = queue_size + 2
         self._rows    = 0
         
         if not live_data:
@@ -53,7 +53,15 @@ class DataBuffer:
             "rsi": compute_rsi,
             "sto": compute_stochastic_np
         }
+        self._fill_queue()
 
+    def reset(self) -> None:
+        if self._live_data:
+            logging.warning("live buffer cannot be reset")
+            return
+        
+        self._counter = self._queue_size + 2
+        self._queue   = deque(maxlen=self._queue_size)
         self._fill_queue()
 
     @property

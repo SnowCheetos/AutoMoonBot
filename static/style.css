@@ -3,7 +3,7 @@ html, body {
     margin: 0;
     font-family: Courier New, monospace;
     background-color: #f3f3f3b4;
-    overflow: hidden;
+    /* overflow: hidden; */
 }
 
 #main-holder {
@@ -105,7 +105,7 @@ html, body {
     gap: 5px; 
 }
 
-#portfolio-outer-holder {
+#performance-outer-holder {
     height: 30%;
     width: 100%;
     display: flex;
@@ -117,7 +117,7 @@ html, body {
     overflow: hidden;
 }
 
-#portfolio-top-holder {
+#performance-top-holder {
     width: 100%;
     text-align: center;
     padding: 5px;
@@ -125,7 +125,7 @@ html, body {
 }
 
 #actions-outer-holder {
-    height: 100%;
+    height: 100vh;
     width: 100%;
     display: flex;
     position: relative;
@@ -143,9 +143,68 @@ html, body {
     background-color: beige;
 }
 
-#actions-holder {
-    height: 100%;
+#logs-holder,
+#actions-holder 
+{
     width: 100%;
+    overflow: auto;
+}
+
+#logs,
+#actions-buffer 
+{
     display: flex;
+    flex-direction: column;
+    align-items: center; /* Center the list items horizontally */
+    padding: 0;
+    margin: 0;
+    list-style-type: none;
+}
+
+.trade-card,
+.action-card 
+{
+    margin-top: 10px;
+    width: 100%;
     position: relative;
+    display: flex;
+    gap: 5px;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 3px;
+    border: 1px solid black;
+}
+
+.win-tag,
+.buy-tag
+{
+    height: 100%;
+    width: 50px;
+    padding: 2px;
+    text-align: center;
+    background-color: greenyellow;
+    border-radius: 3px;
+}
+
+.loss-tag,
+.sell-tag 
+{
+    height: 100%;
+    width: 50px;
+    padding: 2px;
+    text-align: center;
+    background-color: rgb(255, 135, 155);
+    border-radius: 3px;
+}
+
+.win-tag,
+.loss-tag
+{
+    font-size: small;
+}
+
+.buy-tag,
+.sell-tag 
+{
+    font-size: medium;
 }

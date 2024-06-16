@@ -49,7 +49,8 @@ server = Server(
     logger=logger,
     inference_method=config["inference_method"],
     training_params=config["training_params"],
-    retrain_freq=config["retrain_freq"]
+    retrain_freq=config["retrain_freq"],
+    max_training_data=config["max_training_data"]
 )
 
 @app.on_event("startup")

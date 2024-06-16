@@ -35,7 +35,9 @@ class TradeEnv(gym.Env):
                     "d":      np.linspace(3, 11, 8).astype(int).tolist()
                 }
             },
-            logger:         Optional[logging.Logger] = None) -> None:
+            logger:            Optional[logging.Logger]=None,
+            testing:           bool=False,
+            max_training_data: int | None=None) -> None:
         
         super().__init__()
 
@@ -49,19 +51,37 @@ class TradeEnv(gym.Env):
 
         self._status = Status(0.005, 1.0025)
         self._device = device
-        self._sampler = DataSampler(db_path, queue_size, feature_params=feature_params)
-        self._policy_net = PolicyNet(state_dim, action_dim, len(Position), embedding_dim).to(device)
-        self._return_thresh = return_thresh
-        self._position = Position.Cash
-        self._inaction_cost = inaction_cost
-        self._action_cost = action_cost
-        self._portfolio = 1.0
-        self._returns = []
-        self._log_probs = []
-        self._init_close = 0.0
+
+        db_max_access = None if not testing else queue_size+2
+        
+        self._sampler         = DataSampler(
+            db_path           = db_path, 
+            queue_size        = queue_size, 
+            max_access        = db_max_access, 
+            feature_params    = feature_params,
+            max_training_data = max_training_data)
+        
+        self._policy_net   = PolicyNet(
+            input_dim      = state_dim, 
+            output_dim     = action_dim, 
+            position_dim   = len(Position), 
+            embedding_dim  = embedding_dim).to(device)
+        
+        self._return_thresh  = return_thresh
+        self._position       = Position.Cash
+        self._inaction_cost  = inaction_cost
+        self._action_cost    = action_cost
+        self._portfolio      = 1.0
+        self._returns        = []
+        self._log_probs      = []
+        self._init_close     = 0.0
         self._risk_free_rate = 1.0
-        self._entry = 0.0
-        self._exit = 0.0
+        self._entry          = 0.0
+        self._exit           = 0.0
+
+    @property
+    def sampler(self):
+        return self._sampler
 
     @property
     def model(self):
@@ -73,15 +93,15 @@ class TradeEnv(gym.Env):
         return self._policy_net.state_dict()
 
     @property
-    def log_probs(self):
+    def log_probs(self) -> list:
         return self._log_probs
     
     @property
-    def portfolio(self):
+    def portfolio(self) -> float:
         return self._portfolio
     
     @property
-    def init_close(self):
+    def init_close(self) -> float:
         return self._init_close
 
     def reset(self):
@@ -91,14 +111,14 @@ class TradeEnv(gym.Env):
         while len(state) == 0:
             _, close, state = self._sampler.sample_next()
 
-        self._position = Position.Cash
-        self._portfolio = 1.0
-        self._returns = []
-        self._log_probs = []
-        self._init_close = close
+        self._position       = Position.Cash
+        self._portfolio      = 1.0
+        self._returns        = []
+        self._log_probs      = []
+        self._init_close     = close
         self._risk_free_rate = 1.0
-        self._entry = 0.0
-        self._exit = 0.0
+        self._entry          = 0.0
+        self._exit           = 0.0
         return state
 
     def step(self, action: int):

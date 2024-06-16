@@ -15,24 +15,25 @@ from reinforce.model import PolicyNet, inference
 class Server:
     def __init__(
             self, 
-            ticker:           str,
-            period:           str,
-            interval:         str,
-            queue_size:       int,
-            state_dim:        int,
-            action_dim:       int,
-            embedding_dim:    int,
-            inaction_cost:    float,
-            action_cost:      float,
-            device:           str,
-            return_thresh:    float,
-            retrain_freq:     int,
-            training_params:  Dict[str, int | float],
-            feature_params:   Dict[str, List[int] | Dict[str, List[int]]],
-            db_path:          Optional[str] = None,
-            live_data:        bool=False,
-            inference_method: str="prob",
-            logger:           Optional[logging.Logger] = None) -> None:
+            ticker:            str,
+            period:            str,
+            interval:          str,
+            queue_size:        int,
+            state_dim:         int,
+            action_dim:        int,
+            embedding_dim:     int,
+            inaction_cost:     float,
+            action_cost:       float,
+            device:            str,
+            return_thresh:     float,
+            retrain_freq:      int,
+            training_params:   Dict[str, int | float],
+            feature_params:    Dict[str, List[int] | Dict[str, List[int]]],
+            db_path:           Optional[str] = None,
+            live_data:         bool=False,
+            inference_method:  str="prob",
+            logger:            Optional[logging.Logger] = None,
+            max_training_data: int | None = None) -> None:
         
         if logger:
             self._logger = logger
@@ -62,37 +63,35 @@ class Server:
             self._buffer.write_queue_to_db(flush=True)
 
         self._model = PolicyNet(
-            input_dim=state_dim, 
-            output_dim=action_dim, 
-            position_dim=len(Position), 
-            embedding_dim=embedding_dim)
+            input_dim     = state_dim, 
+            output_dim    = action_dim, 
+            position_dim  = len(Position), 
+            embedding_dim = embedding_dim)
         
         self._env = TradeEnv(
-            state_dim=state_dim, 
-            action_dim=action_dim, 
-            embedding_dim=embedding_dim, 
-            queue_size=queue_size, 
-            inaction_cost=inaction_cost,
-            action_cost=action_cost,
-            device=device,
-            db_path=db_path,
-            return_thresh=return_thresh)
+            state_dim         = state_dim, 
+            action_dim        = action_dim, 
+            embedding_dim     = embedding_dim, 
+            queue_size        = queue_size, 
+            inaction_cost     = inaction_cost,
+            action_cost       = action_cost,
+            device            = device,
+            db_path           = db_path,
+            return_thresh     = return_thresh,
+            testing           = not live_data,
+            max_training_data = max_training_data)
 
-        self._training_params = training_params
-
-        self._ready = False
-        self._training = False
-        self._train_thread = None
-
-        self._inferencing = False
+        self._training_params  = training_params
+        self._ready            = False
+        self._training         = False
+        self._train_thread     = None
+        self._inferencing      = False
         self._inference_thread = None
-
-        self._timer_thread  = None
-        self._train_counter = retrain_freq
-        self._retrain_freq  = retrain_freq
-
-        self._terminate = False
-        self._actions_queue = deque(maxlen=5)
+        self._timer_thread     = None
+        self._train_counter    = retrain_freq
+        self._retrain_freq     = retrain_freq
+        self._terminate        = False
+        self._actions_queue    = deque(maxlen=5)
 
     def __del__(self):
         self.join_timer_thread()
@@ -153,6 +152,7 @@ class Server:
             self._timer_thread = thread
 
     def tohlcv(self) -> Dict[str, float]:
+        self._env.sampler.max_access += 1
         return self._buffer.last_tohlcv()
 
     def fetch_buffer(self) -> Dict[str, Dict[str, float]]:
