@@ -105,14 +105,14 @@ class TradeEnv(gym.Env):
         reward, done = self._inaction_cost, False
 
         # Valid buy
-        if self._position == Position.Cash and Action(action) == Action.Sell:
+        if self._position == Position.Cash and Action(action) == Action.Buy:
             self._position = Position.Asset
             self._entry = close
             self._exit = 0.0
             self._portfolio *= (1-self._action_cost)
         
         # Valid sell
-        elif self._position == Position.Asset and Action(action) == Action.Buy:
+        elif self._position == Position.Asset and Action(action) == Action.Sell:
             self._position = Position.Cash
             self._exit = close
             gross_return = close / self._entry

@@ -1,7 +1,7 @@
 {
     "ticker": "SPY",
     "period": "5d",
-    "interval": "1m",
+    "interval": "3s",
     "queue_size": 100,
     "state_dim": 40,
     "action_dim": 3,
@@ -20,8 +20,9 @@
             "d": [3, 4, 5, 6, 7, 8, 9, 11]
         }
     },
-    "db_path": "data/SPY.db",
+    "db_path": "data/example.db",
     "log_file": "logs/server.log",
     "log_mode": "a",
-    "log_level": "INFO"
+    "log_level": "INFO",
+    "live_data": false
 }
