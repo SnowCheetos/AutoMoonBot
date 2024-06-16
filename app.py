@@ -47,6 +47,7 @@ server = Server(
     db_path=config["db_path"],
     live_data=config["live_data"],
     logger=logger,
+    inference_method=config["inference_method"],
     training_params=config["training_params"],
     retrain_freq=config["retrain_freq"]
 )
