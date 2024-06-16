@@ -6,9 +6,9 @@ var chart = new CanvasJS.Chart("chart-holder", {
     animationEnabled: true,
     theme: "light1", // "light1", "light2", "dark1", "dark2"
     exportEnabled: true,
-    title: {
-        text: "Stonks"
-    },
+    // title: {
+    //     text: "Stonks"
+    // },
     // subtitles: [{
     //     text: "Good"
     // }],
@@ -25,8 +25,6 @@ var chart = new CanvasJS.Chart("chart-holder", {
     },
     toolTip: {
         content: "Index: {x}<br /><strong>Price:</strong><br />Open: {y[0]}, Close: {y[3]}<br />High: {y[1]}, Low: {y[2]}",
-        position: "nearest",
-        animationEnabled: true,
     },
     data: [{
         type: "candlestick",

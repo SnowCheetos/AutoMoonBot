@@ -188,7 +188,7 @@ def train(
         env.model.eval()
 
         avg_port = np.mean(portfolios) - 1
-        if avg_port > buy_and_hold and portfolios[-1] > buy_and_hold and len(portfolios) == portfolio_size:
+        if avg_port > buy_and_hold and portfolios[-1] > max(0.0, buy_and_hold) and len(portfolios) == portfolio_size:
             env._logger.info(f"average target reached, last {portfolio_size} averaged {'+' if avg_port > 1 else ''}{avg_port * 100:.4f}%, exiting.")
             return reward_history
 
