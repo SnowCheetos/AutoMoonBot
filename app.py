@@ -46,7 +46,9 @@ server = Server(
     feature_params=config["feature_params"],
     db_path=config["db_path"],
     live_data=config["live_data"],
-    logger=logger
+    logger=logger,
+    training_params=config["training_params"],
+    retrain_freq=config["retrain_freq"]
 )
 
 @app.on_event("startup")

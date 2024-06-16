@@ -11,25 +11,21 @@ class PolicyNet(nn.Module):
             input_dim:     int,
             output_dim:    int, 
             position_dim:  int,
-            embedding_dim: int,
-            dropout:       float=0.5) -> None:
+            embedding_dim: int) -> None:
         
         super().__init__()
 
         self._embedding = nn.Embedding(position_dim, embedding_dim)
         self._f1 = nn.Linear(input_dim + embedding_dim, 512)
-        self._d1 = nn.Dropout(dropout)
         self._f2 = nn.Linear(512, 256)
-        self._d2 = nn.Dropout(dropout)
         self._f3 = nn.Linear(256, 128)
-        self._d3 = nn.Dropout(dropout)
         self._f4 = nn.Linear(128, output_dim)
 
     def forward(self, x: torch.Tensor, p: torch.Tensor) -> torch.Tensor:
         x = torch.cat((x, self._embedding(p).squeeze(1)), dim=-1)
-        x = self._d1(torch.relu(self._f1(x)))
-        x = self._d2(torch.relu(self._f2(x)))
-        x = self._d3(torch.relu(self._f3(x)))
+        x = torch.relu(self._f1(x))
+        x = torch.relu(self._f2(x))
+        x = torch.relu(self._f3(x))
         return torch.softmax(self._f4(x), dim=-1)
 
 def select_action(
