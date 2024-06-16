@@ -15,23 +15,24 @@ from reinforce.model import PolicyNet, inference
 class Server:
     def __init__(
             self, 
-            ticker:          str,
-            period:          str,
-            interval:        str,
-            queue_size:      int,
-            state_dim:       int,
-            action_dim:      int,
-            embedding_dim:   int,
-            inaction_cost:   float,
-            action_cost:     float,
-            device:          str,
-            return_thresh:   float,
-            retrain_freq:    int,
-            training_params: Dict[str, int | float],
-            feature_params:  Dict[str, List[int] | Dict[str, List[int]]],
-            db_path:         Optional[str] = None,
-            live_data:       bool=False,
-            logger:          Optional[logging.Logger] = None) -> None:
+            ticker:           str,
+            period:           str,
+            interval:         str,
+            queue_size:       int,
+            state_dim:        int,
+            action_dim:       int,
+            embedding_dim:    int,
+            inaction_cost:    float,
+            action_cost:      float,
+            device:           str,
+            return_thresh:    float,
+            retrain_freq:     int,
+            training_params:  Dict[str, int | float],
+            feature_params:   Dict[str, List[int] | Dict[str, List[int]]],
+            db_path:          Optional[str] = None,
+            live_data:        bool=False,
+            inference_method: str="prob",
+            logger:           Optional[logging.Logger] = None) -> None:
         
         if logger:
             self._logger = logger
@@ -42,6 +43,7 @@ class Server:
         self._position = Position.Cash
         self._device = device
         self._status = Status(0.005, 1.0025)
+        self._inference_method = inference_method
 
         if not db_path:
             db_path = f"../data/{ticker}.db"
@@ -286,10 +288,11 @@ class Server:
 
         self._logger.info(f"running void inferencing, queue size: {len(self._actions_queue)}")
         result = inference(
-            self._model,
-            state,
-            int(self._position.value),
-            self._device)
+            model=self._model,
+            state=state,
+            position=int(self._position.value),
+            device=self._device,
+            method=self._inference_method)
         action = Action(result)
 
         actual_action = Action.Hold

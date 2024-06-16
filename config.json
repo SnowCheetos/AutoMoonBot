@@ -32,5 +32,6 @@
         "max_grad_norm": 1.0,
         "portfolio_size": 10
     },
-    "retrain_freq": 20
+    "retrain_freq": 20,
+    "inference_method": "prob"
 }
