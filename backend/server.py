@@ -287,7 +287,7 @@ class Server:
             self._inferencing = True
 
         self._logger.info(f"running void inferencing, queue size: {len(self._actions_queue)}")
-        result = inference(
+        result, prob = inference(
             model=self._model,
             state=state,
             position=int(self._position.value),
@@ -328,7 +328,8 @@ class Server:
                 "action":      actual_action.name,
                 "close":       ohlcv["close"],
                 "take_profit": take_profit,
-                "stop_loss":   stop_loss
+                "stop_loss":   stop_loss,
+                "probability": prob
             })
             self._inferencing = False
 
@@ -353,7 +354,7 @@ class Server:
             self._inferencing = True
         
         self._logger.info(f"running blocking inferencing...")
-        result = inference(
+        result, _ = inference(
             self._model,
             state,
             int(self._position.value),
