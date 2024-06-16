@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from backend.server import Server
+from utils.helpers import interval_map
 
 
 with open("config.json", "r") as f:
@@ -43,6 +44,10 @@ server = Server(
     logger=logger
 )
 
+@app.on_event("startup")
+async def startup():
+    server.start_timer(interval_map[config["interval"]])
+
 @app.get("/")
 async def home():
     return FileResponse("./static/index.html")
@@ -50,6 +55,8 @@ async def home():
 @app.websocket("/connect")
 async def ws_handler(ws: WebSocket):
     ws.accept()
+    while ws.client_state != WebSocketState.DISCONNECTED:
+        pass
 
 @app.get("/tohlcv/last")
 async def tohlcv_last():
@@ -76,6 +83,9 @@ async def train(request: Request):
     for key in required_keys:
         if key not in keys:
             return JSONResponse(status_code=400, content={"error": f"{key} not found in header"})
+
+    if server.busy:
+        return JSONResponse(status_code=400, content={"error": "there is another training thread running, wait for it to finish first"})
 
     server.train_model(
         episodes=int(header["episodes"]),

@@ -1,19 +1,17 @@
 html, body {
     height: 100%;
     margin: 0;
-    display: inline;
     font-family: Courier New, monospace;
-    background-color: #646262b4;
+    background-color: #f3f3f3b4;
     overflow: hidden;
 }
 
 #main-holder {
-    height: 100%;
-    width: 100%;
-    display: flex;
+    height: 95%;
+    width: 95%;
     position: relative;
     flex-direction: column;
-    gap: 10px;
+    gap: 5px;
 }
 
 #top-holder {
@@ -22,34 +20,113 @@ html, body {
     display: flex;
     position: relative;
     flex-direction: row;
-    gap: 10px;
+    gap: 5px;
 
 }
 
-#chart-outer-holder {
+#left-holder {
     height: 100%;
-    width: 70%;
+    width: 30%;
     display: flex;
     position: relative;
-
+    flex-direction: column;
+    gap: 5px; 
 }
 
-.canvasjs-chart-canvas {
-    border-radius: 12px;
-}
-
-#chart-holder {
-    height: 100%;
+#status-outer-holder {
+    height: 40%;
     width: 100%;
     display: flex;
     position: relative;
     border: 1px solid black;
     border-radius: 12px;
+    background-color: white;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#status-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    background-color: beige;
+}
+
+#logs-outer-holder {
+    height: 60%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 12px;
+    background-color: white;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#logs-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    background-color: beige;
+}
+
+#chart-outer-holder {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid black;
+    border-radius: 12px;
+    flex-direction: column;
+}
+
+#chart-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    background-color: beige;
+}
+
+#chart-holder {
+    height: 100%;
+    width: 100%;
+    display: inline;
+    position: relative;
+}
+
+#right-holder {
+    height: 100%;
+    width: 30%;
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    gap: 5px; 
+}
+
+#portfolio-outer-holder {
+    height: 30%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 12px;
+    background-color: white;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#portfolio-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    background-color: beige;
 }
 
 #actions-outer-holder {
     height: 100%;
-    width: 30%;
+    width: 100%;
     display: flex;
     position: relative;
     border: 1px solid black;
