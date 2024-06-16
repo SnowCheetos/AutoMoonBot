@@ -331,6 +331,8 @@ class Server:
 
     def run_inference(self, update: bool=True) -> Action | None:
         state = self._buffer.fetch_state(update)
+        ohlcv = self._buffer.queue["data"][-1]
+
         if len(state) == 0:
             self._logger.warning("no data available, not running inference")
             return None
@@ -355,14 +357,31 @@ class Server:
             self._device)
         action = Action(result)
 
+        actual_action = Action.Hold
         with self._mutex:
-            if self._position == Position.Cash and action == Action.Sell:
-                self._position = Position.Asset
-                self._logger.debug("sell signal predicted")
+            if self._position == Position.Cash and action == Action.Buy:
+                if self._status.signal == Signal.Idle:
+                    self._status.signal      = action.value
+                    self._status.take_profit = ohlcv["close"]
+                    self._status.stop_loss   = ohlcv["close"]
+                elif self._status.signal == Signal.Buy:
+                    if self._status.confirm_buy(ohlcv["close"]):
+                        self._position = Position.Asset
+                        self._logger.debug("buy signal predicted")
+                        actual_action = Action.Buy
+                        self._status.reset()
 
-            elif self._position == Position.Asset and action == Action.Buy:
-                self._position = Position.Cash
-                self._logger.debug("buy signal predicted")
+            elif self._position == Position.Asset and action == Action.Sell:
+                if self._status.signal == Signal.Idle:
+                    self._status.signal      = action.value
+                    self._status.take_profit = ohlcv["close"]
+                    self._status.stop_loss   = ohlcv["close"]
+                elif self._status.signal == Signal.Sell:
+                    if self._status.confirm_sell(ohlcv["close"]):
+                        self._position = Position.Cash
+                        self._logger.debug("sell signal predicted")
+                        actual_action = Action.Sell
+                        self._status.reset()
 
             self._inferencing = False
-        return action
+        return actual_action

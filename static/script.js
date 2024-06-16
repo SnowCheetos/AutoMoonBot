@@ -1,9 +1,11 @@
-const ws_protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-var client_ws;
+const ws_protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
 
-var dataPoints = [];
-var maxPoints = 40;
-var counter = 0
+var client_ws
+var dataPoints  = []
+var buyIndices  = []
+var sellIndices = []
+var maxPoints   = 40
+var counter     = 0
 
 var chart = new CanvasJS.Chart("chart-holder", {
     animationEnabled: true,
@@ -48,7 +50,11 @@ function initClientWebSocket() {
         
         if (data.type === "action") {
             // Handle action data
-            console.log(data);
+            if (data.action === 0) {
+                buyIndices.push(counter)
+            } else if (data.action === 2) {
+                sellIndices.push(counter)
+            }
         } else if (data.type === "ohlc") {
             // Handle OHLC price data
             dataPoints.push({
@@ -63,10 +69,11 @@ function initClientWebSocket() {
             counter++;
 
             if (dataPoints.length > maxPoints) {
-                dataPoints.shift();
+                dataPoints.shift()
             }
 
-            chart.render();
+            updateChart(chart)
+            chart.render()
         }
     };
     
@@ -117,4 +124,17 @@ async function fetchBuffer() {
     }
 
     chart.render();
+}
+
+function updateChart(chart) {
+    for(var i=0; i<chart.options.data[0].dataPoints.length; i++) {
+        var dataPoint = chart.options.data[0].dataPoints[i];
+        if (i in buyIndices) {
+            dataPoint.indexLabel = "buy";
+            dataPoint.color = "green";
+        } else if (i in sellIndices) {
+            dataPoint.indexLabel = "sell";
+            dataPoint.color = "red";
+        }
+    }
 }
