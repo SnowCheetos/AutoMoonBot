@@ -11,26 +11,26 @@ def download_example(
     con = sqlite3.connect(db_path)
     cursor = con.cursor()
     if flush:
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
-            tables = cursor.fetchall()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+        tables = cursor.fetchall()
 
-            for table in tables:
-                table_name = table[0]
-                cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
-                con.commit()
+        for table in tables:
+            table_name = table[0]
+            cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+            con.commit()
 
-            query = """
-            CREATE TABLE IF NOT EXISTS data (
-                id         INTEGER PRIMARY KEY,
-                timestamp  REAL,
-                open       REAL,
-                high       REAL,
-                low        REAL,
-                close      REAL,
-                volume     REAL
-            )
-            """
-            cursor.execute(query)
+    query = """
+    CREATE TABLE IF NOT EXISTS data (
+        id         INTEGER PRIMARY KEY,
+        timestamp  REAL,
+        open       REAL,
+        high       REAL,
+        low        REAL,
+        close      REAL,
+        volume     REAL
+    )
+    """
+    cursor.execute(query)
 
     data = yf.download(ticker, period=period, interval=interval)
     for idx in data.index:

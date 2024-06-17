@@ -15,28 +15,27 @@ var performanceRec     = {
     buyAndHold: 1
 }
 
+var started     = false
 var counter     = 0
+
+initClientWebSocket()
 
 var chart = new CanvasJS.Chart("chart-holder", {
     animationEnabled: true,
     theme: "light1", // "light1", "light2", "dark1", "dark2"
     exportEnabled: true,
-    // title: {
-    //     text: "Stonks"
-    // },
-    // subtitles: [{
-    //     text: "Good"
-    // }],
+    title: {
+        text: "SPY",
+        fontSize: 24
+    },
     axisX: {
         interval: 10,
         intervalType: "category",
         labelFontSize: 12,
-        // valueFormatString: "MMM DD"
     },
     axisY: {
         prefix: "$",
         labelFontSize: 12,
-        // title: "Price"
     },
     toolTip: {
         content: "Index: {x}<br /><strong>Price:</strong><br />Open: {y[0]}, Close: {y[3]}<br />High: {y[1]}, Low: {y[2]}",
@@ -57,14 +56,18 @@ function initClientWebSocket() {
     client_ws.onmessage = function(event) {
         const data = JSON.parse(event.data);    
         if (data.type === "action") {
-            // Handle action data
             if (data.action === "Buy") {
+                if (!started) {
+                    started = true
+                }
                 appendAction(data.action, data.close, data.probability)
                 startTrade(data.timestamp, data.close)
             } else if (data.action === "Sell") {
                 appendAction(data.action, data.close, data.probability)
                 finishTrade(data.close)
             }
+        } else if (data.type === "report") {
+            serverStatus(data)
         } else if (data.type === "ohlc") {
             dataBuffer.push({
                 x: counter,
@@ -76,9 +79,9 @@ function initClientWebSocket() {
                 ]
             });
             counter++;
-            if (performanceRec.initPrice === 0) {
+            if (performanceRec.initPrice === 0 && started) {
                 performanceRec.initPrice = data.close
-            } else {
+            } else if (started) {
                 updateBuyAndHold(data.close)
             }
             if (dataBuffer.length > dataBufferSize) {
@@ -100,44 +103,42 @@ function initClientWebSocket() {
     };
 }
 
-initClientWebSocket()
-// await fetchBuffer()
+function serverStatus(status) {
+    const modelStatus    = document.getElementById('model-status')
+    const trainingStatus = document.getElementById('training-status')
 
-// async function fetchBuffer() {
-//     try {
-//         const response = await fetch("/tohlcv/all", {
-//             method: "GET",
-//             credentials: 'include',
-//         });
-        
-//         const data = await response.json();
-//         data.data.forEach(element => {
-//             if (performanceRec.initPrice === 0) {
-//                 performanceRec.initPrice = element.close
-//             }
-//             dataBuffer.push({
-//                 x: counter, // new Date(element.timestamp * 1000),
-//                 y: [
-//                     element.open,
-//                     element.high,
-//                     element.low,
-//                     element.close
-//                 ]
-//             });
-//             counter ++
+    var modelStatusScript
+    var trainingStatusScript
+    if (status.ready) {
+        modelStatusScript = `
+        <div class="model-ready">
+            Model Instance Ready
+        </div>
+        `
+    } else {
+        modelStatusScript = `
+        <div class="model-not-ready">
+            Model Unavailable
+        </div>
+        `
+    }
+    modelStatus.innerHTML = modelStatusScript
 
-//             if (dataBuffer.length > dataBufferSize) {
-//                 dataBuffer.shift();
-//             }
-
-//         });
-
-//     } catch (err) {
-//         console.error("Error initializing session:", err);
-//     }
-
-//     chart.render();
-// }
+    if (status.training) {
+        trainingStatusScript = `
+        <div class="model-training">
+            Training in Progress
+        </div>
+        `
+    } else {
+        trainingStatusScript = `
+        <div class="model-not-training">
+            Training State Idle
+        </div>
+        `
+    }
+    trainingStatus.innerHTML = trainingStatusScript
+}
 
 function startTrade(timestamp, close) {
     currTradeTimeStamp = timestamp
@@ -161,16 +162,21 @@ function updateTotalGain(trade) {
     const outcome = trade.exit / trade.entry
     performanceRec.totalGain *= outcome
 
-    const percent = (performanceRec.totalGain-1) * 100
+    const percent  = (performanceRec.totalGain-1) * 100
     item.innerHTML = `${performanceRec.totalGain > 1 ? '+' : ''}${(percent).toFixed(2)}%`
+    item.color     = performanceRec.totalGain > 1 ? 'green' : 'red'
 }
 
 function updateBuyAndHold(close) {
+    if (performanceRec.initPrice === 0) {
+        return
+    }
     const item = document.getElementById('buy-and-hold')
     performanceRec.buyAndHold = close / performanceRec.initPrice
     
-    const percent = (performanceRec.buyAndHold-1) * 100
+    const percent  = (performanceRec.buyAndHold-1) * 100
     item.innerHTML = `${performanceRec.buyAndHold > 1 ? '+' : ''}${(percent).toFixed(2)}%`
+    item.color     = performanceRec.buyAndHold > 1 ? 'green' : 'red'
 }
 
 function appendAction(action, close, probability) {
@@ -179,17 +185,20 @@ function appendAction(action, close, probability) {
 
     var tag
     if (action === 'Buy') {
-        tag = '<div class="buy-tag">'
+        tag = `<div class="buy-tag">${action}</div>`
     } else if (action === 'Sell') {
-        tag = '<div class="sell-tag">'
+        tag = `<div class="sell-tag">${action}</div>`
     }
 
     listItem.innerHTML = `
-    <div class="action-card">
-        ${tag}${action}</div>
-        <div>
-            <div>${(close).toFixed(2)}</div>
-            <div>${(probability*100).toFixed(2)}%</div>
+    <div class="holder-with-ts">
+        <div class="ts"> ${getCurrentTimestamp()} </div>
+        <div class="action-card">
+            ${tag}
+            <div class="action-info">
+                <div class="close-price">Price: $${(close).toFixed(2)}</div>
+                <div class="certainty">Certainty: ${(probability*100).toFixed(2)}%</div>
+            </div>
         </div>
     </div>
     `
@@ -219,11 +228,14 @@ function appendTrade(trade) {
     }
 
     listItem.innerHTML = `
-    <div class="trade-card">
-        ${tag}
-        <div>
-            <div>Bought at: ${(trade.entry).toFixed(2)}</div>
-            <div>Sold at:   ${(trade.exit).toFixed(2)}</div>
+    <div class="holder-with-ts">
+        <div class="ts"> ${getCurrentTimestamp()} </div>
+        <div class="trade-card">
+            ${tag}
+            <div class="trade-info">
+                <div>Bought at: $${(trade.entry).toFixed(2)}</div>
+                <div>Sold at:   $${(trade.exit).toFixed(2)}</div>
+            </div>
         </div>
     </div>
     `
@@ -233,4 +245,18 @@ function appendTrade(trade) {
     if (buffer.length > tradeBufferSize) {
         buffer.removeChild(buffer.lastChild)
     }
+}
+
+function getCurrentTimestamp() {
+    const now = new Date();
+    
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    
+    return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
 }

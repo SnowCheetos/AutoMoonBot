@@ -80,7 +80,8 @@ def inference(
         state:    np.ndarray,
         position: int,
         device:   str="cpu",
-        method:   str="argmax") -> Tuple[int, float]:
+        method:   str="argmax",
+        min_prob: float=0.31) -> Tuple[int, float]:
     
     if method not in {"argmax", "prob"}:
         logging.error("Method must be in one of [argmax, prob]")
@@ -102,4 +103,9 @@ def inference(
     else:
         action = np.random.choice(probs.size(-1), p=probs.detach().cpu().numpy()[0])
         
-    return action, probs[0, action].item()
+    prob = probs[0, action].item()
+    if method == "prob" and prob < min_prob:
+        action = probs.argmax(1).item()
+        prob = probs[0, action].item()
+
+    return action, prob
