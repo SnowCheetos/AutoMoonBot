@@ -61,7 +61,9 @@ function initClientWebSocket() {
     
     client_ws.onmessage = function(event) {
         const data = JSON.parse(event.data);    
-        if (data.type === "action") {
+        if (data.type === "new_session") {
+            reset()
+        } else if (data.type === "action") {
             if (data.action === "Buy") {
                 if (!started) {
                     started = true
@@ -89,6 +91,14 @@ function initClientWebSocket() {
                 performanceRec.initPrice = data.close
             } else if (started) {
                 updateBuyAndHold(data.close)
+                // if (currTradeTimeStamp) {
+                //     var trade = tradeBuffer[currTradeTimeStamp]
+                //     updateTotalGain({
+                //         timestamp: currTradeTimeStamp,
+                //         entry:     trade.entry,
+                //         exit:      data.close
+                //     }, false)
+                // }
             }
             if (dataBuffer.length > dataBufferSize) {
                 dataBuffer.shift()
@@ -111,6 +121,27 @@ function initClientWebSocket() {
         console.error('WebSocket error:', event);
         client_ws.close();
     };
+}
+
+function reset() {
+    clearCache()
+    client_ws          = null
+    dataBuffer         = []
+    tradeBuffer        = {}
+    currTradeTimeStamp = null
+    performanceRec     = {
+        initPrice:  0,
+        totalGain:  1,
+        buyAndHold: 1
+    }
+
+    started = false
+    counter = 0
+    window.location.reload()
+}
+
+function clearCache() {
+    sessionStorage.clear()
 }
 
 function saveCache() {
@@ -140,6 +171,14 @@ function loadCache() {
     performanceRec = cache.performanceRec
     started = cache.started
     counter = cache.counter
+
+    if (performanceRec.totalGain !== 1) {
+        const item       = document.getElementById('total-gain')
+        const percent    = (performanceRec.totalGain-1) * 100
+        item.innerHTML   = `${performanceRec.totalGain > 1 ? '+' : ''}${(percent).toFixed(2)}%`
+        item.style.color = performanceRec.totalGain > 1 ? 'green' : 'red'
+    }
+
     document.getElementById('actions-buffer').innerHTML = cache.actionsHTML
     document.getElementById('logs').innerHTML = cache.tradesHTML
 }
@@ -200,7 +239,7 @@ function finishTrade(close) {
     tradeBuffer[currTradeTimeStamp].exit = close
     const trade = tradeBuffer[currTradeTimeStamp]
     appendTrade(trade)
-    updateTotalGain(trade)
+    updateTotalGain(trade, true)
     currTradeTimeStamp = null
 }
 
@@ -209,9 +248,9 @@ function updateTotalGain(trade) {
     const outcome = trade.exit / trade.entry
     performanceRec.totalGain *= outcome
 
-    const percent  = (performanceRec.totalGain-1) * 100
-    item.innerHTML = `${performanceRec.totalGain > 1 ? '+' : ''}${(percent).toFixed(2)}%`
-    item.style.color     = performanceRec.totalGain > 1 ? 'green' : 'red'
+    const percent    = (performanceRec.totalGain-1) * 100
+    item.innerHTML   = `${performanceRec.totalGain > 1 ? '+' : ''}${(percent).toFixed(2)}%`
+    item.style.color = performanceRec.totalGain > 1 ? 'green' : 'red'
 }
 
 function updateBuyAndHold(close) {
@@ -221,9 +260,9 @@ function updateBuyAndHold(close) {
     const item = document.getElementById('buy-and-hold')
     performanceRec.buyAndHold = close / performanceRec.initPrice
     
-    const percent  = (performanceRec.buyAndHold-1) * 100
-    item.innerHTML = `${performanceRec.buyAndHold > 1 ? '+' : ''}${(percent).toFixed(2)}%`
-    item.style.color     = performanceRec.buyAndHold > 1 ? 'green' : 'red'
+    const percent    = (performanceRec.buyAndHold-1) * 100
+    item.innerHTML   = `${performanceRec.buyAndHold > 1 ? '+' : ''}${(percent).toFixed(2)}%`
+    item.style.color = performanceRec.buyAndHold > 1 ? 'green' : 'red'
 }
 
 function appendAction(action, close, probability) {

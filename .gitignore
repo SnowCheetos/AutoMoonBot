@@ -8,3 +8,4 @@ SPY.db
 *.txt
 */frames
 *.ipynb
+*.pth

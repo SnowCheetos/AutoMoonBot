@@ -47,10 +47,14 @@ server = Server(
     db_path=config["db_path"],
     live_data=config["live_data"],
     logger=logger,
+    sharpe_cutoff=config["sharpe_cutoff"],
     inference_method=config["inference_method"],
     training_params=config["training_params"],
     retrain_freq=config["retrain_freq"],
-    max_training_data=config["max_training_data"]
+    max_training_data=config["max_training_data"],
+    max_risk=config["max_risk"],
+    alpha=config["alpha"],
+    beta=config["beta"]
 )
 
 async def model_data_update_loop(ws: WebSocket, s: Server):
@@ -67,6 +71,8 @@ async def model_data_update_loop(ws: WebSocket, s: Server):
 
 async def server_status_update_loop(ws: WebSocket, s: Server):
     while ws.client_state != WebSocketState.DISCONNECTED:
+        if s.new_session:
+            await ws.send_json(data={"type": "new_session"})
         data = s.status_report()
         await ws.send_json(data=data)
         await asyncio.sleep(1)

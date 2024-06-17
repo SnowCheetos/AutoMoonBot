@@ -255,6 +255,12 @@ html, body {
     color: rgb(54, 54, 54);
 }
 
+.win-tag,
+.loss-tag
+{
+    width: 40%;
+}
+
 .close-price,
 .certainty 
 {

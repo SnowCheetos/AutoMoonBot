@@ -91,7 +91,7 @@ class DataBuffer:
                 period=self._period,
                 interval=self._interval)
         else:
-            while self._counter < self._queue_size:
+            while self._counter < self._queue_size*2+2:
                 self.update_queue(False)
             return
 

@@ -60,10 +60,12 @@ def compute_discounted_rewards(
     return discounted_rewards
 
 def compute_loss(
-        log_probs: List[torch.Tensor], 
-        rewards:   List[float],
-        gamma:     float=0.99,
-        device:    str="cpu") -> torch.Tensor:
+        log_probs:  List[torch.Tensor], 
+        rewards:    List[float],
+        gamma:      float=0.99,
+        log_return: float | None=None,
+        beta:       float | None=0.5,
+        device:     str="cpu") -> torch.Tensor:
     
     log_probs = torch.stack(log_probs)
     rewards = torch.tensor(rewards, dtype=torch.float32, device=device)
@@ -72,7 +74,11 @@ def compute_loss(
     discounted_rewards = torch.tensor(discounted_rewards, dtype=torch.float32, device=device)
     normalized_rewards = (discounted_rewards - discounted_rewards.mean()) / (discounted_rewards.std() + 1e-9)
 
-    policy_gradient = -log_probs * normalized_rewards
+    if log_return is not None and beta is not None:
+        policy_gradient = -log_probs * (beta * normalized_rewards + (1-beta) * log_return)
+    else:
+        policy_gradient = -log_probs * normalized_rewards
+    
     return policy_gradient.sum()
 
 def inference(
@@ -83,20 +89,24 @@ def inference(
         method:   str="argmax",
         min_prob: float=0.31) -> Tuple[int, float]:
     
+    min_prob = min(0.34, min_prob)
+
     if method not in {"argmax", "prob"}:
         logging.error("Method must be in one of [argmax, prob]")
         return 1
 
     model.eval()
-    probs = model(
-        torch.tensor(
-            state,
-            dtype=torch.float32,
-            device=device),
-        torch.tensor(
-            [[position]], 
-            dtype=torch.long, 
-            device=device))
+
+    with torch.no_grad():
+        probs = model(
+            torch.tensor(
+                state,
+                dtype=torch.float32,
+                device=device),
+            torch.tensor(
+                [[position]], 
+                dtype=torch.long, 
+                device=device))
     
     if method == "argmax":
         action = probs.argmax(1).item()

@@ -24,7 +24,7 @@ class Status:
     def __init__(
             self, 
             max_risk: float, 
-            alpha: float) -> None:
+            alpha:    float) -> None:
         
         self._signal      = Signal.Idle
         self._take_profit = float("nan")
