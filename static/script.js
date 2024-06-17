@@ -5,7 +5,6 @@ const dataBufferSize        = 60
 const tradeBufferSize       = 20
 
 var client_ws          = null
-var actionBuffer       = []
 var dataBuffer         = []
 var tradeBuffer        = {}
 var currTradeTimeStamp = null
@@ -40,17 +39,24 @@ var chart = new CanvasJS.Chart("chart-holder", {
     toolTip: {
         content: "Index: {x}<br /><strong>Price:</strong><br />Open: {y[0]}, Close: {y[3]}<br />High: {y[1]}, Low: {y[2]}",
     },
-    data: [{
-        type: "candlestick",
-        yValueFormatString: "$##0.00",
-        dataPoints: dataBuffer,
-        risingColor: "white",
-        fallingColor: "black",
-        color: "black"
-    }]
+    data: [
+        {
+            type: "candlestick",
+            yValueFormatString: "$##0.00",
+            dataPoints: dataBuffer,
+            risingColor: "white",
+            fallingColor: "black",
+            color: "black"
+        },
+        {
+            type: "scatter",
+            markerType: "triangle",
+        }
+    ]
 });
 
 function initClientWebSocket() {
+    loadCache()
     client_ws = new WebSocket(`${ws_protocol}//${window.location.host}/connect`);
     
     client_ws.onmessage = function(event) {
@@ -87,6 +93,10 @@ function initClientWebSocket() {
             if (dataBuffer.length > dataBufferSize) {
                 dataBuffer.shift()
             }
+            
+            if (data.type !== "report") {
+                saveCache()
+            }
 
             chart.render()
         }
@@ -103,7 +113,44 @@ function initClientWebSocket() {
     };
 }
 
+function saveCache() {
+    const cache = {
+        dataBuffer: dataBuffer,
+        tradeBuffer: tradeBuffer,
+        currTradeTimeStamp: currTradeTimeStamp,
+        performanceRec: performanceRec,
+        started: started,
+        counter: counter,
+        actionsHTML: document.getElementById('actions-buffer').innerHTML,
+        tradesHTML: document.getElementById('logs').innerHTML
+    }
+    sessionStorage.setItem('cache', JSON.stringify(cache));
+}
+
+function loadCache() {
+    const data = sessionStorage.getItem('cache')
+    if (!data) {
+        return
+    }
+    const cache = JSON.parse(sessionStorage.getItem('cache'));
+
+    dataBuffer = cache.dataBuffer
+    tradeBuffer = cache.tradeBuffer
+    currTradeTimeStamp = cache.currTradeTimeStamp
+    performanceRec = cache.performanceRec
+    started = cache.started
+    counter = cache.counter
+    document.getElementById('actions-buffer').innerHTML = cache.actionsHTML
+    document.getElementById('logs').innerHTML = cache.tradesHTML
+}
+
 function serverStatus(status) {
+    if (status.done) {
+        alert(`
+            Back testing complete. 
+            Click to return to home page.`)
+    }
+
     const modelStatus    = document.getElementById('model-status')
     const trainingStatus = document.getElementById('training-status')
 
@@ -118,7 +165,7 @@ function serverStatus(status) {
     } else {
         modelStatusScript = `
         <div class="model-not-ready">
-            Model Unavailable
+            Model Initializing
         </div>
         `
     }
@@ -164,7 +211,7 @@ function updateTotalGain(trade) {
 
     const percent  = (performanceRec.totalGain-1) * 100
     item.innerHTML = `${performanceRec.totalGain > 1 ? '+' : ''}${(percent).toFixed(2)}%`
-    item.color     = performanceRec.totalGain > 1 ? 'green' : 'red'
+    item.style.color     = performanceRec.totalGain > 1 ? 'green' : 'red'
 }
 
 function updateBuyAndHold(close) {
@@ -176,7 +223,7 @@ function updateBuyAndHold(close) {
     
     const percent  = (performanceRec.buyAndHold-1) * 100
     item.innerHTML = `${performanceRec.buyAndHold > 1 ? '+' : ''}${(percent).toFixed(2)}%`
-    item.color     = performanceRec.buyAndHold > 1 ? 'green' : 'red'
+    item.style.color     = performanceRec.buyAndHold > 1 ? 'green' : 'red'
 }
 
 function appendAction(action, close, probability) {
