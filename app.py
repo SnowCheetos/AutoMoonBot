@@ -53,6 +53,24 @@ server = Server(
     max_training_data=config["max_training_data"]
 )
 
+async def model_data_update_loop(ws: WebSocket, s: Server):
+    while ws.client_state != WebSocketState.DISCONNECTED:
+        await asyncio.sleep(interval_map[config["interval"]])
+        action = s.consume_queue()
+        if action:
+            action["type"] = "action"
+            await ws.send_json(data=action)
+
+        data = s.tohlcv()
+        data["type"] = "ohlc"
+        await ws.send_json(data=data)
+
+async def server_status_update_loop(ws: WebSocket, s: Server):
+    while ws.client_state != WebSocketState.DISCONNECTED:
+        data = s.status_report()
+        await ws.send_json(data=data)
+        await asyncio.sleep(1)
+
 @app.on_event("startup")
 async def startup():
     server.start_timer(interval_map[config["interval"]])
@@ -63,18 +81,14 @@ async def home():
 
 @app.websocket("/connect")
 async def ws_handler(ws: WebSocket):
-    await ws.accept()
+    model_loop, server_loop = None, None
     try:
-        while ws.client_state != WebSocketState.DISCONNECTED:
-            await asyncio.sleep(interval_map[config["interval"]])
-            action = server.consume_queue()
-            if action:
-                action["type"] = "action"
-                await ws.send_json(data=action)
-
-            data = server.tohlcv()
-            data["type"] = "ohlc"
-            await ws.send_json(data=data)
+        await ws.accept()
+        model_loop  = asyncio.create_task(
+            model_data_update_loop(ws, server))
+        server_loop = asyncio.create_task(
+            server_status_update_loop(ws, server))
+        await asyncio.gather(model_loop, server_loop)
 
     except WebSocketDisconnect as e:
         logger.error(str(e))
@@ -83,7 +97,8 @@ async def ws_handler(ws: WebSocket):
         logger.error(str(e))
 
     finally:
-        await ws.close()
+        for task in (model_loop, server_loop):
+            if task: task.cancel()
 
 @app.get("/tohlcv/last")
 async def tohlcv_last():
