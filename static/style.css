@@ -8,11 +8,9 @@ html, body {
 }
 
 #main-holder {
-    height: 90%;
-    width: 90%;
+    height: 95%;
     padding: 10px;
-    /* display: flex; */
-    /* position: relative; */
+    display: flex;
     flex-direction: column;
     gap: 5px;
     justify-content: center;

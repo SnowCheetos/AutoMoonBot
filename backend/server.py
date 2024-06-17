@@ -112,9 +112,10 @@ class Server:
 
     def status_report(self) -> Dict[str, int | bool | str]:
         return {
-            "type":     "report",
-            "training": self._training,
-            "ready":    self._ready
+            "type":      "report",
+            "training":  self._training,
+            "ready":     self._ready,
+            "done":      self._buffer.done
         }
 
     def consume_queue(self) -> Dict[str, int | float | str] | None:
@@ -132,7 +133,7 @@ class Server:
             max_grad_norm=self._training_params["max_grad_norm"],
             portfolio_size=self._training_params["portfolio_size"])
 
-        while not self._terminate:
+        while not self._terminate and not self._buffer.done:
             if self._train_counter == 0:
                 self._logger.info("running scheduled training")
                 self.train_model(
@@ -150,6 +151,7 @@ class Server:
             else:
                 self._logger.warning("model not ready, not running inference")
             self._train_counter -= 1
+        self._logger.warning("timer loop terminated")
 
     def start_timer(self, interval: int):
         thread = threading.Thread(
@@ -289,6 +291,7 @@ class Server:
         ohlcv = self._buffer.queue["data"][-1]
         if len(state) == 0:
             self._logger.warning("no data available, not running inference")
+            self._ready = False
             return None
         
         with self._mutex:

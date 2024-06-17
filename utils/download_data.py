@@ -49,6 +49,6 @@ if __name__ == "__main__":
     download_example(
         db_path  = "data/example.db", 
         ticker   = "SPY", 
-        period   = "6mo", 
+        period   = "1y", 
         interval = "1h",
         flush    = True)
