@@ -91,7 +91,7 @@ class Server:
         self._train_counter    = retrain_freq
         self._retrain_freq     = retrain_freq
         self._terminate        = False
-        self._actions_queue    = deque(maxlen=5)
+        self._actions_queue    = deque(maxlen=2)
 
     def __del__(self):
         self.join_timer_thread()
@@ -110,10 +110,18 @@ class Server:
     def inf_busy(self):
         return self._inferencing
 
+    def status_report(self) -> Dict[str, int | bool | str]:
+        return {
+            "type":      "report",
+            "training":  self._training,
+            "ready":     self._ready,
+            "done":      self._buffer.done
+        }
+
     def consume_queue(self) -> Dict[str, int | float | str] | None:
         with self._mutex:
             if len(self._actions_queue) > 0:
-                return self._actions_queue.pop()
+                return self._actions_queue.popleft()
         return None
 
     def _timer_loop(self, interval: int):
@@ -125,7 +133,7 @@ class Server:
             max_grad_norm=self._training_params["max_grad_norm"],
             portfolio_size=self._training_params["portfolio_size"])
 
-        while not self._terminate:
+        while not self._terminate and not self._buffer.done:
             if self._train_counter == 0:
                 self._logger.info("running scheduled training")
                 self.train_model(
@@ -138,8 +146,12 @@ class Server:
 
             time.sleep(interval)
             self._logger.info("running scheduled inference")
-            self._inference()
+            if self._ready:
+                self._inference()
+            else:
+                self._logger.warning("model not ready, not running inference")
             self._train_counter -= 1
+        self._logger.warning("timer loop terminated")
 
     def start_timer(self, interval: int):
         thread = threading.Thread(
@@ -192,10 +204,12 @@ class Server:
         
         with self._mutex:
             self._training = False
-            if not self._ready:
-                self._ready = True
 
         self.update_model()
+
+        with self._mutex:
+            if not self._ready:
+                self._ready = True
 
     def train_model(
             self,
@@ -277,6 +291,7 @@ class Server:
         ohlcv = self._buffer.queue["data"][-1]
         if len(state) == 0:
             self._logger.warning("no data available, not running inference")
+            self._ready = False
             return None
         
         with self._mutex:
@@ -287,7 +302,7 @@ class Server:
             self._inferencing = True
 
         self._logger.info(f"running void inferencing, queue size: {len(self._actions_queue)}")
-        result = inference(
+        result, prob = inference(
             model=self._model,
             state=state,
             position=int(self._position.value),
@@ -308,6 +323,9 @@ class Server:
                         self._logger.debug("buy signal predicted")
                         actual_action = Action.Buy
                         self._status.reset()
+                    else:
+                        self._status.take_profit = ohlcv["close"]
+                        self._status.stop_loss   = ohlcv["close"]
 
             elif self._position == Position.Asset and action == Action.Sell:
                 if self._status.signal == Signal.Idle:
@@ -320,6 +338,9 @@ class Server:
                         self._logger.debug("sell signal predicted")
                         actual_action = Action.Sell
                         self._status.reset()
+                    else:
+                        self._status.take_profit = ohlcv["close"]
+                        self._status.stop_loss   = ohlcv["close"]
 
             take_profit = self._status.take_profit if self._status.take_profit > 0 else None
             stop_loss = self._status.stop_loss if self._status.stop_loss > 0 else None
@@ -328,7 +349,8 @@ class Server:
                 "action":      actual_action.name,
                 "close":       ohlcv["close"],
                 "take_profit": take_profit,
-                "stop_loss":   stop_loss
+                "stop_loss":   stop_loss,
+                "probability": prob
             })
             self._inferencing = False
 
@@ -353,7 +375,7 @@ class Server:
             self._inferencing = True
         
         self._logger.info(f"running blocking inferencing...")
-        result = inference(
+        result, _ = inference(
             self._model,
             state,
             int(self._position.value),

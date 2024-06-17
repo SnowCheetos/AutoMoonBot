@@ -34,6 +34,7 @@ class DataBuffer:
         self._queue          = deque(maxlen=queue_size)
         self._db_path        = db_path
         self._feature_params = feature_params
+        self._done           = False
 
         self._con     = None
         self._cursor  = None
@@ -60,9 +61,14 @@ class DataBuffer:
             logging.warning("live buffer cannot be reset")
             return
         
+        self._done    = False
         self._counter = self._queue_size + 2
         self._queue   = deque(maxlen=self._queue_size)
         self._fill_queue()
+
+    @property
+    def done(self) -> bool:
+        return self._done
 
     @property
     def queue(self) -> Dict[str, Dict[str, float]]:
@@ -103,6 +109,10 @@ class DataBuffer:
     def update_queue(self, write_to_db: bool=False) -> None:
         if not self._live_data:
             if self._cursor:
+                if self._counter >= self._rows-2:
+                    self._done = True
+                    return
+                
                 res = self._cursor.execute("SELECT * FROM data WHERE id = ?", (self._counter+1,))
                 row = res.fetchone()
                 self._queue.append(list(row)[1:])

@@ -2,11 +2,11 @@
     "ticker": "SPY",
     "period": "5d",
     "interval": "1s",
-    "queue_size": 200,
+    "queue_size": 100,
     "state_dim": 40,
     "action_dim": 3,
     "embedding_dim": 8,
-    "inaction_cost": -15,
+    "inaction_cost": -10,
     "action_cost": 0,
     "device": "cpu",
     "return_thresh": 0.9,
@@ -32,7 +32,7 @@
         "max_grad_norm": 1.0,
         "portfolio_size": 10
     },
-    "retrain_freq": 25,
+    "retrain_freq": 50,
     "inference_method": "prob",
     "max_training_data": 5000
 }
