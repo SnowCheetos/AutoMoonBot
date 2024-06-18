@@ -1,6 +1,6 @@
 # Automated Trading With Reinforcement Learning
 
-This repository contains code and resources for automated trading using reinforcement learning methods. The content provided here is for educational and informational purposes only. It is not intended to be a financial product or investment advice.
+*This repository contains code and resources for automated trading using reinforcement learning methods. The content provided here is for educational and informational purposes only. It is not intended to be a financial product or investment advice.*
 
 ## Example Demonstration
 ![](media/dem.gif)
@@ -19,35 +19,42 @@ By using the code and resources provided in this repository, you acknowledge and
 
 ## Introduction
 
-There are countless examples of stock price predictors and trade bot implementations on GitHub, rarely do any of them work consistently. A majority of the machine learning based implementations attempt to use non-linear regression methods such as *LSTM* or *transformers* to forecast future prices directly, which is unlikely to succeed since price ranges are highly dynamic and cannnot be easily expressed as a function of time. 
+#### Motivation and Approach
 
-Furthermore, directly forecasting prices does not provide information when assessing entry and exit points for trade placements. More sophisticated methods aim to forecast the price trend, which while more valuable than direct price forecast, still only provides limited value for trade placements.
+In the domain of stock price prediction and trading algorithm implementation, there are numerous examples available on platforms such as GitHub. However, the majority of these implementations fail to deliver consistent performance. Many machine learning-based approaches rely on non-linear regression methods, such as Long Short-Term Memory (LSTM) networks or transformers, to directly forecast future prices. This approach is inherently flawed, as stock prices are highly dynamic and cannot be effectively modeled as a simple function of time.
 
-To provide value for trade placements, the predictor should be able to produce signals when the conditions are favorable for entry or exit. On top of that, due to the dynamic nature of the market, a predictor of any kind **must** be able to adapt to the changing market condition effectively. This project aims to solve these issues with *reinforcement learning* (or more specifically, *policy gradient*). 
+Moreover, direct price forecasting does not offer actionable insights for determining optimal entry and exit points in trading. While more sophisticated methods attempt to predict price trends, these still provide limited utility for making precise trade decisions.
 
-## Intuition
+To create real value for trading, a predictive model must generate clear signals indicating favorable conditions for entering or exiting trades. Additionally, given the constantly evolving nature of financial markets, any predictive model must be capable of adapting to changing market conditions in real-time. This project addresses these challenges using reinforcement learning, specifically policy gradient methods.
 
-Reinforcement learning is a natural choice for this task, for those unfamiliar, the basics of it are as follows:
+#### Intuition
 
-* Unlike traditional supervised learning methods, in which the optimal target action for each state is *known*, reinforcement learning excels when the optimal target action at each state is *unknown*, but the affect of taking an action at a given state can be estimated by a *value* or *reward*.
+Reinforcement learning is particularly well-suited for the task of developing a robust trading strategy. For those unfamiliar, the fundamentals of reinforcement learning are as follows:
 
-* Reinforcement learning typically train in episodes as opposed to epochs, since actions can affect the state. The goal is to maximize reward achieved for each training episode.
+* **Optimal Action Discovery** 
 
-* In the case for stock or asset prices, the state would be the current condition of the market (additionally the condition of the portfolio), and the for each state would be whether to *buy, sell or hold* (or variations of it), and the reward would be the total gain (or loss).
+    Unlike traditional supervised learning methods, where the optimal action for each state is known, reinforcement learning excels in scenarios where the optimal action is unknown. Instead, the effect of taking an action in a given state can be estimated by a value or reward.
+
+* **Training Dynamics** 
+
+    Reinforcement learning typically involves training in episodes rather than epochs, as actions taken by the agent influence subsequent states. The primary objective is to maximize the cumulative reward achieved during each training episode.
+
+* **Application to Financial Markets** 
+
+    In the context of stock or asset prices, the state represents the current market conditions (and potentially the condition of the trading portfolio). For each state, the actions could be decisions such as buy, sell, or hold (or their variations). The reward is defined by the total gain (or loss) resulting from the actions taken.
+
+This approach allows the model to continuously learn from market interactions, improving its decision-making process over time to maximize returns. This is in contrast to traditional models that may struggle with the dynamic and uncertain nature of financial markets.
 
 For more details, see [here](reinforce/README.MD)
 
-## Prediction Processing
-...
-
 ## Live Trading
-...
-
-## Installation
 ...
 
 ## Usage
 ...
 
 ## Testing
+...
+
+## Contribution
 ...
