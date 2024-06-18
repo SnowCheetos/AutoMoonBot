@@ -27,7 +27,7 @@ class TradeEnv(gym.Env):
             db_path:           str,
             return_thresh:     float,
             sharpe_cutoff:     int=30,
-            max_risk:          float=0.0025,
+            gamma:             float=0.15,
             alpha:             float=1.5,
             feature_params:    Dict[str, List[int] | Dict[str, List[int]]] | None=None,
             beta:              float | None=0.5,
@@ -45,9 +45,6 @@ class TradeEnv(gym.Env):
         self.action_space = spaces.Discrete(action_dim)
         self.observation_space = spaces.Discrete(state_dim)
 
-        self._status = Status(max_risk, alpha)
-        self._device = device
-
         db_max_access = None if not testing else queue_size+2
 
         self._sampler         = DataSampler(
@@ -63,12 +60,16 @@ class TradeEnv(gym.Env):
             position_dim   = len(Position), 
             embedding_dim  = embedding_dim).to(device)
 
+        self._status         = Status(0, alpha)
+        self._device         = device
         self._sharpe_cutoff  = sharpe_cutoff
         self._return_thresh  = return_thresh
         self._position       = Position.Cash
         self._inaction_cost  = inaction_cost
         self._action_cost    = action_cost
+        self._alpha          = alpha
         self._beta           = beta
+        self._gamma          = gamma
         self._portfolio      = 1.0
         self._returns        = []
         self._log_probs      = []
@@ -125,6 +126,7 @@ class TradeEnv(gym.Env):
         while len(state) == 0:
             _, close, state = self._sampler.sample_next()
 
+        self._status         = Status(self._sampler.coef_of_var, self._alpha) 
         self._position       = Position.Cash
         self._portfolio      = 1.0
         self._returns        = []
@@ -154,10 +156,10 @@ class TradeEnv(gym.Env):
                     self._entry = close
                     self._exit = 0.0
                     self._portfolio *= 1 - self._action_cost
-                    self._status.reset()
+                    self._status.reset(self._gamma * self._sampler.coef_of_var)
 
             else:
-                self._status.reset()
+                self._status.reset(self._gamma * self._sampler.coef_of_var)
         
         # Valid sell
         elif self._position == Position.Asset and Action(action) == Action.Sell:
@@ -184,10 +186,10 @@ class TradeEnv(gym.Env):
                         risk_free_rate = self._risk_free_rate * (1 - self._action_cost))
                     
                     self._log_return  += np.log(net_return)
-                    self._status.reset()
+                    self._status.reset(self._gamma * self._sampler.coef_of_var)
             
             else:
-                self._status.reset()
+                self._status.reset(self._gamma * self._sampler.coef_of_var)
         
         elif Action(action) == Action.Hold:
             if self._position == Position.Asset:

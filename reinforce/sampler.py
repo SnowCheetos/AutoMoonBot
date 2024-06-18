@@ -39,11 +39,11 @@ class DataSampler:
         self._feature_funcs = Descriptors()
 
     @property
-    def counter(self):
+    def counter(self) -> int:
         return self._counter
 
     @property 
-    def max_access(self):
+    def max_access(self) -> int:
         return self._max_access
     
     @max_access.setter
@@ -53,6 +53,13 @@ class DataSampler:
         elif m < self._queue_size:
             m = self._queue_size+2
         self._max_access = m
+
+    @property
+    def coef_of_var(self) -> float:
+        data  = np.asarray(list(self._queue))
+        close = data[:, 4]
+        cov   = self._feature_funcs["cov"](close, len(self._queue))
+        return cov[0]
 
     def reset(self) -> None:
         self._queue = deque(maxlen=self._queue_size)

@@ -1,5 +1,7 @@
+import base64
 import json
 import asyncio
+import aiofiles
 import logging
 import uvicorn
 from fastapi import FastAPI
@@ -9,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from backend.server import Server
-from utils.helpers import interval_map
+from utils.tools import interval_map
 
 
 with open("config.json", "r") as f:
@@ -62,9 +64,9 @@ server = Server(
     training_params=config["training_params"],
     retrain_freq=config["retrain_freq"],
     max_training_data=config["max_training_data"],
-    max_risk=config["max_risk"],
     alpha=config["alpha"],
-    beta=config["beta"]
+    beta=config["beta"],
+    gamma=config["gamma"],
 )
 
 async def model_data_update_loop(ws: WebSocket, s: Server):
@@ -132,7 +134,22 @@ async def tohlcv_all():
 @app.get("/session")
 async def session_info():
     info = server.session_info
+    info["live"]   = config["live_data"]
+    info["record"] = config["record_frames"]
     return JSONResponse(content=info)
+
+@app.post("/save_frame/{frame_id}")
+async def save_frame(request: Request, frame_id: str):
+    data = await request.json()
+    frame = data["frame"]
+    
+    img_data = frame.replace("data:image/png;base64,", "")
+    file_path = config["frames_dir"] + f"/{frame_id}.png"
+    
+    async with aiofiles.open(file_path, 'wb') as file:
+        await file.write(base64.b64decode(img_data))
+    
+    return {"success": True, "message": "Image saved successfully", "file_path": file_path}
 
 @app.get("/train")
 async def train(request: Request):

@@ -17,9 +17,11 @@ var performanceRec     = {
     buyAndHold: 1
 }
 var session = {
+    live:     false,
     ticker:   null,
     period:   null,
-    interval: null
+    interval: null,
+    record:   false
 }
 
 var started     = false
@@ -33,7 +35,7 @@ function initChart() {
         theme: "light1", // "light1", "light2", "dark1", "dark2"
         exportEnabled: true,
         title: {
-            text: `${session.ticker} ${session.interval} ${session.period}`,
+            text: `${session.live? 'Live: ': 'Back-Test: '} ${session.ticker} ${session.interval} ${session.live? '' : session.period}`,
             fontSize: 24
         },
         axisX: {
@@ -67,6 +69,27 @@ function initChart() {
     })
 }
 
+function captureScreenshot() {
+    var element = document.body
+
+    html2canvas(element).then(function(canvas) {
+        var imgData = canvas.toDataURL("image/png")
+
+        fetch(`/save_frame/${counter}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ frame: imgData })
+        }).then(response => response.json())
+            .then(data => {
+                console.log('Success:', data)
+            }).catch((error) => {
+                console.error('Error:', error)
+            })
+    })
+}
+
 function addVerticalDashedLine(index, color = "red", thickness = 2, label = "") {
     tradePoints.push({
         value: index,
@@ -76,19 +99,6 @@ function addVerticalDashedLine(index, color = "red", thickness = 2, label = "") 
     })
     chart.render()
 }
-
-// function addStripeLines(start, end, gain) {
-//     tradePoints.push({                
-//         startValue     : start,
-//         endValue       : end,
-//         color          : gain ? "#ECFFEE" : "#FFECEC",
-//         label          : gain ? "+" : "-",
-//         labelAlign     : "center",
-//         labelFontColor : "black",
-//         labelPlacement : "outside"          
-//     })
-//     chart.render();
-// }
 
 function addStripeLines(start, end, gain) {
     const existingStripLine = tradePoints.find(
@@ -120,9 +130,11 @@ function initSession() {
     .then(response => {
         if (response.status == 200) {
             response.json().then(data => {
+                session.live     = data.live
                 session.ticker   = data.ticker
                 session.period   = data.period
                 session.interval = data.interval
+                session.record   = data.record
 
                 initChart()
                 initClientWebSocket()
@@ -174,9 +186,12 @@ function initClientWebSocket() {
                 saveCache()
             }
 
+            if (session.record) {
+                captureScreenshot()
+            }
             chart.render()
         }
-    };
+    }
     
     client_ws.onclose = function(event) {
         console.error('WebSocket closed:', event);

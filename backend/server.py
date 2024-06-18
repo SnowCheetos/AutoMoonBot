@@ -34,7 +34,7 @@ class Server:
             db_path:           Optional[str] = None,
             live_data:         bool=False,
             sharpe_cutoff:     int=30,
-            max_risk:          float=0.0025,
+            gamma:             float=0.1,
             alpha:             float=1.5,
             beta:              float | None=0.5,
             inference_method:  str="prob",
@@ -55,7 +55,6 @@ class Server:
         self._mutex            = Lock()
         self._position         = Position.Cash
         self._device           = device
-        self._status           = Status(max_risk, alpha)
         self._inference_method = inference_method
 
         if not db_path:
@@ -94,10 +93,11 @@ class Server:
             testing           = not live_data,
             max_training_data = max_training_data,
             feature_params    = feature_params,
-            max_risk          = max_risk,
             alpha             = alpha,
-            beta              = beta)
+            beta              = beta,
+            gamma             = gamma)
 
+        self._status           = Status(gamma * self._buffer.coef_of_var, alpha)
         self._max_access_accum = 0
         self._checkpoint_path  = checkpoint_path
         self._training_params  = training_params
@@ -110,6 +110,7 @@ class Server:
         self._train_counter    = retrain_freq
         self._retrain_freq     = retrain_freq
         self._terminate        = False
+        self._gamma            = gamma
         self._actions_queue    = deque(maxlen=2)
 
     def __del__(self):
@@ -382,7 +383,7 @@ class Server:
                         self._position = Position.Asset
                         self._logger.debug("buy signal predicted")
                         actual_action = Action.Buy
-                        self._status.reset()
+                        self._status.reset(self._gamma * self._buffer.coef_of_var)
                     else:
                         self._status.take_profit = ohlcv["close"]
                         self._status.stop_loss   = ohlcv["close"]
@@ -397,7 +398,7 @@ class Server:
                         self._position = Position.Cash
                         self._logger.debug("sell signal predicted")
                         actual_action = Action.Sell
-                        self._status.reset()
+                        self._status.reset(self._gamma * self._buffer.coef_of_var)
                     else:
                         self._status.take_profit = ohlcv["close"]
                         self._status.stop_loss   = ohlcv["close"]
@@ -454,7 +455,7 @@ class Server:
                         self._position = Position.Asset
                         self._logger.debug("buy signal predicted")
                         actual_action = Action.Buy
-                        self._status.reset()
+                        self._status.reset(self._gamma * self._buffer.coef_of_var)
 
             elif self._position == Position.Asset and action == Action.Sell:
                 if self._status.signal == Signal.Idle:
@@ -466,7 +467,7 @@ class Server:
                         self._position = Position.Cash
                         self._logger.debug("sell signal predicted")
                         actual_action = Action.Sell
-                        self._status.reset()
+                        self._status.reset(self._gamma * self._buffer.coef_of_var)
 
             self._inferencing = False
         return actual_action
