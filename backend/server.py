@@ -193,6 +193,7 @@ class Server:
                 self._train_counter = self._retrain_freq
 
             time.sleep(interval)
+            self._buffer.update_queue(False)
             self._logger.info("running scheduled inference")
             if self._ready:
                 self._inference()
@@ -346,7 +347,7 @@ class Server:
                 self._logger.warning("model not ready, not running inference")
                 return
 
-        state = self._buffer.fetch_state(True)
+        state = self._buffer.fetch_state(False)
         ohlcv = self._buffer.queue["data"][-1]
         if len(state) == 0:
             self._logger.warning("no data available, not running inference")

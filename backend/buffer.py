@@ -136,7 +136,7 @@ class DataBuffer:
                 interval=self._interval)
         
         else:
-            self.update_queue(False)
+            # self.update_queue(False)
             if self._cursor:
                 item = self._queue[-1]
                 return {
