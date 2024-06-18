@@ -4,7 +4,7 @@ import numpy as np
 from collections import deque
 from typing import Tuple, Dict, List
 
-from reinforce.utils import Descriptors
+from utils.descriptors import Descriptors
 
 
 class DataSampler:

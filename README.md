@@ -5,7 +5,7 @@
 ## Example Demonstration
 ![](media/dem.gif)
 
-Shown above is a demonstration of system back test. Data used for this test was *SPDR S&P 500 ETF Trust (SPY)* with *1 hour* interval, starting *2022/06/17*. This was an interesting period as it represented a recent bear market.
+Shown above is a demonstration of system back test. Data used for this test was *SPDR S&P 500 ETF Trust (SPY)* with *1 hour* interval, starting *June 2022*. This was an interesting period as it represented a recent bear market.
 
 ## Disclaimer
 
@@ -19,7 +19,7 @@ By using the code and resources provided in this repository, you acknowledge and
 
 ## Introduction
 
-#### Motivation and Approach
+### Motivation and Approach
 
 In the domain of stock price prediction and trading algorithm implementation, there are numerous examples available on platforms such as GitHub. However, the majority of these implementations fail to deliver consistent performance. Many machine learning-based approaches rely on non-linear regression methods, such as Long Short-Term Memory (LSTM) networks or transformers, to directly forecast future prices. This approach is inherently flawed, as stock prices are highly dynamic and cannot be effectively modeled as a simple function of time.
 
@@ -27,7 +27,7 @@ Moreover, direct price forecasting does not offer actionable insights for determ
 
 To create real value for trading, a predictive model must generate clear signals indicating favorable conditions for entering or exiting trades. Additionally, given the constantly evolving nature of financial markets, any predictive model must be capable of adapting to changing market conditions in real-time. This project addresses these challenges using reinforcement learning, specifically policy gradient methods.
 
-#### Intuition
+### Intuition
 
 Reinforcement learning is particularly well-suited for the task of developing a robust trading strategy. For those unfamiliar, the fundamentals of reinforcement learning are as follows:
 
@@ -55,6 +55,10 @@ For more details, see [here](reinforce/README.MD)
 
 ## Testing
 ...
+
+## Upcoming
+
+* Options support
 
 ## Contribution
 ...

@@ -11,7 +11,8 @@ from typing import Dict, List, Any, Optional
 
 from reinforce.sampler import DataSampler
 from reinforce.model import PolicyNet, select_action, compute_loss
-from reinforce.utils import Position, Action, Status, Signal, compute_sharpe_ratio
+from utils.trading import Position, Action, Status, Signal
+from utils.descriptors import compute_sharpe_ratio
 
 
 class TradeEnv(gym.Env):
@@ -220,7 +221,7 @@ def train(
         momentum:       float=0.9,
         weight_decay:   float=0.9,
         max_grad_norm:  float=1.0,
-        portfolio_size: int=5) -> List[float]:
+        portfolio_size: int=5) -> float:
     
     env._logger.info("training starts")
     optimizer = optim.SGD(
@@ -270,10 +271,10 @@ def train(
         """)
         env.model.eval()
 
-        avg_port = np.mean(portfolios) - 1
+        avg_port = portfolios[-1] - 1 # np.mean(portfolios) - 1
         if avg_port > buy_and_hold and portfolios[-1] > max(0.0, buy_and_hold) and len(portfolios) == portfolio_size:
             env._logger.info(f"average target reached, last {portfolio_size} averaged {'+' if avg_port > 1 else ''}{avg_port * 100:.4f}%, exiting.")
-            return reward_history
+            return (portfolios[-1] / (buy_and_hold + 1))-1
 
     env._logger.info(f"training complete, last {portfolio_size} averaged {'+' if avg_port > 1 else ''}{avg_port * 100:.4f}%")
-    return reward_history
+    return (portfolios[-1] / (buy_and_hold + 1))-1
