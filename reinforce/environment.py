@@ -17,28 +17,19 @@ from reinforce.utils import Position, Action, Status, Signal, compute_sharpe_rat
 class TradeEnv(gym.Env):
     def __init__(
             self, 
-            state_dim:      int, 
-            action_dim:     int, 
-            embedding_dim:  int,
-            queue_size:     int,
-            inaction_cost:  float,
-            action_cost:    float,
-            device:         str,
-            db_path:        str,
-            return_thresh:  float,
-            sharpe_cutoff:  int=30,
-            max_risk:       float=0.0025,
-            alpha:          float=1.5,
-            feature_params: Dict[str, List[int] | Dict[str, List[int]]]={
-                "sma": np.geomspace(8, 64, 8).astype(int).tolist(),
-                "ema": np.geomspace(8, 64, 8).astype(int).tolist(),
-                "rsi": np.geomspace(4, 64, 8).astype(int).tolist(),
-                "sto": {
-                    "window": np.geomspace(8, 64, 4).astype(int).tolist() + np.geomspace(8, 64, 4).astype(int).tolist(),
-                    "k":      np.linspace(3, 11, 8).astype(int).tolist(),
-                    "d":      np.linspace(3, 11, 8).astype(int).tolist()
-                }
-            },
+            state_dim:         int, 
+            action_dim:        int, 
+            embedding_dim:     int,
+            queue_size:        int,
+            inaction_cost:     float,
+            action_cost:       float,
+            device:            str,
+            db_path:           str,
+            return_thresh:     float,
+            sharpe_cutoff:     int=30,
+            max_risk:          float=0.0025,
+            alpha:             float=1.5,
+            feature_params:    Dict[str, List[int] | Dict[str, List[int]]] | None=None,
             beta:              float | None=0.5,
             logger:            Optional[logging.Logger]=None,
             testing:           bool=False,
@@ -58,7 +49,7 @@ class TradeEnv(gym.Env):
         self._device = device
 
         db_max_access = None if not testing else queue_size+2
-        
+
         self._sampler         = DataSampler(
             db_path           = db_path, 
             queue_size        = queue_size, 
@@ -71,7 +62,7 @@ class TradeEnv(gym.Env):
             output_dim     = action_dim, 
             position_dim   = len(Position), 
             embedding_dim  = embedding_dim).to(device)
-        
+
         self._sharpe_cutoff  = sharpe_cutoff
         self._return_thresh  = return_thresh
         self._position       = Position.Cash
@@ -253,11 +244,11 @@ def train(
         optimizer.zero_grad()
         log_return = env.log_return
         loss = compute_loss(
-            log_probs=env.log_probs, 
-            rewards=rewards, 
-            beta=env.beta,
-            log_return=log_return,
-            device=env._device)
+            log_probs  = env.log_probs, 
+            rewards    = rewards, 
+            beta       = env.beta,
+            log_return = log_return,
+            device     = env._device)
         
         loss.backward()
         nn.utils.clip_grad_norm_(env.model.parameters(), max_grad_norm)

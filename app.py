@@ -31,10 +31,20 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 if config["live_data"] and "s" in config["interval"]:
     raise Exception("intervals less than 1 minute can only be used for back testing, not live data")
 
+period, interval, db_path, bt_interval = None, None, None, config.get("backtest_interval")
+if not config["live_data"]:
+    with open("data/helper.json", "r") as f:
+        data_helper = json.load(f).get(config["ticker"])
+        if not data_helper:
+            raise Exception("Ticker does not have data")
+        period      = data_helper["period"]
+        interval    = data_helper["interval"]
+        db_path     = data_helper["file"]
+
 server = Server(
     ticker=config["ticker"],
-    period=config["period"],
-    interval=config["interval"],
+    period=period if period else config["period"],
+    interval=interval if interval else config["interval"],
     queue_size=config["queue_size"],
     state_dim=config["state_dim"],
     action_dim=config["action_dim"],
@@ -44,7 +54,7 @@ server = Server(
     device=config["device"],
     return_thresh=config["return_thresh"],
     feature_params=config["feature_params"],
-    db_path=config["db_path"],
+    db_path=db_path if db_path else config["db_path"],
     live_data=config["live_data"],
     logger=logger,
     sharpe_cutoff=config["sharpe_cutoff"],
@@ -59,7 +69,8 @@ server = Server(
 
 async def model_data_update_loop(ws: WebSocket, s: Server):
     while ws.client_state != WebSocketState.DISCONNECTED:
-        await asyncio.sleep(interval_map[config["interval"]])
+        iv = config["interval"] if config["live_data"] else bt_interval
+        await asyncio.sleep(interval_map[iv])
         action = s.consume_queue()
         if action:
             action["type"] = "action"
@@ -72,14 +83,16 @@ async def model_data_update_loop(ws: WebSocket, s: Server):
 async def server_status_update_loop(ws: WebSocket, s: Server):
     while ws.client_state != WebSocketState.DISCONNECTED:
         if s.new_session:
-            await ws.send_json(data={"type": "new_session"})
+            info = s.session_info
+            await ws.send_json(data=info)
         data = s.status_report()
         await ws.send_json(data=data)
         await asyncio.sleep(1)
 
 @app.on_event("startup")
 async def startup():
-    server.start_timer(interval_map[config["interval"]])
+    iv = config["interval"] if config["live_data"] else bt_interval
+    server.start_timer(interval_map[iv])
 
 @app.get("/")
 async def home():
@@ -115,6 +128,11 @@ async def tohlcv_last():
 async def tohlcv_all():
     data = server.fetch_buffer()
     return JSONResponse(content=data)
+
+@app.get("/session")
+async def session_info():
+    info = server.session_info
+    return JSONResponse(content=info)
 
 @app.get("/train")
 async def train(request: Request):

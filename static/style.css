@@ -379,3 +379,12 @@ html, body {
     gap: 5px;
     margin-bottom: 10px;
 }
+
+.fade-in {
+    opacity: 0;
+    transition: opacity 0.5s ease-in;
+}
+
+.fade-in-visible {
+    opacity: 1;
+}

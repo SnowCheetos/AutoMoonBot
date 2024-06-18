@@ -31,7 +31,7 @@ class DataSampler:
 
         if max_training_data is not None:
             if max_training_data < self._rows:
-                self._counter = self._rows - max_training_data - 2
+                self._counter = max(0, max_access - max_training_data)
 
         self._max_access        = max_access
         self._max_training_data = max_training_data
@@ -61,8 +61,9 @@ class DataSampler:
 
     def reset(self) -> None:
         self._queue = deque(maxlen=self._queue_size)
-        if self._max_training_data < self._rows:
-            self._counter = self._rows - self._max_training_data - 2
+        if self._max_training_data is not None:
+            if self._max_training_data < self._rows:
+                self._counter = max(0, self._max_access - self._max_training_data)
         else:
             self._counter = 0
 

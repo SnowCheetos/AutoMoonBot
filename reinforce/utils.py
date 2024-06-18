@@ -90,8 +90,11 @@ class Status:
 def compute_sharpe_ratio(
         returns:        List[float], 
         risk_free_rate: float) -> float:
-    
+    if len(returns) == 0:
+        return 0
+
     returns = np.asarray(returns)
+
     excess_returns = returns - risk_free_rate
     mean_excess_return = np.mean(excess_returns)
     std_excess_return = np.std(excess_returns)
