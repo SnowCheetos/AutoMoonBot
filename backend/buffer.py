@@ -62,6 +62,13 @@ class DataBuffer:
         self._fill_queue()
 
     @property
+    def coef_of_var(self) -> float:
+        data  = np.asarray(list(self._queue))
+        close = data[:, 4]
+        cov   = self._feature_funcs["cov"](close, len(self._queue))
+        return cov[0]
+
+    @property
     def done(self) -> bool:
         return self._done
 

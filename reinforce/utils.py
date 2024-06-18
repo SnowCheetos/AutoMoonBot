@@ -44,10 +44,18 @@ class Status:
     def stop_loss(self):
         return self._stop_loss
     
-    def reset(self):
+    def reset(
+            self, 
+            max_risk: float | None=None,
+            alpha:    float | None=None):
         self._take_profit = float("nan")
         self._stop_loss   = float("nan")
         self._signal      = Signal.Idle
+        
+        if max_risk:
+            self._max_risk = max_risk
+        if alpha:
+            self._alpha = alpha
 
     @signal.setter
     def signal(self, action: int):
@@ -112,10 +120,45 @@ class Descriptors:
             "sto": self.compute_stochastic_np,
             "zsc": self.compute_z_score,
             "nrm": self.compute_normalized_price,
+            "grd": self.compute_normalized_grad,
+            "cov": self.compute_coef_of_var,
         }
 
     def __getitem__(self, key):
         return self.f.get(key)
+
+    @staticmethod
+    def compute_fft(
+            prices: np.ndarray, 
+            window: int=64) -> np.ndarray:
+        if len(prices) < window:
+            return np.array([])
+        
+        arr  = prices[-window:]
+
+    @staticmethod
+    def compute_coef_of_var(
+            prices: np.ndarray, 
+            window: int=64) -> np.ndarray:
+        if len(prices) < window:
+            return np.array([])
+        
+        arr  = prices[-window:]
+        mean = arr.mean()
+        std  = arr.std()
+        return [std / mean]
+
+    @staticmethod
+    def compute_normalized_grad(
+            prices: np.ndarray, 
+            window: int=14) -> np.ndarray:
+        if len(prices) < window:
+            return np.array([])
+        
+        arr  = prices[-window:]
+        mean = arr.mean()
+        diff = arr[-1] - arr[0]
+        return [diff / mean]
 
     @staticmethod
     def compute_normalized_price(
@@ -127,7 +170,6 @@ class Descriptors:
         arr  = prices[-window:]
         mean = arr.mean()
         return arr / mean - 1
-
 
     @staticmethod
     def compute_z_score(
@@ -173,7 +215,6 @@ class Descriptors:
     def compute_rsi(
             prices: np.ndarray, 
             window: int=14) -> np.ndarray:
-        
         if len(prices) < window + 1:
             return np.array([])
 
@@ -183,7 +224,7 @@ class Descriptors:
         down = -seed[seed < 0].sum() / window
         rs = up / (down + 1e-9)
         rsi = np.zeros_like(prices)
-        rsi[:window] = 0.5 - 0.5 / (1. + rs)
+        rsi[:window] = 100 - 100 / (1. + rs)
 
         for i in range(window, len(prices)):
             delta = deltas[i - 1]
@@ -199,9 +240,10 @@ class Descriptors:
             down = (down * (window - 1) + downval) / window
 
             rs = up / (down + 1e-9)
-            rsi[i] = 0.5 - 0.5 / (1. + rs)
+            rsi[i] = 100 - 100 / (1. + rs)
 
-        return rsi
+        centered_rsi = 2 * (rsi / 100) - 1
+        return centered_rsi
 
     @staticmethod
     def compute_stochastic_np(
