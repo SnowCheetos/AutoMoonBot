@@ -1,5 +1,5 @@
 {
-    "ticker": "NVDA",
+    "ticker": "SPY",
     "period": "1y",
     "interval": "1h",
     "backtest_interval": "1s",
@@ -35,10 +35,10 @@
         "max_grad_norm": 1.0,
         "portfolio_size": 10
     },
-    "retrain_freq": 20,
+    "retrain_freq": 50,
     "inference_method": "prob",
-    "max_training_data": 500,
+    "max_training_data": 1000,
     "max_risk": 0.0025,
-    "alpha": 1.25,
-    "beta": 0.3
+    "alpha": 1.15,
+    "beta": 0.25
 }
