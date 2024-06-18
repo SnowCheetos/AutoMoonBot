@@ -1,0 +1,12 @@
+{
+    "NVDA": {
+        "file":     "data/examples/NVDA.db",
+        "interval": "1h",
+        "period":   "2y"
+    },
+    "SPY": {
+        "file":     "data/examples/SPY.db",
+        "interval": "1h",
+        "period":   "2y"
+    }
+}

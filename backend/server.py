@@ -47,6 +47,10 @@ class Server:
         else:
             self._logger = logging.getLogger(__name__)
 
+        self._ticker           = ticker
+        self._period           = period
+        self._interval         = interval
+        self._live_data        = live_data
         self._new_session      = True
         self._mutex            = Lock()
         self._position         = Position.Cash
@@ -57,15 +61,15 @@ class Server:
         if not db_path:
             db_path = f"../data/{ticker}.db"
 
-        self._buffer = DataBuffer(
-            ticker=ticker, 
-            period=period, 
-            interval=interval, 
-            queue_size=queue_size, 
-            db_path=db_path,
-            feature_params=feature_params,
-            logger=logger,
-            live_data=live_data)
+        self._buffer       = DataBuffer(
+            ticker         = ticker, 
+            period         = period, 
+            interval       = interval, 
+            queue_size     = queue_size, 
+            db_path        = db_path,
+            feature_params = feature_params,
+            logger         = logger,
+            live_data      = live_data)
         
         if live_data:
             self._buffer.write_queue_to_db(flush=True)
@@ -75,7 +79,7 @@ class Server:
             output_dim    = action_dim, 
             position_dim  = len(Position), 
             embedding_dim = embedding_dim)
-        
+
         self._env = TradeEnv(
             state_dim         = state_dim, 
             action_dim        = action_dim, 
@@ -89,10 +93,12 @@ class Server:
             return_thresh     = return_thresh,
             testing           = not live_data,
             max_training_data = max_training_data,
+            feature_params    = feature_params,
             max_risk          = max_risk,
             alpha             = alpha,
             beta              = beta)
 
+        self._max_access_accum = 0
         self._checkpoint_path  = checkpoint_path
         self._training_params  = training_params
         self._ready            = False
@@ -121,6 +127,15 @@ class Server:
             self._new_session = False
             return True
         return False
+
+    @property
+    def session_info(self) -> Dict[str, str]:
+        return {
+            "type":     "new_session",
+            "ticker":   self._ticker,
+            "period":   self._period if not self._live_data else "live",
+            "interval": self._interval
+        }
 
     @property
     def busy(self):
@@ -197,7 +212,14 @@ class Server:
             self._timer_thread = thread
 
     def tohlcv(self) -> Dict[str, float]:
-        self._env.sampler.max_access += 1
+        if not self._training:
+            if self._max_access_accum > 0:
+                self._env.sampler.max_access += self._max_access_accum + 1
+                self._max_access_accum = 0
+            else:
+                self._env.sampler.max_access += 1
+        else:
+            self._max_access_accum += 1
         return self._buffer.last_tohlcv()
 
     def fetch_buffer(self) -> Dict[str, Dict[str, float]]:
@@ -324,7 +346,7 @@ class Server:
                 self._logger.warning("model not ready, not running inference")
                 return
 
-        state = self._buffer.fetch_state(False)
+        state = self._buffer.fetch_state(True)
         ohlcv = self._buffer.queue["data"][-1]
         if len(state) == 0:
             self._logger.warning("no data available, not running inference")
