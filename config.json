@@ -4,7 +4,7 @@
     "interval": "1h",
     "backtest_interval": "1s",
     "queue_size": 150,
-    "state_dim": 50,
+    "state_dim": 60,
     "action_dim": 3,
     "embedding_dim": 8,
     "inaction_cost": 5,
@@ -13,6 +13,8 @@
     "return_thresh": 0.9,
     "sharpe_cutoff": 100,
     "feature_params": {
+        "nrm": [4, 8, 10, 14, 19, 26, 35, 47, 64, 128],
+        "zsc": [4, 8, 10, 14, 19, 26, 35, 47, 64, 128],
         "sma": [4, 8, 10, 14, 19, 26, 35, 47, 64, 128],
         "ema": [4, 8, 10, 14, 19, 26, 35, 47, 64, 128],
         "rsi": [2, 4, 5, 8, 13, 19, 28, 43, 64, 128],
@@ -35,7 +37,7 @@
         "max_grad_norm": 1.0,
         "portfolio_size": 10
     },
-    "retrain_freq": 50,
+    "retrain_freq": 25,
     "inference_method": "prob",
     "max_training_data": 1000,
     "max_risk": 0.0025,

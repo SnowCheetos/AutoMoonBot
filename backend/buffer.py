@@ -6,7 +6,7 @@ import yfinance as yf
 from typing import Dict, List, Optional
 from collections import deque
 
-from reinforce.utils import *
+from reinforce.utils import Descriptors
 
 
 class DataBuffer:
@@ -48,12 +48,7 @@ class DataBuffer:
             self._cursor.execute("SELECT COUNT(*) FROM data")
             self._rows = self._cursor.fetchone()[0]
 
-        self._feature_funcs = {
-            "sma": compute_sma,
-            "ema": compute_ema,
-            "rsi": compute_rsi,
-            "sto": compute_stochastic_np
-        }
+        self._feature_funcs = Descriptors()
         self._fill_queue()
 
     def reset(self) -> None:

@@ -103,94 +103,136 @@ def compute_sharpe_ratio(
     
     return mean_excess_return / std_excess_return
 
-def compute_sma(
-        prices: np.ndarray, 
-        window: int=64) -> np.ndarray:
-    
-    if len(prices) < window:
-        return np.array([])
-    
-    sma = np.convolve(prices, np.ones(window), 'valid') / window
-    sma = np.concatenate((np.full(window-1, np.nan), sma)) / prices
-    return sma - 1
+class Descriptors:
+    def __init__(self) -> None:
+        self.f = {
+            "sma": self.compute_sma,
+            "ema": self.compute_ema,
+            "rsi": self.compute_rsi,
+            "sto": self.compute_stochastic_np,
+            "zsc": self.compute_z_score,
+            "nrm": self.compute_normalized_price,
+        }
 
-def compute_ema(
-        prices: np.ndarray, 
-        window: int=64) -> np.ndarray:
-    
-    if len(prices) < window:
-        return np.array([])
-    
-    ema = np.zeros_like(prices)
-    alpha = 2 / (window + 1)
-    ema[0] = prices[0]
-    for i in range(1, len(prices)):
-        ema[i] = alpha * prices[i] + (1 - alpha) * ema[i - 1]
-    ema = ema / prices
-    return ema - 1
+    def __getitem__(self, key):
+        return self.f.get(key)
 
-def compute_rsi(
-        prices: np.ndarray, 
-        window: int=14) -> np.ndarray:
-    
-    if len(prices) < window + 1:
-        return np.array([])
-
-    deltas = np.diff(prices)
-    seed = deltas[:window]
-    up = seed[seed >= 0].sum() / window
-    down = -seed[seed < 0].sum() / window
-    rs = up / (down + 1e-9)
-    rsi = np.zeros_like(prices)
-    rsi[:window] = 0.5 - 0.5 / (1. + rs)
-
-    for i in range(window, len(prices)):
-        delta = deltas[i - 1]
-
-        if delta > 0:
-            upval = delta
-            downval = 0.
-        else:
-            upval = 0.
-            downval = -delta
-
-        up = (up * (window - 1) + upval) / window
-        down = (down * (window - 1) + downval) / window
-
-        rs = up / (down + 1e-9)
-        rsi[i] = 0.5 - 1 / (1. + rs)
-
-    return rsi
-
-def compute_stochastic_np(
-        prices:   np.ndarray, 
-        highs:    np.ndarray, 
-        lows:     np.ndarray, 
-        window:   int=14, 
-        smooth_k: int=3, 
-        smooth_d: int=3) -> Tuple[np.ndarray]:
-    
-    if len(prices) < window:
-        return np.array([]), np.array([])
-    
-    if len(highs) != len(lows) != len(prices):
-        return np.array([]), np.array([])
-    
-    k_values = []
-    for i in range(window - 1, len(prices)):
-        current_close = prices[i]
-        lowest_low = np.min(lows[i - window + 1:i + 1])
-        highest_high = np.max(highs[i - window + 1:i + 1])
+    @staticmethod
+    def compute_normalized_price(
+            prices: np.ndarray, 
+            window: int=64) -> np.ndarray:
+        if len(prices) < window:
+            return np.array([])
         
-        k_value = (current_close - lowest_low) / (highest_high - lowest_low)
-        k_values.append(k_value)
-    
-    k_values = np.array(k_values)
-    
-    k_smooth = np.convolve(k_values, np.ones(smooth_k) / smooth_k, mode='valid')
-    d_values = np.convolve(k_smooth, np.ones(smooth_d) / smooth_d, mode='valid')
-    
-    k_smooth = np.concatenate((np.full(window+1, np.nan), k_smooth)) - 0.5
-    d_values = np.concatenate((np.full(window+3, np.nan), d_values)) - 0.5
-    
-    return k_smooth, d_values
+        arr  = prices[-window:]
+        mean = arr.mean()
+        return arr / mean - 1
+
+
+    @staticmethod
+    def compute_z_score(
+            prices: np.ndarray, 
+            window: int=64) -> np.ndarray:
+        if len(prices) < window:
+            return np.array([])
+        
+        arr  = prices[-window:]
+        mean = arr.mean()
+        std  = arr.std()
+        return (arr - mean) / std
+
+    @staticmethod
+    def compute_sma(
+            prices: np.ndarray, 
+            window: int=64) -> np.ndarray:
+        
+        if len(prices) < window:
+            return np.array([])
+        
+        sma = np.convolve(prices, np.ones(window), 'valid') / window
+        sma = np.concatenate((np.full(window-1, np.nan), sma)) / prices
+        return sma - 1
+
+    @staticmethod
+    def compute_ema(
+            prices: np.ndarray, 
+            window: int=64) -> np.ndarray:
+        
+        if len(prices) < window:
+            return np.array([])
+        
+        ema = np.zeros_like(prices)
+        alpha = 2 / (window + 1)
+        ema[0] = prices[0]
+        for i in range(1, len(prices)):
+            ema[i] = alpha * prices[i] + (1 - alpha) * ema[i - 1]
+        ema = ema / prices
+        return ema - 1
+
+    @staticmethod
+    def compute_rsi(
+            prices: np.ndarray, 
+            window: int=14) -> np.ndarray:
+        
+        if len(prices) < window + 1:
+            return np.array([])
+
+        deltas = np.diff(prices)
+        seed = deltas[:window]
+        up = seed[seed >= 0].sum() / window
+        down = -seed[seed < 0].sum() / window
+        rs = up / (down + 1e-9)
+        rsi = np.zeros_like(prices)
+        rsi[:window] = 0.5 - 0.5 / (1. + rs)
+
+        for i in range(window, len(prices)):
+            delta = deltas[i - 1]
+
+            if delta > 0:
+                upval = delta
+                downval = 0.
+            else:
+                upval = 0.
+                downval = -delta
+
+            up = (up * (window - 1) + upval) / window
+            down = (down * (window - 1) + downval) / window
+
+            rs = up / (down + 1e-9)
+            rsi[i] = 0.5 - 0.5 / (1. + rs)
+
+        return rsi
+
+    @staticmethod
+    def compute_stochastic_np(
+            prices:   np.ndarray, 
+            highs:    np.ndarray, 
+            lows:     np.ndarray, 
+            window:   int=14, 
+            smooth_k: int=3, 
+            smooth_d: int=3) -> Tuple[np.ndarray]:
+        
+        if len(prices) < window:
+            return np.array([]), np.array([])
+        
+        if len(highs) != len(lows) != len(prices):
+            return np.array([]), np.array([])
+        
+        k_values = []
+        for i in range(window - 1, len(prices)):
+            current_close = prices[i]
+            lowest_low = np.min(lows[i - window + 1:i + 1])
+            highest_high = np.max(highs[i - window + 1:i + 1])
+            
+            k_value = (current_close - lowest_low) / (highest_high - lowest_low)
+            k_values.append(k_value)
+        
+        k_values = np.array(k_values)
+        
+        k_smooth = np.convolve(k_values, np.ones(smooth_k) / smooth_k, mode='valid')
+        d_values = np.convolve(k_smooth, np.ones(smooth_d) / smooth_d, mode='valid')
+        
+        k_smooth = np.concatenate((np.full(window+1, np.nan), k_smooth)) - 0.5
+        d_values = np.concatenate((np.full(window+3, np.nan), d_values)) - 0.5
+        
+        return k_smooth, d_values
