@@ -1,17 +1,17 @@
+import random
 import time
+import torch
 import logging
 import threading
-from threading import Lock
 
+from threading import Lock
 from collections import deque
 from typing import Dict, List, Optional
 
-import torch
-
 from backend.buffer import DataBuffer
-from reinforce.utils import Position, Action, Status, Signal
-from reinforce.environment import TradeEnv, train
 from reinforce.model import PolicyNet, inference
+from reinforce.environment import TradeEnv, train
+from utils.trading import Position, Action, Status, Signal
 
 
 class Server:
@@ -97,6 +97,7 @@ class Server:
             beta              = beta,
             gamma             = gamma)
 
+        self._beat             = 0
         self._status           = Status(gamma * self._buffer.coef_of_var, alpha)
         self._max_access_accum = 0
         self._checkpoint_path  = checkpoint_path
@@ -111,6 +112,8 @@ class Server:
         self._retrain_freq     = retrain_freq
         self._terminate        = False
         self._gamma            = gamma
+        self._epsilon          = 0.9
+        self._epsilon_decay    = 0.9
         self._actions_queue    = deque(maxlen=2)
 
     def __del__(self):
@@ -252,7 +255,7 @@ class Server:
         with self._mutex:
             self._training = True
         
-        train(
+        beat = train(
             env=self._env, 
             episodes=episodes, 
             learning_rate=learning_rate,
@@ -264,7 +267,11 @@ class Server:
         with self._mutex:
             self._training = False
 
-        self.update_model()
+        if beat > self._beat or self._beat == 0:
+            if self._epsilon < random.random():
+                self._epsilon *= self._epsilon_decay
+                self._beat = beat
+                self.update_model()
 
         with self._mutex:
             if not self._ready:

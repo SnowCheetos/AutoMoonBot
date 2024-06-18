@@ -6,7 +6,7 @@ import yfinance as yf
 from typing import Dict, List, Optional
 from collections import deque
 
-from reinforce.utils import Descriptors
+from utils.descriptors import Descriptors
 
 
 class DataBuffer:

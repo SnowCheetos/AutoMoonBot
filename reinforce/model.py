@@ -17,10 +17,11 @@ class PolicyNet(nn.Module):
         super().__init__()
 
         self._embedding = nn.Embedding(position_dim, embedding_dim)
-        self._f1 = nn.Linear(input_dim + embedding_dim, 512)
-        self._f2 = nn.Linear(512, 256)
-        self._f3 = nn.Linear(256, 128)
-        self._f4 = nn.Linear(128, output_dim)
+        self._f1        = nn.Linear(input_dim + embedding_dim, 512)
+        self._f2        = nn.Linear(512, 256)
+        self._f3        = nn.Linear(256, 128)
+        self._f4        = nn.Linear(128, output_dim)
+        # self._dropout   = nn.Dropout(0.1)
 
     def forward(self, x: torch.Tensor, p: torch.Tensor) -> torch.Tensor:
         x = torch.cat((x, self._embedding(p).squeeze(1)), dim=-1)
@@ -89,13 +90,12 @@ def inference(
         method:   str="argmax",
         min_prob: float=0.31) -> Tuple[int, float]:
     
+    model.eval()
     min_prob = min(0.34, min_prob)
 
     if method not in {"argmax", "prob"}:
         logging.error("Method must be in one of [argmax, prob]")
         return 1
-
-    model.eval()
 
     with torch.no_grad():
         probs = model(
