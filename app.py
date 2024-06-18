@@ -1,5 +1,7 @@
+import base64
 import json
 import asyncio
+import aiofiles
 import logging
 import uvicorn
 from fastapi import FastAPI
@@ -9,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from backend.server import Server
-from utils.helpers import interval_map
+from utils.tools import interval_map
 
 
 with open("config.json", "r") as f:
@@ -31,10 +33,20 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 if config["live_data"] and "s" in config["interval"]:
     raise Exception("intervals less than 1 minute can only be used for back testing, not live data")
 
+period, interval, db_path, bt_interval = None, None, None, config.get("backtest_interval")
+if not config["live_data"]:
+    with open("data/helper.json", "r") as f:
+        data_helper = json.load(f).get(config["ticker"])
+        if not data_helper:
+            raise Exception("Ticker does not have data")
+        period      = data_helper["period"]
+        interval    = data_helper["interval"]
+        db_path     = data_helper["file"]
+
 server = Server(
     ticker=config["ticker"],
-    period=config["period"],
-    interval=config["interval"],
+    period=period if period else config["period"],
+    interval=interval if interval else config["interval"],
     queue_size=config["queue_size"],
     state_dim=config["state_dim"],
     action_dim=config["action_dim"],
@@ -44,18 +56,23 @@ server = Server(
     device=config["device"],
     return_thresh=config["return_thresh"],
     feature_params=config["feature_params"],
-    db_path=config["db_path"],
+    db_path=db_path if db_path else config["db_path"],
     live_data=config["live_data"],
     logger=logger,
+    sharpe_cutoff=config["sharpe_cutoff"],
     inference_method=config["inference_method"],
     training_params=config["training_params"],
     retrain_freq=config["retrain_freq"],
-    max_training_data=config["max_training_data"]
+    max_training_data=config["max_training_data"],
+    alpha=config["alpha"],
+    beta=config["beta"],
+    gamma=config["gamma"],
 )
 
 async def model_data_update_loop(ws: WebSocket, s: Server):
     while ws.client_state != WebSocketState.DISCONNECTED:
-        await asyncio.sleep(interval_map[config["interval"]])
+        iv = config["interval"] if config["live_data"] else bt_interval
+        await asyncio.sleep(interval_map[iv])
         action = s.consume_queue()
         if action:
             action["type"] = "action"
@@ -67,13 +84,17 @@ async def model_data_update_loop(ws: WebSocket, s: Server):
 
 async def server_status_update_loop(ws: WebSocket, s: Server):
     while ws.client_state != WebSocketState.DISCONNECTED:
+        if s.new_session:
+            info = s.session_info
+            await ws.send_json(data=info)
         data = s.status_report()
         await ws.send_json(data=data)
         await asyncio.sleep(1)
 
 @app.on_event("startup")
 async def startup():
-    server.start_timer(interval_map[config["interval"]])
+    iv = config["interval"] if config["live_data"] else bt_interval
+    server.start_timer(interval_map[iv])
 
 @app.get("/")
 async def home():
@@ -109,6 +130,26 @@ async def tohlcv_last():
 async def tohlcv_all():
     data = server.fetch_buffer()
     return JSONResponse(content=data)
+
+@app.get("/session")
+async def session_info():
+    info = server.session_info
+    info["live"]   = config["live_data"]
+    info["record"] = config["record_frames"]
+    return JSONResponse(content=info)
+
+@app.post("/save_frame/{frame_id}")
+async def save_frame(request: Request, frame_id: str):
+    data = await request.json()
+    frame = data["frame"]
+    
+    img_data = frame.replace("data:image/png;base64,", "")
+    file_path = config["frames_dir"] + f"/{frame_id}.png"
+    
+    async with aiofiles.open(file_path, 'wb') as file:
+        await file.write(base64.b64decode(img_data))
+    
+    return {"success": True, "message": "Image saved successfully", "file_path": file_path}
 
 @app.get("/train")
 async def train(request: Request):

@@ -1,3 +1,4 @@
+import copy
 import logging
 import numpy as np
 import gymnasium as gym
@@ -16,25 +17,20 @@ from reinforce.utils import Position, Action, Status, Signal, compute_sharpe_rat
 class TradeEnv(gym.Env):
     def __init__(
             self, 
-            state_dim:      int, 
-            action_dim:     int, 
-            embedding_dim:  int,
-            queue_size:     int,
-            inaction_cost:  float,
-            action_cost:    float,
-            device:         str,
-            db_path:        str,
-            return_thresh:  float,
-            feature_params: Dict[str, List[int] | Dict[str, List[int]]]={
-                "sma": np.geomspace(8, 64, 8).astype(int).tolist(),
-                "ema": np.geomspace(8, 64, 8).astype(int).tolist(),
-                "rsi": np.geomspace(4, 64, 8).astype(int).tolist(),
-                "sto": {
-                    "window": np.geomspace(8, 64, 4).astype(int).tolist() + np.geomspace(8, 64, 4).astype(int).tolist(),
-                    "k":      np.linspace(3, 11, 8).astype(int).tolist(),
-                    "d":      np.linspace(3, 11, 8).astype(int).tolist()
-                }
-            },
+            state_dim:         int, 
+            action_dim:        int, 
+            embedding_dim:     int,
+            queue_size:        int,
+            inaction_cost:     float,
+            action_cost:       float,
+            device:            str,
+            db_path:           str,
+            return_thresh:     float,
+            sharpe_cutoff:     int=30,
+            gamma:             float=0.15,
+            alpha:             float=1.5,
+            feature_params:    Dict[str, List[int] | Dict[str, List[int]]] | None=None,
+            beta:              float | None=0.5,
             logger:            Optional[logging.Logger]=None,
             testing:           bool=False,
             max_training_data: int | None=None) -> None:
@@ -49,11 +45,8 @@ class TradeEnv(gym.Env):
         self.action_space = spaces.Discrete(action_dim)
         self.observation_space = spaces.Discrete(state_dim)
 
-        self._status = Status(0.005, 1.0025)
-        self._device = device
-
         db_max_access = None if not testing else queue_size+2
-        
+
         self._sampler         = DataSampler(
             db_path           = db_path, 
             queue_size        = queue_size, 
@@ -66,11 +59,17 @@ class TradeEnv(gym.Env):
             output_dim     = action_dim, 
             position_dim   = len(Position), 
             embedding_dim  = embedding_dim).to(device)
-        
+
+        self._status         = Status(0, alpha)
+        self._device         = device
+        self._sharpe_cutoff  = sharpe_cutoff
         self._return_thresh  = return_thresh
         self._position       = Position.Cash
         self._inaction_cost  = inaction_cost
         self._action_cost    = action_cost
+        self._alpha          = alpha
+        self._beta           = beta
+        self._gamma          = gamma
         self._portfolio      = 1.0
         self._returns        = []
         self._log_probs      = []
@@ -78,6 +77,11 @@ class TradeEnv(gym.Env):
         self._risk_free_rate = 1.0
         self._entry          = 0.0
         self._exit           = 0.0
+        self._log_return     = 0.0
+
+    @property
+    def beta(self):
+        return self._beta
 
     @property
     def sampler(self):
@@ -91,6 +95,17 @@ class TradeEnv(gym.Env):
     def model_weights(self) -> Dict[str, Any]:
         self._policy_net.eval()
         return self._policy_net.state_dict()
+
+    @property
+    def log_return(self) -> float:
+        return self._log_return
+
+    @model_weights.setter
+    def model_weights(self, state_dict: Dict[str, Any]) -> None:
+        self._policy_net.eval()
+        self._policy_net.to("cpu")
+        self._policy_net.load_state_dict(state_dict)
+        self._policy_net.to(self._device)
 
     @property
     def log_probs(self) -> list:
@@ -111,6 +126,7 @@ class TradeEnv(gym.Env):
         while len(state) == 0:
             _, close, state = self._sampler.sample_next()
 
+        self._status         = Status(self._sampler.coef_of_var, self._alpha) 
         self._position       = Position.Cash
         self._portfolio      = 1.0
         self._returns        = []
@@ -119,12 +135,14 @@ class TradeEnv(gym.Env):
         self._risk_free_rate = 1.0
         self._entry          = 0.0
         self._exit           = 0.0
+        self._log_return     = 0.0
         return state
 
     def step(self, action: int):
         end, close, state = self._sampler.sample_next()
-        reward, done = self._inaction_cost, False
+        reward, done = 0, False
 
+        self._risk_free_rate = close / self._init_close
         # Validate buy
         if self._position == Position.Cash and Action(action) == Action.Buy:
             if self._status.signal == Signal.Idle:
@@ -137,11 +155,11 @@ class TradeEnv(gym.Env):
                     self._position = Position.Asset
                     self._entry = close
                     self._exit = 0.0
-                    self._portfolio *= (1-self._action_cost)
-                    self._status.reset()
+                    self._portfolio *= 1 - self._action_cost
+                    self._status.reset(self._gamma * self._sampler.coef_of_var)
 
             else:
-                self._status.reset()
+                self._status.reset(self._gamma * self._sampler.coef_of_var)
         
         # Valid sell
         elif self._position == Position.Asset and Action(action) == Action.Sell:
@@ -162,13 +180,26 @@ class TradeEnv(gym.Env):
                         self._logger.info("portfolio threshold hit, done")
                         done = True
             
-                    self._risk_free_rate = close / self._init_close
                     self._entry = 0.0
-                    reward += compute_sharpe_ratio(self._returns, self._risk_free_rate)
-                    self._status.reset()
+                    reward += compute_sharpe_ratio(
+                        returns        = self._returns[-self._sharpe_cutoff:], 
+                        risk_free_rate = self._risk_free_rate * (1 - self._action_cost))
+                    
+                    self._log_return  += np.log(net_return)
+                    self._status.reset(self._gamma * self._sampler.coef_of_var)
             
             else:
-                self._status.reset()
+                self._status.reset(self._gamma * self._sampler.coef_of_var)
+        
+        elif Action(action) == Action.Hold:
+            if self._position == Position.Asset:
+                potential_gain     = close / self._entry
+                reward            -= self._inaction_cost * potential_gain * (1 - self._action_cost)
+            else:
+                if self._exit:
+                    reward        -= self._inaction_cost * (close / self._exit) * (1 - self._action_cost)
+                else:
+                    reward        -= self._inaction_cost * self._risk_free_rate * (1 - self._action_cost)
 
         action, log_prob = select_action(
             self._policy_net, 
@@ -187,6 +218,7 @@ def train(
         episodes:       int, 
         learning_rate:  float=1e-3, 
         momentum:       float=0.9,
+        weight_decay:   float=0.9,
         max_grad_norm:  float=1.0,
         portfolio_size: int=5) -> List[float]:
     
@@ -194,7 +226,8 @@ def train(
     optimizer = optim.SGD(
         env.model.parameters(), 
         lr=learning_rate, 
-        momentum=momentum)
+        momentum=momentum,
+        weight_decay=weight_decay)
 
     buy_and_hold = None
     reward_history = []
@@ -211,7 +244,14 @@ def train(
             rewards += [reward]
 
         optimizer.zero_grad()
-        loss = compute_loss(env.log_probs, rewards, device=env._device)
+        log_return = env.log_return
+        loss = compute_loss(
+            log_probs  = env.log_probs, 
+            rewards    = rewards, 
+            beta       = env.beta,
+            log_return = log_return,
+            device     = env._device)
+        
         loss.backward()
         nn.utils.clip_grad_norm_(env.model.parameters(), max_grad_norm)
         optimizer.step()

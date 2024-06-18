@@ -6,6 +6,8 @@ from threading import Lock
 from collections import deque
 from typing import Dict, List, Optional
 
+import torch
+
 from backend.buffer import DataBuffer
 from reinforce.utils import Position, Action, Status, Signal
 from reinforce.environment import TradeEnv, train
@@ -31,7 +33,12 @@ class Server:
             feature_params:    Dict[str, List[int] | Dict[str, List[int]]],
             db_path:           Optional[str] = None,
             live_data:         bool=False,
+            sharpe_cutoff:     int=30,
+            gamma:             float=0.1,
+            alpha:             float=1.5,
+            beta:              float | None=0.5,
             inference_method:  str="prob",
+            checkpoint_path:   str="checkpoint",
             logger:            Optional[logging.Logger] = None,
             max_training_data: int | None = None) -> None:
         
@@ -40,24 +47,28 @@ class Server:
         else:
             self._logger = logging.getLogger(__name__)
 
-        self._mutex = Lock()
-        self._position = Position.Cash
-        self._device = device
-        self._status = Status(0.005, 1.0025)
+        self._ticker           = ticker
+        self._period           = period
+        self._interval         = interval
+        self._live_data        = live_data
+        self._new_session      = True
+        self._mutex            = Lock()
+        self._position         = Position.Cash
+        self._device           = device
         self._inference_method = inference_method
 
         if not db_path:
             db_path = f"../data/{ticker}.db"
 
-        self._buffer = DataBuffer(
-            ticker=ticker, 
-            period=period, 
-            interval=interval, 
-            queue_size=queue_size, 
-            db_path=db_path,
-            feature_params=feature_params,
-            logger=logger,
-            live_data=live_data)
+        self._buffer       = DataBuffer(
+            ticker         = ticker, 
+            period         = period, 
+            interval       = interval, 
+            queue_size     = queue_size, 
+            db_path        = db_path,
+            feature_params = feature_params,
+            logger         = logger,
+            live_data      = live_data)
         
         if live_data:
             self._buffer.write_queue_to_db(flush=True)
@@ -67,7 +78,7 @@ class Server:
             output_dim    = action_dim, 
             position_dim  = len(Position), 
             embedding_dim = embedding_dim)
-        
+
         self._env = TradeEnv(
             state_dim         = state_dim, 
             action_dim        = action_dim, 
@@ -77,10 +88,18 @@ class Server:
             action_cost       = action_cost,
             device            = device,
             db_path           = db_path,
+            sharpe_cutoff     = sharpe_cutoff,
             return_thresh     = return_thresh,
             testing           = not live_data,
-            max_training_data = max_training_data)
+            max_training_data = max_training_data,
+            feature_params    = feature_params,
+            alpha             = alpha,
+            beta              = beta,
+            gamma             = gamma)
 
+        self._status           = Status(gamma * self._buffer.coef_of_var, alpha)
+        self._max_access_accum = 0
+        self._checkpoint_path  = checkpoint_path
         self._training_params  = training_params
         self._ready            = False
         self._training         = False
@@ -91,6 +110,7 @@ class Server:
         self._train_counter    = retrain_freq
         self._retrain_freq     = retrain_freq
         self._terminate        = False
+        self._gamma            = gamma
         self._actions_queue    = deque(maxlen=2)
 
     def __del__(self):
@@ -103,12 +123,39 @@ class Server:
             self.join_train_thread()
 
     @property
+    def new_session(self) -> bool:
+        if self._new_session:
+            self._new_session = False
+            return True
+        return False
+
+    @property
+    def session_info(self) -> Dict[str, str]:
+        return {
+            "type":     "new_session",
+            "ticker":   self._ticker,
+            "period":   self._period if not self._live_data else "live",
+            "interval": self._interval
+        }
+
+    @property
     def busy(self):
         return self._training
 
     @property
     def inf_busy(self):
         return self._inferencing
+
+    def save_model(self, name: str) -> None:
+        path = self._checkpoint_path + "/" + name
+        with self._mutex:
+            state_dict = self._env.model_weights
+        torch.save(state_dict, path)
+
+    def load_model(self, path: str) -> None:
+        state_dict = torch.load(path)
+        with self._mutex:
+            self._env.model = state_dict
 
     def status_report(self) -> Dict[str, int | bool | str]:
         return {
@@ -130,6 +177,7 @@ class Server:
             episodes=self._training_params["episodes"],
             learning_rate=self._training_params["learning_rate"],
             momentum=self._training_params["momentum"],
+            weight_decay=self._training_params["weight_decay"],
             max_grad_norm=self._training_params["max_grad_norm"],
             portfolio_size=self._training_params["portfolio_size"])
 
@@ -140,11 +188,13 @@ class Server:
                     episodes=self._training_params["episodes"],
                     learning_rate=self._training_params["learning_rate"],
                     momentum=self._training_params["momentum"],
+                    weight_decay=self._training_params["weight_decay"],
                     max_grad_norm=self._training_params["max_grad_norm"],
                     portfolio_size=self._training_params["portfolio_size"])
                 self._train_counter = self._retrain_freq
 
             time.sleep(interval)
+            self._buffer.update_queue(False)
             self._logger.info("running scheduled inference")
             if self._ready:
                 self._inference()
@@ -164,7 +214,14 @@ class Server:
             self._timer_thread = thread
 
     def tohlcv(self) -> Dict[str, float]:
-        self._env.sampler.max_access += 1
+        if not self._training:
+            if self._max_access_accum > 0:
+                self._env.sampler.max_access += self._max_access_accum + 1
+                self._max_access_accum = 0
+            else:
+                self._env.sampler.max_access += 1
+        else:
+            self._max_access_accum += 1
         return self._buffer.last_tohlcv()
 
     def fetch_buffer(self) -> Dict[str, Dict[str, float]]:
@@ -188,6 +245,7 @@ class Server:
             episodes:       int, 
             learning_rate:  float, 
             momentum:       float,
+            weight_decay:   float,
             max_grad_norm:  float,
             portfolio_size: int) -> None:
         
@@ -199,6 +257,7 @@ class Server:
             episodes=episodes, 
             learning_rate=learning_rate,
             momentum=momentum,
+            weight_decay=weight_decay,
             max_grad_norm=max_grad_norm,
             portfolio_size=portfolio_size)
         
@@ -215,7 +274,8 @@ class Server:
             self,
             episodes:       int, 
             learning_rate:  float=1e-3, 
-            momentum:       float=1e-3,
+            momentum:       float=0.9,
+            weight_decay:   float=0.9,
             max_grad_norm:  float=1.0,
             portfolio_size: int=5):
         
@@ -230,6 +290,7 @@ class Server:
                 episodes, 
                 learning_rate, 
                 momentum, 
+                weight_decay,
                 max_grad_norm, 
                 portfolio_size))
         
@@ -322,7 +383,7 @@ class Server:
                         self._position = Position.Asset
                         self._logger.debug("buy signal predicted")
                         actual_action = Action.Buy
-                        self._status.reset()
+                        self._status.reset(self._gamma * self._buffer.coef_of_var)
                     else:
                         self._status.take_profit = ohlcv["close"]
                         self._status.stop_loss   = ohlcv["close"]
@@ -337,7 +398,7 @@ class Server:
                         self._position = Position.Cash
                         self._logger.debug("sell signal predicted")
                         actual_action = Action.Sell
-                        self._status.reset()
+                        self._status.reset(self._gamma * self._buffer.coef_of_var)
                     else:
                         self._status.take_profit = ohlcv["close"]
                         self._status.stop_loss   = ohlcv["close"]
@@ -394,7 +455,7 @@ class Server:
                         self._position = Position.Asset
                         self._logger.debug("buy signal predicted")
                         actual_action = Action.Buy
-                        self._status.reset()
+                        self._status.reset(self._gamma * self._buffer.coef_of_var)
 
             elif self._position == Position.Asset and action == Action.Sell:
                 if self._status.signal == Signal.Idle:
@@ -406,7 +467,7 @@ class Server:
                         self._position = Position.Cash
                         self._logger.debug("sell signal predicted")
                         actual_action = Action.Sell
-                        self._status.reset()
+                        self._status.reset(self._gamma * self._buffer.coef_of_var)
 
             self._inferencing = False
         return actual_action

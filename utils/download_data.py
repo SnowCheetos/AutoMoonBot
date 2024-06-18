@@ -32,7 +32,7 @@ def download_example(
     """
     cursor.execute(query)
 
-    data = yf.download(ticker, period=period, interval=interval)
+    data = yf.download(ticker, period=period, interval=interval).dropna()
     for idx in data.index:
         ts = idx.timestamp()
         row = data.loc[idx]
@@ -47,8 +47,8 @@ def download_example(
 
 if __name__ == "__main__":
     download_example(
-        db_path  = "data/example.db", 
-        ticker   = "SPY", 
-        period   = "1y", 
+        db_path  = "data/examples/TSLA.db", 
+        ticker   = "TSLA", 
+        period   = "2y",
         interval = "1h",
         flush    = True)

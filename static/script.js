@@ -4,8 +4,11 @@ const actionBufferSize      = 20
 const dataBufferSize        = 60
 const tradeBufferSize       = 20
 
+var chart              = null
 var client_ws          = null
 var dataBuffer         = []
+var timeBuffers        = {}
+var tradePoints        = []
 var tradeBuffer        = {}
 var currTradeTimeStamp = null
 var performanceRec     = {
@@ -13,47 +16,137 @@ var performanceRec     = {
     totalGain:  1,
     buyAndHold: 1
 }
+var session = {
+    live:     false,
+    ticker:   null,
+    period:   null,
+    interval: null,
+    record:   false
+}
 
 var started     = false
 var counter     = 0
 
-initClientWebSocket()
+initSession()
 
-var chart = new CanvasJS.Chart("chart-holder", {
-    animationEnabled: true,
-    theme: "light1", // "light1", "light2", "dark1", "dark2"
-    exportEnabled: true,
-    title: {
-        text: "SPY",
-        fontSize: 24
-    },
-    axisX: {
-        interval: 10,
-        intervalType: "category",
-        labelFontSize: 12,
-    },
-    axisY: {
-        prefix: "$",
-        labelFontSize: 12,
-    },
-    toolTip: {
-        content: "Index: {x}<br /><strong>Price:</strong><br />Open: {y[0]}, Close: {y[3]}<br />High: {y[1]}, Low: {y[2]}",
-    },
-    data: [
-        {
-            type: "candlestick",
-            yValueFormatString: "$##0.00",
-            dataPoints: dataBuffer,
-            risingColor: "white",
-            fallingColor: "black",
-            color: "black"
+function initChart() {
+    chart = new CanvasJS.Chart("chart-container", {
+        animationEnabled: true,
+        theme: "light1", // "light1", "light2", "dark1", "dark2"
+        exportEnabled: true,
+        title: {
+            text: `${session.live? 'Live: ': 'Back-Test: '} ${session.ticker} ${session.interval} ${session.live? '' : session.period}`,
+            fontSize: 24
         },
-        {
-            type: "scatter",
-            markerType: "triangle",
+        axisX: {
+            labelFormatter: function() {
+                return "";
+            },
+            intervalType: "number",
+            stripLines: tradePoints
+        },
+        axisY: {
+            prefix: "$",
+            labelFontSize: 12,
+        },
+        toolTip: {
+            contentFormatter: function (e) {
+                var dataPoint = e.entries[0].dataPoint;
+                var index = dataPoint.x;
+                return "Time: " + timeBuffers[index] + "<br /><strong>Price:</strong><br />Open: " + dataPoint.y[0] + ", Close: " + dataPoint.y[3] + "<br />High: " + dataPoint.y[1] + ", Low: " + dataPoint.y[2];
+            }
+        },
+        data: [
+            {
+                type: "candlestick",
+                yValueFormatString: "$##0.00",
+                dataPoints: dataBuffer,
+                risingColor: "white",
+                fallingColor: "black",
+                color: "black"
+            }
+        ]
+    })
+}
+
+function captureScreenshot() {
+    var element = document.body
+
+    html2canvas(element).then(function(canvas) {
+        var imgData = canvas.toDataURL("image/png")
+
+        fetch(`/save_frame/${counter}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ frame: imgData })
+        }).then(response => response.json())
+            .then(data => {
+                console.log('Success:', data)
+            }).catch((error) => {
+                console.error('Error:', error)
+            })
+    })
+}
+
+function addVerticalDashedLine(index, color = "red", thickness = 2, label = "") {
+    tradePoints.push({
+        value: index,
+        lineDashType: "dash",
+        color: color,
+        thickness: thickness
+    })
+    chart.render()
+}
+
+function addStripeLines(start, end, gain) {
+    const existingStripLine = tradePoints.find(
+        stripLine => stripLine.startValue === start
+    )
+
+    const pctGain = (gain-1) * 100
+    if (!existingStripLine) {
+        tradePoints.push({
+            startValue     : start,
+            endValue       : end,
+            color          : gain > 1 ? "#ECFFEE" : "#FFECEC",
+            label          : gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`,
+            labelAlign     : "center",
+            labelFontColor : "black",
+            labelPlacement : "outside"
+        });
+        chart.render();
+    } else {
+        existingStripLine.endValue       = end
+        existingStripLine.color          = gain > 1 ? "#ECFFEE" : "#FFECEC",
+        existingStripLine.label          = gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`
+        existingStripLine.labelFontColor = gain > 1 ? "green" : "red"
+    }
+}
+
+function initSession() {
+    fetch(`/session`)        
+    .then(response => {
+        if (response.status == 200) {
+            response.json().then(data => {
+                session.live     = data.live
+                session.ticker   = data.ticker
+                session.period   = data.period
+                session.interval = data.interval
+                session.record   = data.record
+
+                initChart()
+                initClientWebSocket()
+            })
+        } else if (response.status === 400) {
+            console.error('400 received from server')
         }
-    ]
-});
+    })
+    .catch(error => 
+        console.error('Error fetching device data:', error)
+    )
+}
 
 function initClientWebSocket() {
     loadCache()
@@ -61,46 +154,44 @@ function initClientWebSocket() {
     
     client_ws.onmessage = function(event) {
         const data = JSON.parse(event.data);    
-        if (data.type === "action") {
+        if (data.type === "new_session") {
+            reset()
+        } else if (data.type === "action") {
             if (data.action === "Buy") {
                 if (!started) {
                     started = true
                 }
                 appendAction(data.action, data.close, data.probability)
-                startTrade(data.timestamp, data.close)
+                startTrade(data.timestamp, data.close, counter)
             } else if (data.action === "Sell") {
                 appendAction(data.action, data.close, data.probability)
-                finishTrade(data.close)
+                finishTrade(data.close, counter)
             }
         } else if (data.type === "report") {
             serverStatus(data)
         } else if (data.type === "ohlc") {
-            dataBuffer.push({
-                x: counter,
-                y: [
-                    data.open,
-                    data.high,
-                    data.low,
-                    data.close
-                ]
-            });
-            counter++;
+            addToDataBuffer(data)
             if (performanceRec.initPrice === 0 && started) {
                 performanceRec.initPrice = data.close
             } else if (started) {
                 updateBuyAndHold(data.close)
             }
-            if (dataBuffer.length > dataBufferSize) {
-                dataBuffer.shift()
+
+            if (currTradeTimeStamp) {
+                const trade = tradeBuffer[currTradeTimeStamp]
+                addStripeLines(trade.start, counter, data.close / trade.entry)
             }
             
             if (data.type !== "report") {
                 saveCache()
             }
 
+            if (session.record) {
+                captureScreenshot()
+            }
             chart.render()
         }
-    };
+    }
     
     client_ws.onclose = function(event) {
         console.error('WebSocket closed:', event);
@@ -113,33 +204,108 @@ function initClientWebSocket() {
     };
 }
 
+function formatTimestamp(timestamp) {
+    const date = new Date(timestamp * 1000); // Convert timestamp to milliseconds
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function addToDataBuffer(data) {
+    dataBuffer.push({
+        x: counter,
+        y: [
+            data.open,
+            data.high,
+            data.low,
+            data.close
+        ]
+    })
+
+    timeBuffers[counter] = formatTimestamp(data.timestamp)
+
+    counter++
+
+    if (dataBuffer.length > dataBufferSize) {
+        dataBuffer.shift()
+    }
+}
+
+function reset() {
+    clearCache()
+    client_ws          = null
+    dataBuffer         = []
+    tradeBuffer        = {}
+    currTradeTimeStamp = null
+    performanceRec     = {
+        initPrice:  0,
+        totalGain:  1,
+        buyAndHold: 1
+    }
+
+    session     = {}
+    timeBuffers = {}
+    tradePoints = []
+
+    started = false
+    counter = 0
+    window.location.reload()
+}
+
+function clearCache() {
+    localStorage.clear()
+}
+
 function saveCache() {
     const cache = {
-        dataBuffer: dataBuffer,
-        tradeBuffer: tradeBuffer,
+        dataBuffer:         dataBuffer,
+        tradeBuffer:        tradeBuffer,
         currTradeTimeStamp: currTradeTimeStamp,
-        performanceRec: performanceRec,
-        started: started,
-        counter: counter,
-        actionsHTML: document.getElementById('actions-buffer').innerHTML,
-        tradesHTML: document.getElementById('logs').innerHTML
+        performanceRec:     performanceRec,
+        started:            started,
+        counter:            counter,
+        session:            session,
+        timeBuffers:        timeBuffers,
+        tradePoints:        tradePoints,
+        actionsHTML:        document.getElementById('actions-buffer').innerHTML,
+        tradesHTML:         document.getElementById('logs').innerHTML
     }
-    sessionStorage.setItem('cache', JSON.stringify(cache));
+    localStorage.setItem('cache', JSON.stringify(cache));
 }
 
 function loadCache() {
-    const data = sessionStorage.getItem('cache')
+    const data = localStorage.getItem('cache')
     if (!data) {
         return
     }
-    const cache = JSON.parse(sessionStorage.getItem('cache'));
+    const cache = JSON.parse(localStorage.getItem('cache'));
 
-    dataBuffer = cache.dataBuffer
-    tradeBuffer = cache.tradeBuffer
+    dataBuffer         = cache.dataBuffer
+    tradeBuffer        = cache.tradeBuffer
     currTradeTimeStamp = cache.currTradeTimeStamp
-    performanceRec = cache.performanceRec
-    started = cache.started
-    counter = cache.counter
+    performanceRec     = cache.performanceRec
+    started            = cache.started
+    counter            = cache.counter
+    session            = cache.session
+    tradePoints        = cache.tradePoints
+    timeBuffers        = cache.timeBuffers
+
+    initChart()
+
+    if (performanceRec.totalGain !== 1) {
+        const item       = document.getElementById('total-gain')
+        const percent    = (performanceRec.totalGain-1) * 100
+        item.innerHTML   = `${performanceRec.totalGain > 1 ? '+' : ''}${(percent).toFixed(2)}%`
+        item.style.color = performanceRec.totalGain > 1 ? 'green' : 'red'
+    }
+
     document.getElementById('actions-buffer').innerHTML = cache.actionsHTML
     document.getElementById('logs').innerHTML = cache.tradesHTML
 }
@@ -187,20 +353,25 @@ function serverStatus(status) {
     trainingStatus.innerHTML = trainingStatusScript
 }
 
-function startTrade(timestamp, close) {
+function startTrade(timestamp, close, idx) {
+    addVerticalDashedLine(idx, "green", 1, "buy")
     currTradeTimeStamp = timestamp
     tradeBuffer[timestamp] = {
         timestamp: timestamp,
+        start:     counter,
         entry:     close,
         exit:      0.0
     }
 }
 
-function finishTrade(close) {
+function finishTrade(close, idx) {
+    addVerticalDashedLine(idx, "red", 1, "sell")
     tradeBuffer[currTradeTimeStamp].exit = close
+    tradeBuffer[currTradeTimeStamp].end = counter
     const trade = tradeBuffer[currTradeTimeStamp]
     appendTrade(trade)
-    updateTotalGain(trade)
+    addStripeLines(trade.start, trade.end, trade.exit / trade.entry)
+    updateTotalGain(trade, true)
     currTradeTimeStamp = null
 }
 
@@ -209,9 +380,9 @@ function updateTotalGain(trade) {
     const outcome = trade.exit / trade.entry
     performanceRec.totalGain *= outcome
 
-    const percent  = (performanceRec.totalGain-1) * 100
-    item.innerHTML = `${performanceRec.totalGain > 1 ? '+' : ''}${(percent).toFixed(2)}%`
-    item.style.color     = performanceRec.totalGain > 1 ? 'green' : 'red'
+    const percent    = (performanceRec.totalGain-1) * 100
+    item.innerHTML   = `${performanceRec.totalGain > 1 ? '+' : ''}${(percent).toFixed(2)}%`
+    item.style.color = performanceRec.totalGain > 1 ? 'green' : 'red'
 }
 
 function updateBuyAndHold(close) {
@@ -221,9 +392,9 @@ function updateBuyAndHold(close) {
     const item = document.getElementById('buy-and-hold')
     performanceRec.buyAndHold = close / performanceRec.initPrice
     
-    const percent  = (performanceRec.buyAndHold-1) * 100
-    item.innerHTML = `${performanceRec.buyAndHold > 1 ? '+' : ''}${(percent).toFixed(2)}%`
-    item.style.color     = performanceRec.buyAndHold > 1 ? 'green' : 'red'
+    const percent    = (performanceRec.buyAndHold-1) * 100
+    item.innerHTML   = `${performanceRec.buyAndHold > 1 ? '+' : ''}${(percent).toFixed(2)}%`
+    item.style.color = performanceRec.buyAndHold > 1 ? 'green' : 'red'
 }
 
 function appendAction(action, close, probability) {
@@ -249,11 +420,14 @@ function appendAction(action, close, probability) {
         </div>
     </div>
     `
+    listItem.classList.add('fade-in');
     buffer.insertBefore(listItem, buffer.firstChild)
 
     if (buffer.length > actionBufferSize) {
         buffer.removeChild(buffer.lastChild)
     }
+    listItem.offsetHeight; 
+    listItem.classList.add('fade-in-visible');
 }
 
 function appendTrade(trade) {
@@ -286,12 +460,14 @@ function appendTrade(trade) {
         </div>
     </div>
     `
-
+    listItem.classList.add('fade-in');
     buffer.insertBefore(listItem, buffer.firstChild)
 
     if (buffer.length > tradeBufferSize) {
         buffer.removeChild(buffer.lastChild)
     }
+    listItem.offsetHeight; 
+    listItem.classList.add('fade-in-visible');
 }
 
 function getCurrentTimestamp() {

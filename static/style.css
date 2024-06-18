@@ -97,9 +97,20 @@ html, body {
 }
 
 #chart-holder {
+    display: flex;
     height: 100%;
     width: 100%;
+    align-items: center;
+    justify-content: center;
     position: relative;
+    padding: 10px;
+    box-sizing: border-box;
+    background-color: white;
+}
+
+#chart-container {
+    width: 100%;
+    height: 100%;
 }
 
 #right-holder {
@@ -255,6 +266,12 @@ html, body {
     color: rgb(54, 54, 54);
 }
 
+.win-tag,
+.loss-tag
+{
+    width: 40%;
+}
+
 .close-price,
 .certainty 
 {
@@ -372,4 +389,13 @@ html, body {
     justify-content: center;
     gap: 5px;
     margin-bottom: 10px;
+}
+
+.fade-in {
+    opacity: 0;
+    transition: opacity 0.5s ease-in;
+}
+
+.fade-in-visible {
+    opacity: 1;
 }

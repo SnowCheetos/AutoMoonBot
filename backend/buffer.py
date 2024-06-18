@@ -6,7 +6,7 @@ import yfinance as yf
 from typing import Dict, List, Optional
 from collections import deque
 
-from reinforce.utils import *
+from reinforce.utils import Descriptors
 
 
 class DataBuffer:
@@ -48,12 +48,7 @@ class DataBuffer:
             self._cursor.execute("SELECT COUNT(*) FROM data")
             self._rows = self._cursor.fetchone()[0]
 
-        self._feature_funcs = {
-            "sma": compute_sma,
-            "ema": compute_ema,
-            "rsi": compute_rsi,
-            "sto": compute_stochastic_np
-        }
+        self._feature_funcs = Descriptors()
         self._fill_queue()
 
     def reset(self) -> None:
@@ -65,6 +60,13 @@ class DataBuffer:
         self._counter = self._queue_size + 2
         self._queue   = deque(maxlen=self._queue_size)
         self._fill_queue()
+
+    @property
+    def coef_of_var(self) -> float:
+        data  = np.asarray(list(self._queue))
+        close = data[:, 4]
+        cov   = self._feature_funcs["cov"](close, len(self._queue))
+        return cov[0]
 
     @property
     def done(self) -> bool:
@@ -91,7 +93,7 @@ class DataBuffer:
                 period=self._period,
                 interval=self._interval)
         else:
-            while self._counter < self._queue_size:
+            while self._counter < self._queue_size*2+2:
                 self.update_queue(False)
             return
 
@@ -136,7 +138,7 @@ class DataBuffer:
                 interval=self._interval)
         
         else:
-            self.update_queue(False)
+            # self.update_queue(False)
             if self._cursor:
                 item = self._queue[-1]
                 return {

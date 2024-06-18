@@ -4,3 +4,5 @@ torch
 pandas
 yfinance
 fastapi[standard]
+aiofiles
+pillow

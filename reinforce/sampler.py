@@ -4,7 +4,7 @@ import numpy as np
 from collections import deque
 from typing import Tuple, Dict, List
 
-from reinforce.utils import *
+from reinforce.utils import Descriptors
 
 
 class DataSampler:
@@ -31,24 +31,19 @@ class DataSampler:
 
         if max_training_data is not None:
             if max_training_data < self._rows:
-                self._counter = self._rows - max_training_data - 2
+                self._counter = max(0, max_access - max_training_data)
 
         self._max_access        = max_access
         self._max_training_data = max_training_data
 
-        self._feature_funcs = {
-            "sma": compute_sma,
-            "ema": compute_ema,
-            "rsi": compute_rsi,
-            "sto": compute_stochastic_np
-        }
+        self._feature_funcs = Descriptors()
 
     @property
-    def counter(self):
+    def counter(self) -> int:
         return self._counter
 
     @property 
-    def max_access(self):
+    def max_access(self) -> int:
         return self._max_access
     
     @max_access.setter
@@ -59,10 +54,18 @@ class DataSampler:
             m = self._queue_size+2
         self._max_access = m
 
+    @property
+    def coef_of_var(self) -> float:
+        data  = np.asarray(list(self._queue))
+        close = data[:, 4]
+        cov   = self._feature_funcs["cov"](close, len(self._queue))
+        return cov[0]
+
     def reset(self) -> None:
         self._queue = deque(maxlen=self._queue_size)
-        if self._max_training_data < self._rows:
-            self._counter = self._rows - self._max_training_data - 2
+        if self._max_training_data is not None:
+            if self._max_training_data < self._rows:
+                self._counter = max(0, self._max_access - self._max_training_data)
         else:
             self._counter = 0
 

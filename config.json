@@ -1,23 +1,29 @@
 {
     "ticker": "SPY",
-    "period": "5d",
-    "interval": "1s",
-    "queue_size": 100,
-    "state_dim": 40,
+    "period": "2y",
+    "interval": "1h",
+    "backtest_interval": "1s",
+    "queue_size": 200,
+    "state_dim": 70,
     "action_dim": 3,
     "embedding_dim": 8,
-    "inaction_cost": -10,
-    "action_cost": 0,
+    "inaction_cost": 5,
+    "action_cost": 0.005,
     "device": "cpu",
     "return_thresh": 0.9,
+    "sharpe_cutoff": 100,
+    "record_frames": true,
+    "frames_dir": "logs/frames",
     "feature_params": {
-        "sma": [8, 10, 14, 19, 26, 35, 47, 64],
-        "ema": [8, 10, 14, 19, 26, 35, 47, 64],
-        "rsi": [4, 5, 8, 13, 19, 28, 43, 64],
+        "nrm": [4, 8, 10, 14, 19, 26, 35, 47, 64, 128],
+        "zsc": [4, 8, 10, 14, 19, 26, 35, 47, 64, 128],
+        "sma": [4, 8, 10, 14, 19, 26, 35, 47, 64, 128],
+        "ema": [4, 8, 10, 14, 19, 26, 35, 47, 64, 128],
+        "rsi": [2, 4, 5, 8, 14, 19, 28, 43, 64, 128],
         "sto": {
-            "window": [8, 16, 31, 64, 8, 16, 31, 64],
-            "k": [3, 4, 5, 6, 7, 8, 9, 11],
-            "d": [3, 4, 5, 6, 7, 8, 9, 11]
+            "window": [8, 16, 31, 64, 128, 8, 16, 31, 64, 128],
+            "k": [3, 3, 4, 4, 5, 5, 6, 6, 7, 7],
+            "d": [3, 3, 4, 4, 5, 5, 6, 6, 7, 7]
         }
     },
     "db_path": "data/example.db",
@@ -27,12 +33,16 @@
     "live_data": false,
     "training_params": {
         "episodes": 100,
-        "learning_rate":0.001,
+        "learning_rate":0.0005,
         "momentum": 0.9,
+        "weight_decay": 0.9,
         "max_grad_norm": 1.0,
-        "portfolio_size": 10
+        "portfolio_size": 15
     },
-    "retrain_freq": 50,
+    "retrain_freq": 25,
     "inference_method": "prob",
-    "max_training_data": 5000
+    "max_training_data": 1000,
+    "alpha": 1.0,
+    "beta": 0.4,
+    "gamma": 0.1
 }
