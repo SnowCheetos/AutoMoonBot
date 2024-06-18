@@ -4,7 +4,7 @@ import numpy as np
 from collections import deque
 from typing import Tuple, Dict, List
 
-from reinforce.utils import *
+from reinforce.utils import Descriptors
 
 
 class DataSampler:
@@ -36,12 +36,7 @@ class DataSampler:
         self._max_access        = max_access
         self._max_training_data = max_training_data
 
-        self._feature_funcs = {
-            "sma": compute_sma,
-            "ema": compute_ema,
-            "rsi": compute_rsi,
-            "sto": compute_stochastic_np
-        }
+        self._feature_funcs = Descriptors()
 
     @property
     def counter(self):
