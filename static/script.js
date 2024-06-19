@@ -128,7 +128,7 @@ function addStripeLines(start, end, gain) {
         if (trade.doubled == 0) {
             existingStripLine.endValue = end;
             existingStripLine.color = gain > 1 ? "#ECFFEE" : "#FFECEC",
-            existingStripLine.label = gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`;
+            existingStripLine.label = gain > 1 ? `↑${pctGain.toFixed(2)}%` : `↓${Math.abs(pctGain).toFixed(2)}%`;
             existingStripLine.labelFontColor = gain > 1 ? "#6FFF5B" : "#FF5B5B";
         } else {
             if (!existingDoubledStripLine) {
@@ -137,7 +137,7 @@ function addStripeLines(start, end, gain) {
                     startValue: trade.doubled,
                     endValue: end,
                     color: gain > 1 ? "#C5FFC4" : "#FFC4C4",
-                    label: gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`,
+                    label: gain > 1 ? `↑${pctGain.toFixed(2)}%` : `↓${Math.abs(pctGain).toFixed(2)}%`,
                     labelAlign: "center",
                     labelFontColor: "black",
                     labelPlacement: "outside",
@@ -147,7 +147,7 @@ function addStripeLines(start, end, gain) {
             } else {
                 existingDoubledStripLine.endValue = end;
                 existingDoubledStripLine.color = gain > 1 ? "#C5FFC4" : "#FFC4C4",
-                existingDoubledStripLine.label = gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`;
+                existingDoubledStripLine.label = gain > 1 ? `↑${pctGain.toFixed(2)}%` : `↓${Math.abs(pctGain).toFixed(2)}%`;
                 existingDoubledStripLine.labelFontColor = gain > 1 ? "green" : "red";
             }
         }
@@ -342,7 +342,7 @@ function loadCache() {
     if (performanceRec.totalGain !== 1) {
         const item       = document.getElementById('total-gain')
         const percent    = (performanceRec.totalGain-1) * 100
-        item.innerHTML   = `${performanceRec.totalGain > 1 ? '+' : ''}${(percent).toFixed(2)}%`
+        item.innerHTML   = `${performanceRec.totalGain > 1 ? '↑' : '↓'}${(Math.abs(percent)).toFixed(2)}%`
         item.style.color = performanceRec.totalGain > 1 ? 'green' : 'red'
     }
 
@@ -423,7 +423,7 @@ function updateTotalGain(trade) {
     performanceRec.totalGain *= outcome
 
     const percent    = (performanceRec.totalGain-1) * 100
-    item.innerHTML   = `${performanceRec.totalGain > 1 ? '+' : ''}${(percent).toFixed(2)}%`
+    item.innerHTML   = `${performanceRec.totalGain > 1 ? '↑' : '↓'}${(Math.abs(percent)).toFixed(2)}%`
     item.style.color = performanceRec.totalGain > 1 ? 'green' : 'red'
 }
 
@@ -435,7 +435,7 @@ function updateBuyAndHold(close) {
     performanceRec.buyAndHold = close / performanceRec.initPrice
     
     const percent    = (performanceRec.buyAndHold-1) * 100
-    item.innerHTML   = `${performanceRec.buyAndHold > 1 ? '+' : ''}${(percent).toFixed(2)}%`
+    item.innerHTML   = `${performanceRec.buyAndHold > 1 ? '↑' : '↓'}${(Math.abs(percent)).toFixed(2)}%`
     item.style.color = performanceRec.buyAndHold > 1 ? 'green' : 'red'
 }
 
@@ -483,12 +483,12 @@ function appendTrade(trade) {
     if (outcome > 0) {
         tag = `
         <div class="win-tag">
-            +${(outcome * 100).toFixed(2)}%
+            ↑${(outcome * 100).toFixed(2)}%
         </div>`
     } else {
         tag = `
         <div class="loss-tag">
-            ${(outcome * 100).toFixed(2)}%
+            ↓${(Math.abs(outcome) * 100).toFixed(2)}%
         </div>`
     }
 
