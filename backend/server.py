@@ -38,7 +38,8 @@ class Server:
             full_port:         bool=False,
             gamma:             float=0.1,
             alpha:             float=1.5,
-            beta:              float | None=0.5,
+            beta:              float=0.5,
+            zeta:              float=0.5,
             inference_method:  str="prob",
             checkpoint_path:   str="checkpoint",
             logger:            Optional[logging.Logger] = None,
@@ -97,7 +98,8 @@ class Server:
             feature_params    = feature_params,
             alpha             = alpha,
             beta              = beta,
-            gamma             = gamma)
+            gamma             = gamma,
+            zeta              = zeta)
 
         self._manager   = TradeManager(
             cov         = self._buffer.coef_of_var, 
@@ -124,7 +126,7 @@ class Server:
         self._gamma            = gamma
         self._epsilon          = 0.9
         self._epsilon_decay    = 0.9
-        self._data_queue       = deque(maxlen=10)
+        self._data_queue       = deque(maxlen=25)
 
     def __del__(self):
         self.join_timer_thread()
@@ -234,7 +236,6 @@ class Server:
                     portfolio_size=self._training_params["portfolio_size"])
                 self._train_counter = self._retrain_freq
 
-            time.sleep(interval)
             self._buffer.update_queue(False)
             self._logger.info("running scheduled inference")
             if self._ready:
@@ -242,6 +243,7 @@ class Server:
             else:
                 self._logger.warning("model not ready, not running inference")
             self._train_counter -= 1
+            time.sleep(interval)
         self._logger.warning("timer loop terminated")
 
     def start_timer(self, interval: int):
@@ -422,7 +424,7 @@ class Server:
             self._risk_free_rate = price / self._buffer.queue["data"][0]["close"]
             # Validate buy
             if action == Action.Buy:
-                actual_action = self._manager.try_buy(price, self._buffer.coef_of_var)
+                actual_action = self._manager.try_buy(price, self._buffer.coef_of_var, prob)
             
             elif action == Action.Sell:
                 gain = self._manager.try_sell(price, self._buffer.coef_of_var)

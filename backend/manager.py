@@ -58,7 +58,7 @@ class TradeManager:
     def log_trade(self):
         self._trade_hist.append(self._trade.data)
 
-    def try_buy(self, price: float, cov: float) -> Action:
+    def try_buy(self, price: float, cov: float, amount: float | None=None) -> Action:
         self._trade.risk = cov
         if self._trade.opened:
             if self.partial and not self._full_port:
@@ -70,7 +70,7 @@ class TradeManager:
                     return Action.Double
         else:
             # new trade
-            success = self._trade.open(price)
+            success = self._trade.open(price, amount)
             if success: 
                 self._position = Position.Partial
                 self._trade.hold()
