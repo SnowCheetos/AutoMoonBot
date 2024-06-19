@@ -1,13 +1,14 @@
 import pytest
 import numpy as np
 
-from reinforce.utils import *
+from utils.descriptors import Descriptors, compute_sharpe_ratio
 
 data_rows = 65
 data_cols = 7
 close_col = 4
 high_col  = 2
 low_col   = 3
+des       = Descriptors()
 
 @pytest.fixture
 def data():
@@ -26,38 +27,38 @@ def test_sharpe():
 
 def test_sma(data):
     close = data[:, close_col]
-    sma = compute_sma(close)
+    sma = des.compute_sma(close)
     assert len(sma) == data_rows, "SMA array returned with the wrong size"
 
-    sma = compute_sma(close, data_rows+1)
+    sma = des.compute_sma(close, data_rows+1)
     assert sma is None, "SMA should have returned None"
 
 def test_ema(data):
     close = data[:, close_col]
-    ema = compute_ema(close)
+    ema = des.compute_ema(close)
     assert len(ema) == data_rows, "EMA array returned with the wrong size"
 
-    ema = compute_ema(close, data_rows+1)
+    ema = des.compute_ema(close, data_rows+1)
     assert ema is None, "EMA should have returned None"
 
 def test_rsi(data):
     close = data[:, close_col]
-    rsi = compute_rsi(close)
+    rsi = des.compute_rsi(close)
     assert len(rsi) == data_rows, "RSI array returned with the wrong size"
 
-    rsi = compute_rsi(close, data_rows+1)
+    rsi = des.compute_rsi(close, data_rows+1)
     assert rsi is None, "RSI should have returned None"
 
 def test_stochastic(data):
     close, high, low = data[:, close_col], data[:, high_col], data[:, low_col]
-    k, d = compute_stochastic_np(close, high, low)
+    k, d = des.compute_stochastic_np(close, high, low)
     assert len(k) == data_rows, "Stochastic K array returned with the wrong size"
     assert len(d) == data_rows, "Stochastic D array returned with the wrong size"
 
-    k, d = compute_stochastic_np(close, high, low, window=data_rows+1)
+    k, d = des.compute_stochastic_np(close, high, low, window=data_rows+1)
     assert k is None, "Stochastic K should have returned None"
     assert d is None, "Stochastic D should have returned None"
 
-    k, d = compute_stochastic_np(close, high[1:], low[2:])
+    k, d = des.compute_stochastic_np(close, high[1:], low[2:])
     assert k is None, "Stochastic K should have returned None"
     assert d is None, "Stochastic D should have returned None"

@@ -232,7 +232,8 @@ html, body {
 }
 
 .win-tag,
-.buy-tag
+.buy-tag,
+.double-tag
 {
     height: 100%;
     width: 30%;
@@ -242,6 +243,10 @@ html, body {
     justify-content: center;
     background-color: greenyellow;
     border-radius: 3px;
+}
+
+.double-tag {
+    background-color: rgb(246, 174, 253);
 }
 
 .loss-tag,
@@ -259,6 +264,7 @@ html, body {
 
 .buy-tag,
 .sell-tag,
+.double-tag,
 .win-tag,
 .loss-tag
 {

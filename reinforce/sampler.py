@@ -4,7 +4,7 @@ import numpy as np
 from collections import deque
 from typing import Tuple, Dict, List
 
-from reinforce.utils import Descriptors
+from utils.descriptors import Descriptors
 
 
 class DataSampler:
@@ -36,7 +36,7 @@ class DataSampler:
         self._max_access        = max_access
         self._max_training_data = max_training_data
 
-        self._feature_funcs = Descriptors()
+        self._feature_funcs = Descriptors(feature_params)
 
     @property
     def counter(self) -> int:
@@ -89,29 +89,4 @@ class DataSampler:
 
     def _construct_state(self) -> np.ndarray:
         data = np.asarray(list(self._queue))
-        high, low, close = data[:, 2], data[:, 3], data[:, 4]
-
-        features = []
-        for k in list(self._feature_params.keys()):
-            func = self._feature_funcs[k]
-            if k == "sto":
-                params = self._feature_params[k]
-                windows, ks, ds = params["window"], params["k"], params["d"]
-                for i in range(len(windows)):
-                    _k, _d = func(close, high, low, windows[i], ks[i], ds[i])
-                    if len(_k) > 0 and len(_d) > 0:
-                        features += [_k[-1], _d[-1]]
-                    else:
-                        return np.array([])
-            else:
-                for p in self._feature_params[k]:
-                    f = func(close, p)
-                    if len(f) > 0: 
-                        features += [f[-1]]
-                    else:
-                        return np.array([])
-
-        if len(features) == 0: 
-            return np.array([])
-        
-        return np.asarray(features)[None, :]
+        return self._feature_funcs.compute(data)
