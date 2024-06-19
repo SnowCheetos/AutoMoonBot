@@ -90,7 +90,7 @@ function captureScreenshot() {
     })
 }
 
-function addVerticalDashedLine(index, color = "red", thickness = 2, label = "") {
+function addVerticalDashedLine(index, color = "red", thickness = 2) {
     tradePoints.push({
         value: index,
         lineDashType: "dash",
@@ -103,29 +103,57 @@ function addVerticalDashedLine(index, color = "red", thickness = 2, label = "") 
 function addStripeLines(start, end, gain) {
     const existingStripLine = tradePoints.find(
         stripLine => stripLine.name === currTradeTimeStamp
-    )
+    );
+    const existingDoubledStripLine = tradePoints.find(
+        stripLine => stripLine.name === currTradeTimeStamp + "_d"
+    );
 
-    const pctGain = (gain-1) * 100
+    const pctGain = (gain - 1) * 100;
+
     if (!existingStripLine) {
         tradePoints.push({
-            name                 : currTradeTimeStamp,
-            startValue           : start,
-            endValue             : end,
-            color                : gain > 1 ? "#ECFFEE" : "#FFECEC",
-            label                : gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`,
-            labelAlign           : "center",
-            labelFontColor       : "black",
-            labelPlacement       : "outside",
-            labelBackgroundColor : "white",
-            labelFontSize        : 12
-        });
-        chart.render();
+            name: currTradeTimeStamp,
+            startValue: start,
+            endValue: end,
+            color: gain > 1 ? "#ECFFEE" : "#FFECEC",
+            label: gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`,
+            labelAlign: "center",
+            labelFontColor: "black",
+            labelPlacement: "outside",
+            labelBackgroundColor: "white",
+            labelFontSize: 12
+        })
     } else {
-        existingStripLine.endValue       = end
-        existingStripLine.color          = gain > 1 ? "#ECFFEE" : "#FFECEC",
-        existingStripLine.label          = gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`
-        existingStripLine.labelFontColor = gain > 1 ? "green" : "red"
+        const trade = tradeBuffer[currTradeTimeStamp]
+        if (trade.doubled == 0) {
+            existingStripLine.endValue = end;
+            existingStripLine.color = gain > 1 ? "#ECFFEE" : "#FFECEC",
+            existingStripLine.label = gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`;
+            existingStripLine.labelFontColor = gain > 1 ? "#6FFF5B" : "#FF5B5B";
+        } else {
+            if (!existingDoubledStripLine) {
+                tradePoints.push({
+                    name: currTradeTimeStamp + "_d",
+                    startValue: trade.doubled,
+                    endValue: end,
+                    color: gain > 1 ? "#C5FFC4" : "#FFC4C4",
+                    label: gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`,
+                    labelAlign: "center",
+                    labelFontColor: "black",
+                    labelPlacement: "outside",
+                    labelBackgroundColor: "white",
+                    labelFontSize: 12
+                })
+            } else {
+                existingDoubledStripLine.endValue = end;
+                existingDoubledStripLine.color = gain > 1 ? "#C5FFC4" : "#FFC4C4",
+                existingDoubledStripLine.label = gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`;
+                existingDoubledStripLine.labelFontColor = gain > 1 ? "green" : "red";
+            }
+        }
     }
+
+    chart.render()
 }
 
 function initSession() {
@@ -166,15 +194,17 @@ function initClientWebSocket() {
                         started = true
                     }
                     appendAction(element.action, element.close, element.probability)
-                    startTrade(element.timestamp, element.close, counter-1, element.amount)
+                    startTrade(element.timestamp, element.close, counter, element.amount)
                 } else if (element.action === "Sell") {
                     appendAction(element.action, element.close, element.probability)
-                    finishTrade(element.close, counter-1)
+                    finishTrade(element.close, counter)
                 } else if (element.action === "Double") {
                     appendAction(element.action, element.close, element.probability)
+                    addVerticalDashedLine(counter, "purple", 1)
                     const trade = tradeBuffer[currTradeTimeStamp]
-                    tradeBuffer[currTradeTimeStamp].entry  = 0.5 * (element.close + trade.entry)
-                    tradeBuffer[currTradeTimeStamp].amount = 1.0
+                    trade.doubled = counter
+                    trade.entry   = 0.5 * (element.close + trade.entry)
+                    trade.amount *= 2
                 }
             } else if (element.type === "report") {
                 serverStatus(element)
@@ -188,7 +218,7 @@ function initClientWebSocket() {
                 
                 if (currTradeTimeStamp) {
                     const trade = tradeBuffer[currTradeTimeStamp]
-                    addStripeLines(trade.start-1, element.nounce-1, element.close / trade.entry)
+                    addStripeLines(trade.start, element.nounce, element.close / trade.entry)
                 }
                 
                 if (data.type !== "report") {
@@ -364,19 +394,20 @@ function serverStatus(status) {
 }
 
 function startTrade(timestamp, close, idx, amount) {
-    addVerticalDashedLine(idx, "green", 1, "buy")
+    addVerticalDashedLine(idx, "green", 1)
     currTradeTimeStamp = timestamp
     tradeBuffer[timestamp] = {
         timestamp: timestamp,
         start:     counter,
         entry:     close,
         exit:      0.0,
-        amount:    amount
+        amount:    amount,
+        doubled:   0
     }
 }
 
 function finishTrade(close, idx) {
-    addVerticalDashedLine(idx, "red", 1, "sell")
+    addVerticalDashedLine(idx, "red", 1)
     tradeBuffer[currTradeTimeStamp].exit = close
     tradeBuffer[currTradeTimeStamp].end = idx
     const trade = tradeBuffer[currTradeTimeStamp]
@@ -467,7 +498,7 @@ function appendTrade(trade) {
         <div class="trade-card">
             ${tag}
             <div class="trade-info">
-                <div>Bought at: $${(trade.entry).toFixed(2)}</div>
+                <div>Avg cost: $${(trade.entry).toFixed(2)}</div>
                 <div>Sold at:   $${(trade.exit).toFixed(2)}</div>
             </div>
         </div>

@@ -68,6 +68,7 @@ server = Server(
     alpha=config["alpha"],
     beta=config["beta"],
     gamma=config["gamma"],
+    zeta=config["zeta"]
 )
 
 async def model_data_update_loop(ws: WebSocket, s: Server):

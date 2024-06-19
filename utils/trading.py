@@ -169,14 +169,18 @@ class Trade:
     def risk(self, cov: float):
         self.status.risk = self._gamma * cov
 
-    def open(self, price: float) -> bool:
+    def open(self, price: float, amount: float | None=None) -> bool:
         """
         Tries to open the trade, amount as portfolio percentage from 0 to 1
         """
+        if not amount: 
+            amount = 0.5
+        else:
+            amount = min(0.5, amount)
         if self.status.confirm_buy(price):
             self._open   = True
             self._entry  = price
-            self._amount = 0.5 if not self._full_port else 1.0
+            self._amount = amount if not self._full_port else 1.0
             return True
         
         self.signal             = 0
@@ -190,7 +194,7 @@ class Trade:
         """
         if self.status.confirm_buy(price) and not self._full_port:
             self._entry  = 0.5 * (self._entry + price)
-            self._amount = 1
+            self._amount *= 2
             return True
         
         if not self._full_port:

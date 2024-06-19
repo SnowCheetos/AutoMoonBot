@@ -28,10 +28,11 @@ class TradeEnv(gym.Env):
             db_path:           str,
             return_thresh:     float,
             sharpe_cutoff:     int=30,
-            gamma:             float=0.15,
             alpha:             float=1.5,
-            feature_params:    Dict[str, List[int] | Dict[str, List[int]]] | None=None,
             beta:              float | None=0.5,
+            gamma:             float=0.15,
+            zeta:              float=0.5,
+            feature_params:    Dict[str, List[int] | Dict[str, List[int]]] | None=None,
             logger:            Optional[logging.Logger]=None,
             testing:           bool=False,
             max_training_data: int | None=None) -> None:
@@ -73,6 +74,7 @@ class TradeEnv(gym.Env):
         self._alpha          = alpha
         self._beta           = beta
         self._gamma          = gamma
+        self._zeta           = zeta
         self._portfolio      = 1.0
         self._returns        = []
         self._log_probs      = []
@@ -153,7 +155,11 @@ class TradeEnv(gym.Env):
         self._risk_free_rate = price / self._init_close
         # Validate buy
         if Action(action) == Action.Buy:
-            _ = self._manager.try_buy(price, self.sampler.coef_of_var)
+            a = self._manager.try_buy(price, self.sampler.coef_of_var)
+            if a == Action.Double:
+                reward -= 2 * self._action_cost
+            else:
+                reward -= self._action_cost
         
         elif Action(action) == Action.Sell:
             gain = self._manager.try_sell(price, self.sampler.coef_of_var)
@@ -167,7 +173,7 @@ class TradeEnv(gym.Env):
                     returns        = self._manager.returns[-self._sharpe_cutoff:], 
                     risk_free_rate = self._risk_free_rate * (1 - self._action_cost))
                 
-                reward += sharpe + gain
+                reward += (1 - self._zeta) * sharpe + self._zeta * gain
 
         elif Action(action) == Action.Hold:
             if self._manager.asset or self._manager.partial:
