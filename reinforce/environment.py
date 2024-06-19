@@ -1,4 +1,3 @@
-import copy
 import logging
 import numpy as np
 import gymnasium as gym
@@ -11,8 +10,9 @@ from typing import Dict, List, Any, Optional
 
 from reinforce.sampler import DataSampler
 from reinforce.model import PolicyNet, select_action, compute_loss
-from utils.trading import Position, Action, Status, Signal
+from utils.trading import Position, Action, Status
 from utils.descriptors import compute_sharpe_ratio
+from backend.manager import TradeManager
 
 
 class TradeEnv(gym.Env):
@@ -60,6 +60,8 @@ class TradeEnv(gym.Env):
             output_dim     = action_dim, 
             position_dim   = len(Position), 
             embedding_dim  = embedding_dim).to(device)
+
+        self._manager = TradeManager(0, alpha, gamma, action_cost)
 
         self._status         = Status(0, alpha)
         self._device         = device
@@ -127,7 +129,12 @@ class TradeEnv(gym.Env):
         while len(state) == 0:
             _, close, state = self._sampler.sample_next()
 
-        self._status         = Status(self._sampler.coef_of_var, self._alpha) 
+        self._manager = TradeManager(
+            cov       = self.sampler.coef_of_var, 
+            alpha     = self._alpha, 
+            gamma     = self._gamma, 
+            cost      = self._action_cost)
+        
         self._position       = Position.Cash
         self._portfolio      = 1.0
         self._returns        = []
@@ -140,79 +147,52 @@ class TradeEnv(gym.Env):
         return state
 
     def step(self, action: int):
-        end, close, state = self._sampler.sample_next()
+        end, price, state = self._sampler.sample_next()
         reward, done = 0, False
 
-        self._risk_free_rate = close / self._init_close
+        self._risk_free_rate = price / self._init_close
         # Validate buy
-        if self._position == Position.Cash and Action(action) == Action.Buy:
-            if self._status.signal == Signal.Idle:
-                self._status.signal      = action
-                self._status.take_profit = close
-                self._status.stop_loss   = close
-            
-            elif self._status.signal == Signal.Buy:
-                if self._status.confirm_buy(close):
-                    self._position = Position.Asset
-                    self._entry = close
-                    self._exit = 0.0
-                    self._portfolio *= 1 - self._action_cost
-                    self._status.reset(self._gamma * self._sampler.coef_of_var)
+        if Action(action) == Action.Buy:
+            _ = self._manager.try_buy(price, self.sampler.coef_of_var)
+        
+        elif Action(action) == Action.Sell:
+            gain = self._manager.try_sell(price, self.sampler.coef_of_var)
+            if gain > 0:
+                if self._manager.portfolio < self._return_thresh:
+                    self._logger.info("portfolio threshold hit, episode done")
+                    done = True
+                
+                self._log_return  += np.log(gain)
+                sharpe = compute_sharpe_ratio(
+                    returns        = self._manager.returns[-self._sharpe_cutoff:], 
+                    risk_free_rate = self._risk_free_rate * (1 - self._action_cost))
+                
+                reward += sharpe + gain
 
-            else:
-                self._status.reset(self._gamma * self._sampler.coef_of_var)
-        
-        # Valid sell
-        elif self._position == Position.Asset and Action(action) == Action.Sell:
-            if self._status.signal == Signal.Idle:
-                self._status.signal      = action
-                self._status.take_profit = close
-                self._status.stop_loss   = close
-            
-            elif self._status.signal == Signal.Sell:
-                if self._status.confirm_sell(close):
-                    self._position = Position.Cash
-                    self._exit = close
-                    gross_return = close / self._entry
-                    net_return = gross_return * (1 - self._action_cost)
-                    self._returns.append(net_return)
-                    self._portfolio *= net_return
-                    if self._portfolio < self._return_thresh:
-                        self._logger.info("portfolio threshold hit, done")
-                        done = True
-            
-                    self._entry = 0.0
-                    reward += compute_sharpe_ratio(
-                        returns        = self._returns[-self._sharpe_cutoff:], 
-                        risk_free_rate = self._risk_free_rate * (1 - self._action_cost))
-                    
-                    self._log_return  += np.log(net_return)
-                    self._status.reset(self._gamma * self._sampler.coef_of_var)
-            
-            else:
-                self._status.reset(self._gamma * self._sampler.coef_of_var)
-        
         elif Action(action) == Action.Hold:
-            if self._position == Position.Asset:
-                potential_gain     = close / self._entry
-                reward            -= self._inaction_cost * potential_gain * (1 - self._action_cost)
+            if self._manager.asset or self._manager.partial:
+                potential_gain = self._manager.potential_gain(price)
+                reward        -= self._inaction_cost * potential_gain * (1 - self._action_cost)
             else:
-                if self._exit:
-                    reward        -= self._inaction_cost * (close / self._exit) * (1 - self._action_cost)
+                if self._manager.cash:
+                    prev_exit = self._manager.prev_exit
+                    prev_exit = prev_exit if prev_exit > 0 else price
+                    reward   -= self._inaction_cost * (price / prev_exit)
                 else:
-                    reward        -= self._inaction_cost * self._risk_free_rate * (1 - self._action_cost)
+                    reward   -= self._inaction_cost * self._risk_free_rate * (1 - self._action_cost)
 
         action, log_prob = select_action(
-            self._policy_net, 
-            state, 
-            int(self._position.value), 
-            self._device)
+            model     = self._policy_net, 
+            state     = state, 
+            potential = self._manager.potential_gain(price) - 1,
+            position  = int(self._position.value), 
+            device    = self._device)
         
         self._log_probs += [log_prob]
 
         if end: done = True
 
-        return action, reward, done, False, {"price": close}
+        return action, reward, done, False, {"price": price}
 
 def train(
         env:            TradeEnv, 
@@ -258,7 +238,7 @@ def train(
         optimizer.step()
 
         reward_history += [sum(rewards)]
-        portfolios += [env.portfolio]
+        portfolios += [env._manager.portfolio]
 
         if not buy_and_hold:
             buy_and_hold = (close["price"] / env.init_close - 1)
@@ -266,7 +246,7 @@ def train(
         env._logger.info(f"""\n
         episode {e+1}/{episodes} done
         loss:            {' ' if loss.item() > 0 else ''}{loss.item():.4f}
-        model portfolio: {'+' if env.portfolio > 1 else ''}{(env.portfolio-1) * 100:.4f}%
+        model portfolio: {'+' if env._manager.portfolio > 1 else ''}{(env._manager.portfolio-1) * 100:.4f}%
         buy and hold:    {'+' if buy_and_hold > 0 else ''}{buy_and_hold * 100:.4f}%
         """)
         env.model.eval()

@@ -17,34 +17,40 @@ class PolicyNet(nn.Module):
         super().__init__()
 
         self._embedding = nn.Embedding(position_dim, embedding_dim)
-        self._f1        = nn.Linear(input_dim + embedding_dim, 512)
+        self._f1        = nn.Linear(input_dim + embedding_dim + 1, 512)
         self._f2        = nn.Linear(512, 256)
         self._f3        = nn.Linear(256, 128)
         self._f4        = nn.Linear(128, output_dim)
         # self._dropout   = nn.Dropout(0.1)
 
-    def forward(self, x: torch.Tensor, p: torch.Tensor) -> torch.Tensor:
-        x = torch.cat((x, self._embedding(p).squeeze(1)), dim=-1)
+    def forward(self, x: torch.Tensor, p: torch.Tensor, g: torch.Tensor) -> torch.Tensor:
+        x = torch.cat((x, self._embedding(p).squeeze(1), g), dim=-1)
         x = torch.relu(self._f1(x))
         x = torch.relu(self._f2(x))
         x = torch.relu(self._f3(x))
         return torch.softmax(self._f4(x), dim=-1)
 
 def select_action(
-        model:    nn.Module, 
-        state:    np.ndarray, 
-        position: int, 
-        device:   str) -> Tuple[int, torch.Tensor]:
+        model:     nn.Module, 
+        state:     np.ndarray, 
+        potential: float,
+        position:  int, 
+        device:    str) -> Tuple[int, torch.Tensor]:
     
     probs = model(
-        torch.tensor(
+        x=torch.tensor(
             state,
             dtype=torch.float32,
             device=device),
-        torch.tensor(
+        p=torch.tensor(
             [[position]], 
             dtype=torch.long, 
-            device=device))
+            device=device),
+        g=torch.tensor(
+            [[potential]],
+            dtype=torch.float32, 
+            device=device
+        ))
 
     action = np.random.choice(probs.size(-1), p=probs.detach().cpu().numpy()[0])
     return action, torch.log(probs[0, action])
@@ -83,12 +89,13 @@ def compute_loss(
     return policy_gradient.sum()
 
 def inference(
-        model:    nn.Module,
-        state:    np.ndarray,
-        position: int,
-        device:   str="cpu",
-        method:   str="argmax",
-        min_prob: float=0.31) -> Tuple[int, float]:
+        model:     nn.Module,
+        state:     np.ndarray,
+        position:  int,
+        potential: float,
+        device:    str="cpu",
+        method:    str="argmax",
+        min_prob:  float=0.31) -> Tuple[int, float]:
     
     model.eval()
     min_prob = min(0.34, min_prob)
@@ -99,14 +106,19 @@ def inference(
 
     with torch.no_grad():
         probs = model(
-            torch.tensor(
+            x=torch.tensor(
                 state,
                 dtype=torch.float32,
                 device=device),
-            torch.tensor(
+            p=torch.tensor(
                 [[position]], 
                 dtype=torch.long, 
-                device=device))
+                device=device),
+            g=torch.tensor(
+                [[potential]],
+                dtype=torch.float32, 
+                device=device
+            ))
     
     if method == "argmax":
         action = probs.argmax(1).item()

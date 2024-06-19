@@ -102,19 +102,22 @@ function addVerticalDashedLine(index, color = "red", thickness = 2, label = "") 
 
 function addStripeLines(start, end, gain) {
     const existingStripLine = tradePoints.find(
-        stripLine => stripLine.startValue === start
+        stripLine => stripLine.name === currTradeTimeStamp
     )
 
     const pctGain = (gain-1) * 100
     if (!existingStripLine) {
         tradePoints.push({
-            startValue     : start,
-            endValue       : end,
-            color          : gain > 1 ? "#ECFFEE" : "#FFECEC",
-            label          : gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`,
-            labelAlign     : "center",
-            labelFontColor : "black",
-            labelPlacement : "outside"
+            name                 : currTradeTimeStamp,
+            startValue           : start,
+            endValue             : end,
+            color                : gain > 1 ? "#ECFFEE" : "#FFECEC",
+            label                : gain > 1 ? `+${pctGain.toFixed(2)}%` : `${pctGain.toFixed(2)}%`,
+            labelAlign           : "center",
+            labelFontColor       : "black",
+            labelPlacement       : "outside",
+            labelBackgroundColor : "white",
+            labelFontSize        : 12
         });
         chart.render();
     } else {
@@ -154,43 +157,50 @@ function initClientWebSocket() {
     
     client_ws.onmessage = function(event) {
         const data = JSON.parse(event.data);    
-        if (data.type === "new_session") {
-            reset()
-        } else if (data.type === "action") {
-            if (data.action === "Buy") {
-                if (!started) {
-                    started = true
+        data.data.forEach(element => {
+            if (element.type === "new_session") {
+                reset()
+            } else if (element.type === "action") {
+                if (element.action === "Buy") {
+                    if (!started) {
+                        started = true
+                    }
+                    appendAction(element.action, element.close, element.probability)
+                    startTrade(element.timestamp, element.close, counter-1, element.amount)
+                } else if (element.action === "Sell") {
+                    appendAction(element.action, element.close, element.probability)
+                    finishTrade(element.close, counter-1)
+                } else if (element.action === "Double") {
+                    appendAction(element.action, element.close, element.probability)
+                    const trade = tradeBuffer[currTradeTimeStamp]
+                    tradeBuffer[currTradeTimeStamp].entry  = 0.5 * (element.close + trade.entry)
+                    tradeBuffer[currTradeTimeStamp].amount = 1.0
                 }
-                appendAction(data.action, data.close, data.probability)
-                startTrade(data.timestamp, data.close, counter)
-            } else if (data.action === "Sell") {
-                appendAction(data.action, data.close, data.probability)
-                finishTrade(data.close, counter)
+            } else if (element.type === "report") {
+                serverStatus(element)
+            } else if (element.type === "ohlc") {
+                addToDataBuffer(element)
+                if (performanceRec.initPrice === 0 && started) {
+                    performanceRec.initPrice = element.close
+                } else if (started) {
+                    updateBuyAndHold(element.close)
+                }
+                
+                if (currTradeTimeStamp) {
+                    const trade = tradeBuffer[currTradeTimeStamp]
+                    addStripeLines(trade.start-1, element.nounce-1, element.close / trade.entry)
+                }
+                
+                if (data.type !== "report") {
+                    saveCache()
+                }
+    
+                if (session.record) {
+                    captureScreenshot()
+                }
+                chart.render()
             }
-        } else if (data.type === "report") {
-            serverStatus(data)
-        } else if (data.type === "ohlc") {
-            addToDataBuffer(data)
-            if (performanceRec.initPrice === 0 && started) {
-                performanceRec.initPrice = data.close
-            } else if (started) {
-                updateBuyAndHold(data.close)
-            }
-
-            if (currTradeTimeStamp) {
-                const trade = tradeBuffer[currTradeTimeStamp]
-                addStripeLines(trade.start, counter, data.close / trade.entry)
-            }
-            
-            if (data.type !== "report") {
-                saveCache()
-            }
-
-            if (session.record) {
-                captureScreenshot()
-            }
-            chart.render()
-        }
+        })
     }
     
     client_ws.onclose = function(event) {
@@ -231,7 +241,7 @@ function addToDataBuffer(data) {
 
     timeBuffers[counter] = formatTimestamp(data.timestamp)
 
-    counter++
+    counter = data.nounce
 
     if (dataBuffer.length > dataBufferSize) {
         dataBuffer.shift()
@@ -353,31 +363,32 @@ function serverStatus(status) {
     trainingStatus.innerHTML = trainingStatusScript
 }
 
-function startTrade(timestamp, close, idx) {
+function startTrade(timestamp, close, idx, amount) {
     addVerticalDashedLine(idx, "green", 1, "buy")
     currTradeTimeStamp = timestamp
     tradeBuffer[timestamp] = {
         timestamp: timestamp,
         start:     counter,
         entry:     close,
-        exit:      0.0
+        exit:      0.0,
+        amount:    amount
     }
 }
 
 function finishTrade(close, idx) {
     addVerticalDashedLine(idx, "red", 1, "sell")
     tradeBuffer[currTradeTimeStamp].exit = close
-    tradeBuffer[currTradeTimeStamp].end = counter
+    tradeBuffer[currTradeTimeStamp].end = idx
     const trade = tradeBuffer[currTradeTimeStamp]
     appendTrade(trade)
-    addStripeLines(trade.start, trade.end, trade.exit / trade.entry)
+    addStripeLines(trade.start, trade.end, (trade.exit / trade.entry - 1) * trade.amount + 1)
     updateTotalGain(trade, true)
     currTradeTimeStamp = null
 }
 
 function updateTotalGain(trade) {
     const item = document.getElementById('total-gain')
-    const outcome = trade.exit / trade.entry
+    const outcome = (trade.exit / trade.entry - 1) * trade.amount + 1
     performanceRec.totalGain *= outcome
 
     const percent    = (performanceRec.totalGain-1) * 100
@@ -406,6 +417,8 @@ function appendAction(action, close, probability) {
         tag = `<div class="buy-tag">${action}</div>`
     } else if (action === 'Sell') {
         tag = `<div class="sell-tag">${action}</div>`
+    } else if (action === 'Double') {
+        tag = `<div class="double-tag">${action}</div>`
     }
 
     listItem.innerHTML = `
