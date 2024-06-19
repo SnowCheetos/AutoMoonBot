@@ -59,6 +59,7 @@ server = Server(
     db_path=db_path if db_path else config["db_path"],
     live_data=config["live_data"],
     logger=logger,
+    full_port=config["full_port"],
     sharpe_cutoff=config["sharpe_cutoff"],
     inference_method=config["inference_method"],
     training_params=config["training_params"],
@@ -73,22 +74,17 @@ async def model_data_update_loop(ws: WebSocket, s: Server):
     while ws.client_state != WebSocketState.DISCONNECTED:
         iv = config["interval"] if config["live_data"] else bt_interval
         await asyncio.sleep(interval_map[iv])
-        action = s.consume_queue()
-        if action:
-            action["type"] = "action"
-            await ws.send_json(data=action)
-
-        data = s.tohlcv()
-        data["type"] = "ohlc"
+        data = s.consume_queue()
+        data = {"data": data}
         await ws.send_json(data=data)
 
 async def server_status_update_loop(ws: WebSocket, s: Server):
     while ws.client_state != WebSocketState.DISCONNECTED:
         if s.new_session:
             info = s.session_info
-            await ws.send_json(data=info)
+            await ws.send_json(data={"data": [info]})
         data = s.status_report()
-        await ws.send_json(data=data)
+        await ws.send_json(data={"data": [data]})
         await asyncio.sleep(1)
 
 @app.on_event("startup")
@@ -121,15 +117,15 @@ async def ws_handler(ws: WebSocket):
         for task in (model_loop, server_loop):
             if task: task.cancel()
 
-@app.get("/tohlcv/last")
-async def tohlcv_last():
-    data = server.tohlcv()
-    return JSONResponse(content=data)
+# @app.get("/tohlcv/last")
+# async def tohlcv_last():
+#     data = server.tohlcv()
+#     return JSONResponse(content=data)
 
-@app.get("/tohlcv/all")
-async def tohlcv_all():
-    data = server.fetch_buffer()
-    return JSONResponse(content=data)
+# @app.get("/tohlcv/all")
+# async def tohlcv_all():
+#     data = server.fetch_buffer()
+#     return JSONResponse(content=data)
 
 @app.get("/session")
 async def session_info():
@@ -151,46 +147,6 @@ async def save_frame(request: Request, frame_id: str):
     
     return {"success": True, "message": "Image saved successfully", "file_path": file_path}
 
-@app.get("/train")
-async def train(request: Request):
-    header = dict(request.headers)
-    keys = list(header.keys())
-
-    required_keys = [
-        "episodes",
-        "learning_rate",
-        "momentum",
-        "max_grad_norm",
-        "portfolio_size"]
-    
-    for key in required_keys:
-        if key not in keys:
-            return JSONResponse(status_code=400, content={"error": f"{key} not found in header"})
-
-    if server.busy:
-        return JSONResponse(status_code=400, content={"error": "there is another training thread running, wait for it to finish first"})
-
-    server.train_model(
-        episodes=int(header["episodes"]),
-        learning_rate=float(header["learning_rate"]),
-        momentum=float(header["momentum"]),
-        max_grad_norm=float(header["max_grad_norm"]),
-        portfolio_size=int(header["portfolio_size"])
-    )
-    return JSONResponse({"success": "training started, check server logs for more details"})
-
-@app.get("/inference")
-async def inference(request: Request):
-    header = dict(request.headers)
-    update = False
-    if "update" in list(header.keys()):
-        update = header["update"]
-
-    action = server.run_inference(bool(update))
-    if action is None:
-        return JSONResponse(status_code=400, content={"error": "inference failed, check server logs for more details"})
-    
-    return JSONResponse({"action": action.name})
 
 if __name__ == "__main__":
     uvicorn.run(app, host="localhost", port=29697)

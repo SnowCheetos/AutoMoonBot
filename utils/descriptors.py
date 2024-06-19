@@ -38,13 +38,67 @@ class Descriptors:
             "nrm": self.compute_normalized_price,
             "grd": self.compute_normalized_grad,
             "cov": self.compute_coef_of_var,
+            "cdl": self.compute_candle,
         }
 
     def __getitem__(self, key):
         return self.f.get(key)
 
-    def compute(self):
-        pass
+    def compute(
+            self,
+            data: np.ndarray) -> np.ndarray:
+        
+        open, high, low, close = data[:, 1], data[:, 2], data[:, 3], data[:, 4]
+        features = []
+        for k in list(self._config.keys()):
+            func = self.f[k]
+            if k == "sto":
+                params = self._config[k]
+                windows, ks, ds = params["window"], params["k"], params["d"]
+                for i in range(len(windows)):
+                    _k, _d = func(close, high, low, windows[i], ks[i], ds[i])
+                    if len(_k) > 0 and len(_d) > 0:
+                        features += [_k[-1], _d[-1]]
+                    else:
+                        return np.array([])
+            else:
+                for p in self._config[k]:
+                        if k == "cdl":
+                            f = func(open, high, low, close, p)
+                            if len(f) > 0: 
+                                features += f
+                            else:
+                                return np.array([])
+                        else:
+                            f = func(close, p)
+                            if len(f) > 0: 
+                                features += [f[-1]]
+                            else:
+                                return np.array([])
+
+        if len(features) == 0: 
+            return np.array([])
+        
+        return np.asarray(features)[None, :]
+
+    @staticmethod
+    def compute_candle(
+            opens:  np.ndarray,
+            highs:  np.ndarray,
+            lows:   np.ndarray,
+            closes: np.ndarray,
+            window: int=4) -> np.ndarray:
+        if len(closes) < window:
+            return np.array([])
+
+        prices = np.stack([opens, highs, lows, closes]).T[-window:]
+        open   = opens[0]
+        high   = highs.max()
+        low    = lows.min()
+        close  = closes[-1]
+        mean   = prices.mean()
+        candle = np.array([open, high, low, close])
+        return (candle / mean - 1).tolist()
 
     @staticmethod
     def compute_coef_of_var(

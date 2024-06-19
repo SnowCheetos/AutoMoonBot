@@ -12,6 +12,7 @@ from backend.buffer import DataBuffer
 from reinforce.model import PolicyNet, inference
 from reinforce.environment import TradeEnv, train
 from utils.trading import Position, Action, Status, Signal
+from backend.manager import TradeManager
 
 
 class Server:
@@ -34,6 +35,7 @@ class Server:
             db_path:           Optional[str] = None,
             live_data:         bool=False,
             sharpe_cutoff:     int=30,
+            full_port:         bool=False,
             gamma:             float=0.1,
             alpha:             float=1.5,
             beta:              float | None=0.5,
@@ -97,6 +99,14 @@ class Server:
             beta              = beta,
             gamma             = gamma)
 
+        self._manager   = TradeManager(
+            cov         = self._buffer.coef_of_var, 
+            alpha       = alpha, 
+            gamma       = gamma, 
+            cost        = action_cost, 
+            full_port   = full_port)
+
+        self._nounce           = 0
         self._beat             = 0
         self._status           = Status(gamma * self._buffer.coef_of_var, alpha)
         self._max_access_accum = 0
@@ -114,7 +124,7 @@ class Server:
         self._gamma            = gamma
         self._epsilon          = 0.9
         self._epsilon_decay    = 0.9
-        self._actions_queue    = deque(maxlen=2)
+        self._data_queue       = deque(maxlen=10)
 
     def __del__(self):
         self.join_timer_thread()
@@ -149,6 +159,25 @@ class Server:
     def inf_busy(self):
         return self._inferencing
 
+    def _append_action(self, timestamp: str, action: Action, price: float, prob: float, amount: float):
+        self._data_queue.append({
+            "type":        "action",
+            "timestamp":   timestamp,
+            "action":      action.name,
+            "close":       price,
+            "probability": prob,
+            "amount":      amount
+        })
+
+    def _append_trade(self, timestamp: str, entry: float, exit: float, amount: float):
+        self._data_queue.append({
+            "type":      "trade",
+            "timestamp": timestamp,
+            "entry":     entry,
+            "exit":      exit,
+            "amount":    amount
+        })
+
     def save_model(self, name: str) -> None:
         path = self._checkpoint_path + "/" + name
         with self._mutex:
@@ -161,17 +190,21 @@ class Server:
             self._env.model = state_dict
 
     def status_report(self) -> Dict[str, int | bool | str]:
-        return {
+        r = {
             "type":      "report",
             "training":  self._training,
             "ready":     self._ready,
             "done":      self._buffer.done
         }
+        self._data_queue.append(r)
+        return r
 
-    def consume_queue(self) -> Dict[str, int | float | str] | None:
+    def consume_queue(self) -> List[Dict[str, int | float | str]] | None:
         with self._mutex:
-            if len(self._actions_queue) > 0:
-                return self._actions_queue.popleft()
+            if len(self._data_queue) > 0:
+                d = list(self._data_queue)
+                self._data_queue.clear()
+                return d
         return None
 
     def _timer_loop(self, interval: int):
@@ -185,6 +218,11 @@ class Server:
             portfolio_size=self._training_params["portfolio_size"])
 
         while not self._terminate and not self._buffer.done:
+            ohlc = self.tohlcv()
+            ohlc["type"]   = "ohlc"
+            ohlc["nounce"] = self._nounce
+            self._nounce  += 1
+            self._data_queue.append(ohlc)
             if self._train_counter == 0:
                 self._logger.info("running scheduled training")
                 self.train_model(
@@ -356,7 +394,8 @@ class Server:
                 return
 
         state = self._buffer.fetch_state(False)
-        ohlcv = self._buffer.queue["data"][-1]
+        data  = self._buffer.queue["data"][-1]
+        price = data["close"]
         if len(state) == 0:
             self._logger.warning("no data available, not running inference")
             self._ready = False
@@ -369,112 +408,29 @@ class Server:
             
             self._inferencing = True
 
-        self._logger.info(f"running void inferencing, queue size: {len(self._actions_queue)}")
-        result, prob = inference(
-            model=self._model,
-            state=state,
-            position=int(self._position.value),
-            device=self._device,
-            method=self._inference_method)
-        action = Action(result)
-
+        result, prob  = inference(
+            model     = self._model,
+            state     = state,
+            position  = int(self._position.value),
+            potential = self._manager.potential_gain(price) - 1,
+            device    = self._device,
+            method    = self._inference_method)
+        
+        action        = Action(result)
         actual_action = Action.Hold
         with self._mutex:
-            if self._position == Position.Cash and action == Action.Buy:
-                if self._status.signal == Signal.Idle:
-                    self._status.signal      = action.value
-                    self._status.take_profit = ohlcv["close"]
-                    self._status.stop_loss   = ohlcv["close"]
-                elif self._status.signal == Signal.Buy:
-                    if self._status.confirm_buy(ohlcv["close"]):
-                        self._position = Position.Asset
-                        self._logger.debug("buy signal predicted")
-                        actual_action = Action.Buy
-                        self._status.reset(self._gamma * self._buffer.coef_of_var)
-                    else:
-                        self._status.take_profit = ohlcv["close"]
-                        self._status.stop_loss   = ohlcv["close"]
-
-            elif self._position == Position.Asset and action == Action.Sell:
-                if self._status.signal == Signal.Idle:
-                    self._status.signal      = action.value
-                    self._status.take_profit = ohlcv["close"]
-                    self._status.stop_loss   = ohlcv["close"]
-                elif self._status.signal == Signal.Sell:
-                    if self._status.confirm_sell(ohlcv["close"]):
-                        self._position = Position.Cash
-                        self._logger.debug("sell signal predicted")
-                        actual_action = Action.Sell
-                        self._status.reset(self._gamma * self._buffer.coef_of_var)
-                    else:
-                        self._status.take_profit = ohlcv["close"]
-                        self._status.stop_loss   = ohlcv["close"]
-
-            take_profit = self._status.take_profit if self._status.take_profit > 0 else None
-            stop_loss = self._status.stop_loss if self._status.stop_loss > 0 else None
-            self._actions_queue.append({
-                "timestamp":   ohlcv["timestamp"],
-                "action":      actual_action.name,
-                "close":       ohlcv["close"],
-                "take_profit": take_profit,
-                "stop_loss":   stop_loss,
-                "probability": prob
-            })
-            self._inferencing = False
-
-    def run_inference(self, update: bool=True) -> Action | None:
-        state = self._buffer.fetch_state(update)
-        ohlcv = self._buffer.queue["data"][-1]
-
-        if len(state) == 0:
-            self._logger.warning("no data available, not running inference")
-            return None
-
-        with self._mutex:
-            if not self._ready:
-                self._logger.warning("model not ready, not running inference")
-                return
-        
-        with self._mutex:
-            if self._inferencing:
-                self._logger.info(f"there is another inference thread running, wait for it to finish first")
-                return
+            self._risk_free_rate = price / self._buffer.queue["data"][0]["close"]
+            # Validate buy
+            if action == Action.Buy:
+                actual_action = self._manager.try_buy(price, self._buffer.coef_of_var)
             
-            self._inferencing = True
-        
-        self._logger.info(f"running blocking inferencing...")
-        result, _ = inference(
-            self._model,
-            state,
-            int(self._position.value),
-            self._device)
-        action = Action(result)
+            elif action == Action.Sell:
+                gain = self._manager.try_sell(price, self._buffer.coef_of_var)
+                if gain >= 0:
+                    actual_action = Action.Sell
+                    trade = self._manager.last_trade
+                    self._append_trade(data["timestamp"], trade["entry"], trade["exit"], trade["amount"])
 
-        actual_action = Action.Hold
-        with self._mutex:
-            if self._position == Position.Cash and action == Action.Buy:
-                if self._status.signal == Signal.Idle:
-                    self._status.signal      = action.value
-                    self._status.take_profit = ohlcv["close"]
-                    self._status.stop_loss   = ohlcv["close"]
-                elif self._status.signal == Signal.Buy:
-                    if self._status.confirm_buy(ohlcv["close"]):
-                        self._position = Position.Asset
-                        self._logger.debug("buy signal predicted")
-                        actual_action = Action.Buy
-                        self._status.reset(self._gamma * self._buffer.coef_of_var)
-
-            elif self._position == Position.Asset and action == Action.Sell:
-                if self._status.signal == Signal.Idle:
-                    self._status.signal      = action.value
-                    self._status.take_profit = ohlcv["close"]
-                    self._status.stop_loss   = ohlcv["close"]
-                elif self._status.signal == Signal.Sell:
-                    if self._status.confirm_sell(ohlcv["close"]):
-                        self._position = Position.Cash
-                        self._logger.debug("sell signal predicted")
-                        actual_action = Action.Sell
-                        self._status.reset(self._gamma * self._buffer.coef_of_var)
-
-            self._inferencing = False
-        return actual_action
+            if action != Action.Hold:
+                self._append_action(data["timestamp"], actual_action, price, prob, self._manager.curr_trade.amount)
+        self._inferencing = False
