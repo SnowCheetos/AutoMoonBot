@@ -427,7 +427,6 @@ class Server:
             # Validate buy
             if action == Action.Buy:
                 actual_action = self._manager.try_buy(price, self._buffer.coef_of_var, prob)
-
             elif action == Action.Sell:
                 gain = self._manager.try_sell(price, self._buffer.coef_of_var)
                 if gain >= 0:
