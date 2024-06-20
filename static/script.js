@@ -1,8 +1,8 @@
 const ws_protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
 
-const actionBufferSize      = 20
-const dataBufferSize        = 60
-const tradeBufferSize       = 20
+const actionBufferSize      = 25
+const tradeBufferSize       = 25
+const dataBufferSize        = 100
 
 var chart              = null
 var client_ws          = null
@@ -129,7 +129,7 @@ function addStripeLines(start, end, gain) {
             existingStripLine.endValue = end;
             existingStripLine.color = gain > 1 ? "#ECFFEE" : "#FFECEC",
             existingStripLine.label = gain > 1 ? `↑${pctGain.toFixed(2)}%` : `↓${Math.abs(pctGain).toFixed(2)}%`;
-            existingStripLine.labelFontColor = gain > 1 ? "#6FFF5B" : "#FF5B5B";
+            existingStripLine.labelFontColor = gain > 1 ? "#1ED837" : "#D81E1E";
         } else {
             if (!existingDoubledStripLine) {
                 tradePoints.push({
@@ -439,7 +439,7 @@ function updateBuyAndHold(close) {
     item.style.color = performanceRec.buyAndHold > 1 ? 'green' : 'red'
 }
 
-function appendAction(action, close, probability) {
+function appendAction(action, close, probability, amount) {
     const buffer = document.getElementById('actions-buffer')
     const listItem = document.createElement('li');
 
@@ -452,6 +452,7 @@ function appendAction(action, close, probability) {
         tag = `<div class="double-tag">${action}</div>`
     }
 
+    const a = amount == 1 ? amount : probability
     listItem.innerHTML = `
     <div class="holder-with-ts">
         <div class="ts"> ${getCurrentTimestamp()} </div>
