@@ -5,7 +5,7 @@
 ## Example Demonstration
 ![](media/demo.gif)
 
-Shown above is a demonstration of system back test. Data used for this test was *SPDR S&P 500 ETF Trust (SPY)* with *1 hour* interval, starting *June 2022* (*not all frames are included to avoid Git-LFS*). This was a good case study because this period represented a recent bear market.
+Shown above is a demonstration of system back test. Data used for this test was *SPDR S&P 500 ETF Trust (SPY)* with *1 hour* interval, starting *June 2022*. This was a good case study because this period represented a recent bear market.
 
 ## Disclaimer
 
