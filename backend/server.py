@@ -38,7 +38,9 @@ class Server:
             full_port:         bool=False,
             gamma:             float=0.1,
             alpha:             float=1.5,
-            beta:              float | None=0.5,
+            beta:              float=0.5,
+            zeta:              float=0.5,
+            leverage:          float=1.0,
             inference_method:  str="prob",
             checkpoint_path:   str="checkpoint",
             logger:            Optional[logging.Logger] = None,
@@ -97,7 +99,9 @@ class Server:
             feature_params    = feature_params,
             alpha             = alpha,
             beta              = beta,
-            gamma             = gamma)
+            gamma             = gamma,
+            zeta              = zeta,
+            leverage          = leverage)
 
         self._manager   = TradeManager(
             cov         = self._buffer.coef_of_var, 
@@ -124,7 +128,7 @@ class Server:
         self._gamma            = gamma
         self._epsilon          = 0.9
         self._epsilon_decay    = 0.9
-        self._data_queue       = deque(maxlen=10)
+        self._data_queue       = deque(maxlen=25)
 
     def __del__(self):
         self.join_timer_thread()
@@ -215,7 +219,7 @@ class Server:
             momentum=self._training_params["momentum"],
             weight_decay=self._training_params["weight_decay"],
             max_grad_norm=self._training_params["max_grad_norm"],
-            portfolio_size=self._training_params["portfolio_size"])
+            min_episodes=self._training_params["min_episodes"])
 
         while not self._terminate and not self._buffer.done:
             ohlc = self.tohlcv()
@@ -231,10 +235,9 @@ class Server:
                     momentum=self._training_params["momentum"],
                     weight_decay=self._training_params["weight_decay"],
                     max_grad_norm=self._training_params["max_grad_norm"],
-                    portfolio_size=self._training_params["portfolio_size"])
+                    min_episodes=self._training_params["min_episodes"])
                 self._train_counter = self._retrain_freq
 
-            time.sleep(interval)
             self._buffer.update_queue(False)
             self._logger.info("running scheduled inference")
             if self._ready:
@@ -242,6 +245,7 @@ class Server:
             else:
                 self._logger.warning("model not ready, not running inference")
             self._train_counter -= 1
+            time.sleep(interval)
         self._logger.warning("timer loop terminated")
 
     def start_timer(self, interval: int):
@@ -288,7 +292,7 @@ class Server:
             momentum:       float,
             weight_decay:   float,
             max_grad_norm:  float,
-            portfolio_size: int) -> None:
+            min_episodes:   int) -> None:
         
         with self._mutex:
             self._training = True
@@ -300,16 +304,16 @@ class Server:
             momentum=momentum,
             weight_decay=weight_decay,
             max_grad_norm=max_grad_norm,
-            portfolio_size=portfolio_size)
+            min_episodes=min_episodes)
         
         with self._mutex:
             self._training = False
 
-        if beat > self._beat or self._beat == 0:
-            if self._epsilon < random.random():
-                self._epsilon *= self._epsilon_decay
-                self._beat = beat
-                self.update_model()
+        if beat > self._beat: # or self._beat == 0:
+            # if self._epsilon < random.random():
+            # self._epsilon *= self._epsilon_decay
+            self._beat = beat
+            self.update_model()
 
         with self._mutex:
             if not self._ready:
@@ -322,7 +326,7 @@ class Server:
             momentum:       float=0.9,
             weight_decay:   float=0.9,
             max_grad_norm:  float=1.0,
-            portfolio_size: int=5):
+            min_episodes:   int=10):
         
         with self._mutex:
             if self._training:
@@ -337,7 +341,7 @@ class Server:
                 momentum, 
                 weight_decay,
                 max_grad_norm, 
-                portfolio_size))
+                min_episodes))
         
         thread.start()
         self._logger.info(f"training started, thread id: {thread}")
@@ -422,8 +426,7 @@ class Server:
             self._risk_free_rate = price / self._buffer.queue["data"][0]["close"]
             # Validate buy
             if action == Action.Buy:
-                actual_action = self._manager.try_buy(price, self._buffer.coef_of_var)
-            
+                actual_action = self._manager.try_buy(price, self._buffer.coef_of_var, prob)
             elif action == Action.Sell:
                 gain = self._manager.try_sell(price, self._buffer.coef_of_var)
                 if gain >= 0:

@@ -8,10 +8,11 @@ class TradeManager:
             cov:       float,
             alpha:     float,
             gamma:     float,
-            cost:      float=0,
-            full_port: bool=False) -> None:
+            cost:      float = 0,
+            full_port: bool  = False,
+            leverage:  float = 0) -> None:
         
-        self._trade      = Trade(cov, alpha, gamma, cost, full_port)
+        self._trade      = Trade(cov, alpha, gamma, cost, full_port, leverage)
         self._position   = Position.Cash
         self._full_port  = full_port
         self._portfolio  = 1.0
@@ -58,19 +59,24 @@ class TradeManager:
     def log_trade(self):
         self._trade_hist.append(self._trade.data)
 
-    def try_buy(self, price: float, cov: float) -> Action:
+    def try_buy(self, price: float, cov: float, amount: float | None=None) -> Action:
         self._trade.risk = cov
         if self._trade.opened:
             if self.partial and not self._full_port:
                 # double down
-                success = self._trade.double(price)
-                if success: 
+                action = self._trade.double(price)
+                if action == Action.Double: 
                     self._position = Position.Asset
                     self._trade.hold()
                     return Action.Double
+                elif action == Action.Sell:
+                    self._portfolio = Position.Cash
+                    self._portfolio = 0
+                    self._trade.hold()
+                    return Action.Sell
         else:
             # new trade
-            success = self._trade.open(price)
+            success = self._trade.open(price, amount)
             if success: 
                 self._position = Position.Partial
                 self._trade.hold()

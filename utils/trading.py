@@ -120,8 +120,9 @@ class Trade:
             cov:       float,
             alpha:     float,
             gamma:     float,
-            cost:      float=0,
-            full_port: bool=False) -> None:
+            cost:      float = 0,
+            full_port: bool  = False,
+            leverage:  float = 0) -> None:
         
         self._open      = False
         self._cost      = cost
@@ -131,6 +132,7 @@ class Trade:
         self._entry     = 0
         self._exit      = 0
         self._amount    = 0
+        self._leverage  = leverage
         self._status    = Status(cov * gamma, alpha)
 
     @property
@@ -140,6 +142,10 @@ class Trade:
             "exit":   self._exit,
             "amount": self._amount
         }
+
+    @property
+    def leverage(self) -> float:
+        return self._leverage
 
     @property
     def opened(self) -> bool:
@@ -161,6 +167,10 @@ class Trade:
     def risk(self) -> float:
         return self.status.risk
     
+    @leverage.setter
+    def leverage(self, val: float):
+        self._leverage = val
+
     @signal.setter
     def signal(self, action: int):
         self._status.signal = action
@@ -169,14 +179,18 @@ class Trade:
     def risk(self, cov: float):
         self.status.risk = self._gamma * cov
 
-    def open(self, price: float) -> bool:
+    def open(self, price: float, amount: float | None=None) -> bool:
         """
         Tries to open the trade, amount as portfolio percentage from 0 to 1
         """
+        if not amount: 
+            amount = 0.5
+        else:
+            amount = min(0.5, amount)
         if self.status.confirm_buy(price):
             self._open   = True
             self._entry  = price
-            self._amount = 0.5 if not self._full_port else 1.0
+            self._amount = amount if not self._full_port else 1
             return True
         
         self.signal             = 0
@@ -184,20 +198,28 @@ class Trade:
         self.status.stop_loss   = price
         return False
 
-    def double(self, price: float) -> bool:
+    def double(self, price: float) -> Action:
         """
         Double down
         """
         if self.status.confirm_buy(price) and not self._full_port:
-            self._entry  = 0.5 * (self._entry + price)
-            self._amount = 1
-            return True
+            if self._leverage > 1:
+                if self.potential_gain(price) > 0:
+                    self._entry  = 0.5 * (self._entry + price)
+                    self._amount *= 2
+                    return Action.Double
+                else:
+                    return Action.Sell
+            else:
+                self._entry  = 0.5 * (self._entry + price)
+                self._amount *= 2
+                return Action.Double
         
         if not self._full_port:
             self.signal             = 0
             self.status.take_profit = price
             self.status.stop_loss   = price
-        return False
+        return Action.Hold
 
     def hold(self):
         """
@@ -211,20 +233,24 @@ class Trade:
         """
         if self.status.confirm_sell(price):
             self._open = False
-            gain       = price / self._entry - self._cost
-            net_gain   = (gain - 1) * self._amount + 1
+
+            gain       = price / self._entry - 1
+            gain      *= self._leverage - self._cost
+            net_gain   = gain * self._amount + 1
+
             return max(0, net_gain)
         self.signal             = 2
         self.status.take_profit = price
         self.status.stop_loss   = price
         return -1
-    
+        
     def potential_gain(self, price: float) -> float:
         """
-        Computes the potential gain
+        Computes the potential gain or loss with leverage
         """
         if self.opened:
-            gain     = price / self._entry - self._cost
-            net_gain = (gain - 1) * self._amount + 1
+            gain       = price / self._entry - 1
+            gain      *= self._leverage - self._cost
+            net_gain   = gain  * self._amount + 1
             return max(0, net_gain)
         return 0

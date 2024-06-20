@@ -3,9 +3,9 @@
 *This repository contains code and resources for automated trading using reinforcement learning methods. The content provided here is for educational and informational purposes only. It is not intended to be a financial product or investment advice.*
 
 ## Example Demonstration
-![](media/dem.gif)
+![](media/demo.gif)
 
-Shown above is a demonstration of system back test. Data used for this test was *SPDR S&P 500 ETF Trust (SPY)* with *1 hour* interval, starting *June 2022*. This was an interesting period as it represented a recent bear market.
+Shown above is a demonstration of system back test. Data used for this test was *SPDR S&P 500 ETF Trust (SPY)* with *1 hour* interval, starting *June 2022*. This was a good case study because this period represented a recent bear market.
 
 ## Disclaimer
 

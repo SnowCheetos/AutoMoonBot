@@ -10,7 +10,7 @@ from typing import Dict, List, Any, Optional
 
 from reinforce.sampler import DataSampler
 from reinforce.model import PolicyNet, select_action, compute_loss
-from utils.trading import Position, Action, Status
+from utils.trading import Position, Action
 from utils.descriptors import compute_sharpe_ratio
 from backend.manager import TradeManager
 
@@ -28,12 +28,14 @@ class TradeEnv(gym.Env):
             db_path:           str,
             return_thresh:     float,
             sharpe_cutoff:     int=30,
-            gamma:             float=0.15,
             alpha:             float=1.5,
-            feature_params:    Dict[str, List[int] | Dict[str, List[int]]] | None=None,
             beta:              float | None=0.5,
+            gamma:             float=0.15,
+            zeta:              float=0.5,
+            feature_params:    Dict[str, List[int] | Dict[str, List[int]]] | None=None,
             logger:            Optional[logging.Logger]=None,
             testing:           bool=False,
+            leverage:          float = 0,
             max_training_data: int | None=None) -> None:
         
         super().__init__()
@@ -61,18 +63,18 @@ class TradeEnv(gym.Env):
             position_dim   = len(Position), 
             embedding_dim  = embedding_dim).to(device)
 
-        self._manager = TradeManager(0, alpha, gamma, action_cost)
+        self._manager = TradeManager(0, alpha, gamma, action_cost, leverage)
 
-        self._status         = Status(0, alpha)
+        self._leverage       = leverage
         self._device         = device
         self._sharpe_cutoff  = sharpe_cutoff
         self._return_thresh  = return_thresh
-        self._position       = Position.Cash
         self._inaction_cost  = inaction_cost
         self._action_cost    = action_cost
         self._alpha          = alpha
         self._beta           = beta
         self._gamma          = gamma
+        self._zeta           = zeta
         self._portfolio      = 1.0
         self._returns        = []
         self._log_probs      = []
@@ -133,7 +135,8 @@ class TradeEnv(gym.Env):
             cov       = self.sampler.coef_of_var, 
             alpha     = self._alpha, 
             gamma     = self._gamma, 
-            cost      = self._action_cost)
+            cost      = self._action_cost,
+            leverage  = self._leverage)
         
         self._position       = Position.Cash
         self._portfolio      = 1.0
@@ -153,7 +156,14 @@ class TradeEnv(gym.Env):
         self._risk_free_rate = price / self._init_close
         # Validate buy
         if Action(action) == Action.Buy:
-            _ = self._manager.try_buy(price, self.sampler.coef_of_var)
+            a = self._manager.try_buy(price, self.sampler.coef_of_var)
+            if a == Action.Double:
+                reward -= self._action_cost * (self._manager.potential_gain(price) - 1)
+            elif a == Action.Sell:
+                done    = True
+                reward -= self._manager.curr_trade.leverage * (1 + self._action_cost)
+            else:
+                reward -= self._action_cost
         
         elif Action(action) == Action.Sell:
             gain = self._manager.try_sell(price, self.sampler.coef_of_var)
@@ -167,12 +177,13 @@ class TradeEnv(gym.Env):
                     returns        = self._manager.returns[-self._sharpe_cutoff:], 
                     risk_free_rate = self._risk_free_rate * (1 - self._action_cost))
                 
-                reward += sharpe + gain
+                double  = self._manager.last_trade["amount"] > 0.5
+                reward += (1 - self._zeta) * sharpe + self._zeta * (gain - 1) * (2 if double else 1)
 
         elif Action(action) == Action.Hold:
             if self._manager.asset or self._manager.partial:
                 potential_gain = self._manager.potential_gain(price)
-                reward        -= self._inaction_cost * potential_gain * (1 - self._action_cost)
+                reward        -= self._inaction_cost * potential_gain
             else:
                 if self._manager.cash:
                     prev_exit = self._manager.prev_exit
@@ -201,7 +212,7 @@ def train(
         momentum:       float=0.9,
         weight_decay:   float=0.9,
         max_grad_norm:  float=1.0,
-        portfolio_size: int=5) -> float:
+        min_episodes:   int=10) -> float:
     
     env._logger.info("training starts")
     optimizer = optim.SGD(
@@ -211,8 +222,10 @@ def train(
         weight_decay=weight_decay)
 
     buy_and_hold = None
-    reward_history = []
-    portfolios = deque(maxlen=portfolio_size)
+    best_model = {
+        "result": -1,
+        "weights": None,
+    }
 
     for e in range(episodes):
         env._logger.info(f"episode {e+1}/{episodes} began")
@@ -237,24 +250,29 @@ def train(
         nn.utils.clip_grad_norm_(env.model.parameters(), max_grad_norm)
         optimizer.step()
 
-        reward_history += [sum(rewards)]
-        portfolios += [env._manager.portfolio]
-
         if not buy_and_hold:
-            buy_and_hold = (close["price"] / env.init_close - 1)
+            buy_and_hold = close["price"] / env.init_close
 
         env._logger.info(f"""\n
         episode {e+1}/{episodes} done
         loss:            {' ' if loss.item() > 0 else ''}{loss.item():.4f}
         model portfolio: {'+' if env._manager.portfolio > 1 else ''}{(env._manager.portfolio-1) * 100:.4f}%
-        buy and hold:    {'+' if buy_and_hold > 0 else ''}{buy_and_hold * 100:.4f}%
+        buy and hold:    {'+' if buy_and_hold > 1 else ''}{(buy_and_hold-1) * 100:.4f}%
         """)
         env.model.eval()
 
-        avg_port = portfolios[-1] - 1 # np.mean(portfolios) - 1
-        if avg_port > buy_and_hold and portfolios[-1] > max(0.0, buy_and_hold) and len(portfolios) == portfolio_size:
-            env._logger.info(f"average target reached, last {portfolio_size} averaged {'+' if avg_port > 1 else ''}{avg_port * 100:.4f}%, exiting.")
-            return (portfolios[-1] / (buy_and_hold + 1))-1
+        if env._manager.portfolio > best_model["result"]:
+            best_model["result"]  = env._manager.portfolio
+            best_model['weights'] = env.model_weights
 
-    env._logger.info(f"training complete, last {portfolio_size} averaged {'+' if avg_port > 1 else ''}{avg_port * 100:.4f}%")
-    return (portfolios[-1] / (buy_and_hold + 1))-1
+        if env._manager.portfolio > max(1.0, buy_and_hold) and e+1 >= min_episodes:
+            env._logger.info(f"target reached, best episode achieved {'+' if best_model['result'] > 1 else ''}{(best_model['result']-1) * 100:.4f}%, exiting.")
+            env.model_weights = best_model['weights']
+            return best_model['result'] / buy_and_hold
+        else:
+            if best_model['weights']:
+                env.model_weights = best_model['weights']
+
+    env._logger.info(f"training complete, best episode achieved {'+' if best_model['result'] > 1 else ''}{(best_model['result']-1) * 100:.4f}%")
+    env.model_weights = best_model['weights']
+    return best_model['result'] / buy_and_hold

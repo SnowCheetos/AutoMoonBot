@@ -1,3 +1,4 @@
+import datetime
 import numpy as np
 from typing import List, Tuple, Dict
 
@@ -39,6 +40,8 @@ class Descriptors:
             "grd": self.compute_normalized_grad,
             "cov": self.compute_coef_of_var,
             "cdl": self.compute_candle,
+            "nts": self.normalize_time_of_day,
+            "ntw": self.normalize_day_of_week
         }
 
     def __getitem__(self, key):
@@ -48,7 +51,7 @@ class Descriptors:
             self,
             data: np.ndarray) -> np.ndarray:
         
-        open, high, low, close = data[:, 1], data[:, 2], data[:, 3], data[:, 4]
+        ts, open, high, low, close = data[:, 0], data[:, 1], data[:, 2], data[:, 3], data[:, 4]
         features = []
         for k in list(self._config.keys()):
             func = self.f[k]
@@ -69,6 +72,9 @@ class Descriptors:
                                 features += f
                             else:
                                 return np.array([])
+                        elif k == "nts" or k == "ntw":
+                            f = func(ts[-1])
+                            features += f
                         else:
                             f = func(close, p)
                             if len(f) > 0: 
@@ -80,6 +86,41 @@ class Descriptors:
             return np.array([])
         
         return np.asarray(features)[None, :]
+
+    @staticmethod
+    def normalize_time_of_day(unix_timestamp):
+        # Convert Unix timestamp to datetime object
+        dt = datetime.datetime.fromtimestamp(unix_timestamp)
+
+        # Extract hours, minutes, and seconds
+        hours = dt.hour
+        minutes = dt.minute
+        seconds = dt.second
+
+        # Calculate the total seconds since the start of the day
+        total_seconds = hours * 3600 + minutes * 60 + seconds
+
+        # There are 86400 seconds in a day (24 * 3600)
+        seconds_in_day = 24 * 3600
+
+        # Normalize the total seconds to a range between -1 and 1
+        normalized_time = (2 * total_seconds / seconds_in_day) - 1
+
+        return [normalized_time]
+
+    @staticmethod
+    def normalize_day_of_week(unix_timestamp):
+        # Convert Unix timestamp to datetime object
+        dt = datetime.datetime.fromtimestamp(unix_timestamp)
+
+        # Extract the day of the week (0 = Monday, ..., 6 = Sunday)
+        day_of_week = dt.weekday()
+
+        # Normalize the day of the week to a range between -1 and 1
+        # day_of_week ranges from 0 to 6, we need to map this to -1 to 1
+        normalized_day = (2 * day_of_week / 6) - 1
+
+        return [normalized_day]
 
     @staticmethod
     def compute_candle(
