@@ -13,4 +13,4 @@ def create_gif(frame_folder, output_file, duration=500, max_len=1000):
 if __name__ == "__main__":
     frame_folder = 'logs/frames'
     output_file  = 'media/demo.gif'
-    create_gif(frame_folder, output_file, 100, 1000)
+    create_gif(frame_folder, output_file, 100, 700)
