@@ -1,5 +1,5 @@
 {
-    "ticker": "SPY",
+    "ticker": "NVDA",
     "period": "2y",
     "interval": "1h",
     "backtest_interval": "1s",
@@ -15,7 +15,7 @@
     "record_frames": false,
     "train_leverage": 2.0,
     "frames_dir": "logs/frames",
-    "full_port": true,
+    "full_port": false,
     "feature_params": {
         "ntw": [true],
         "nts": [true],
@@ -39,7 +39,7 @@
     "live_data": false,
     "training_params": {
         "episodes": 200,
-        "learning_rate":0.001,
+        "learning_rate":0.01,
         "momentum": 0.9,
         "weight_decay": 0.9,
         "max_grad_norm": 1.0,

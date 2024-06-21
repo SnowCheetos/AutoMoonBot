@@ -5,6 +5,37 @@ import numpy as np
 
 from typing import Tuple, List
 
+class MemoryNet(nn.Module):
+    def __init__(
+            self,
+            num_mem: int,
+            mem_dim: int,
+            inp_dim: int) -> None:
+        
+        super().__init__()
+
+        self._mem = nn.Parameter(torch.randn((num_mem, mem_dim), dtype=torch.float32))
+        self._fk  = nn.Linear(mem_dim, inp_dim)
+        self._fv  = nn.Linear(mem_dim, inp_dim)
+
+    def forward(self, k: torch.Tensor) -> torch.Tensor:
+        """
+        k: [n x d]
+        """
+        key = torch.softmax(self._fk(self._mem), dim=-1) # [h x d]
+        val = torch.relu(self._fv(self._mem))            # [h x d]
+
+        # Compute attention scores
+        att = torch.matmul(k, key.t()) # [n x h]
+
+        # Apply softmax to get attention weights
+        att_weights = torch.softmax(att, dim=-1) # [n x h]
+
+        # Compute the weighted sum of the values
+        output = torch.matmul(att_weights, val) # [n x d]
+
+        return output
+
 
 class PolicyNet(nn.Module):
     def __init__(
@@ -12,22 +43,30 @@ class PolicyNet(nn.Module):
             input_dim:     int,
             output_dim:    int, 
             position_dim:  int,
-            embedding_dim: int) -> None:
+            embedding_dim: int,
+            num_mem:       int=512,
+            mem_dim:       int=256) -> None:
         
         super().__init__()
 
         self._embedding = nn.Embedding(position_dim, embedding_dim)
         self._f1        = nn.Linear(input_dim + embedding_dim + 1, 512)
         self._f2        = nn.Linear(512, 256)
-        self._f3        = nn.Linear(256, 128)
-        self._f4        = nn.Linear(128, output_dim)
-        # self._dropout   = nn.Dropout(0.1)
+        self._fk        = nn.Linear(256, 128)
+        self._fv        = nn.Linear(256, 128)
+        self._f4        = nn.Linear(256, output_dim)
+        self._mem       = MemoryNet(num_mem, mem_dim, 128)
 
     def forward(self, x: torch.Tensor, p: torch.Tensor, g: torch.Tensor) -> torch.Tensor:
         x = torch.cat((x, self._embedding(p).squeeze(1), g), dim=-1)
         x = torch.relu(self._f1(x))
         x = torch.relu(self._f2(x))
-        x = torch.relu(self._f3(x))
+        
+        k = torch.softmax(self._fk(x), dim=-1)
+        v = torch.relu(self._fv(x))
+        q = self._mem(k)
+        x = torch.cat((v, q), dim=-1)
+
         return torch.softmax(self._f4(x), dim=-1)
 
 def select_action(
