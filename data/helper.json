@@ -13,5 +13,10 @@
         "file":     "data/examples/TSLA.db",
         "interval": "1h",
         "period":   "2y"
+    },
+    "JPY": {
+        "file":     "data/examples/JPY.db",
+        "interval": "1h",
+        "period":   "2y"
     }
 }

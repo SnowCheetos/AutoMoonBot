@@ -47,9 +47,6 @@ This approach allows the model to continuously learn from market interactions, i
 
 For more details, see [here](reinforce/README.MD)
 
-## Live Trading
-...
-
 ## Usage
 ...
 
@@ -59,6 +56,7 @@ For more details, see [here](reinforce/README.MD)
 ## Upcoming
 
 * Options support
+* QuantConnect integration
 
 ## Contribution
 ...

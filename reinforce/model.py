@@ -1,33 +1,87 @@
 import logging
+import math
 import torch
 import torch.nn as nn
 import numpy as np
 
 from typing import Tuple, List
 
+class MemoryNet(nn.Module):
+    def __init__(self, num_mem: int, mem_dim: int, inp_dim: int) -> None:
+        super().__init__()
+        self._mem = nn.Parameter(torch.randn((num_mem, mem_dim), dtype=torch.float32))
+        self._fk  = nn.Linear(mem_dim, inp_dim)
+        self._fv  = nn.Linear(mem_dim, inp_dim)
+        
+        # Initialize parameters
+        nn.init.kaiming_uniform_(self._fk.weight, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self._fv.weight, a=math.sqrt(5))
+
+    def forward(self, k: torch.Tensor) -> torch.Tensor:
+        """
+        k: [n x d]
+        """
+        key = torch.softmax(self._fk(self._mem), dim=-1) # [h x d]
+        val = torch.relu(self._fv(self._mem))            # [h x d]
+
+        # Compute attention scores
+        att = torch.matmul(k, key.t()) # [n x h]
+
+        # Apply softmax to get attention weights
+        att_weights = torch.softmax(att, dim=-1) # [n x h]
+
+        # Compute the weighted sum of the values
+        output = torch.matmul(att_weights, val) # [n x d]
+
+        return output
 
 class PolicyNet(nn.Module):
     def __init__(
             self, 
-            input_dim:     int,
+            input_dim:     int, 
             output_dim:    int, 
             position_dim:  int,
-            embedding_dim: int) -> None:
-        
+            embedding_dim: int, 
+            num_mem:       int = 512, 
+            mem_dim:       int = 256) -> None:
         super().__init__()
 
         self._embedding = nn.Embedding(position_dim, embedding_dim)
         self._f1        = nn.Linear(input_dim + embedding_dim + 1, 512)
         self._f2        = nn.Linear(512, 256)
-        self._f3        = nn.Linear(256, 128)
-        self._f4        = nn.Linear(128, output_dim)
-        # self._dropout   = nn.Dropout(0.1)
+        self._fk        = nn.Linear(256, 128)
+        self._fv        = nn.Linear(256, 128)
+        self._f4        = nn.Linear(256, output_dim)
+        self._mem       = MemoryNet(num_mem, mem_dim, 128)
+        
+        # Adding dropout and normalization layers
+        self.dropout    = nn.Dropout(p=0.5)
+        self.norm1      = nn.LayerNorm(512)
+        self.norm2      = nn.LayerNorm(256)
 
     def forward(self, x: torch.Tensor, p: torch.Tensor, g: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass for the PolicyNet.
+
+        Parameters:
+        x (torch.Tensor): Input features tensor.
+        p (torch.Tensor): Position indices tensor.
+        g (torch.Tensor): Portfolio features tensor.
+        
+        Returns:
+        torch.Tensor: Output tensor after passing through the network.
+        """
         x = torch.cat((x, self._embedding(p).squeeze(1), g), dim=-1)
-        x = torch.relu(self._f1(x))
-        x = torch.relu(self._f2(x))
-        x = torch.relu(self._f3(x))
+        x = self.norm1(torch.relu(self._f1(x)))
+        x = self.dropout(x)
+        x = self.norm2(torch.relu(self._f2(x)))
+        x = self.dropout(x)
+        
+        k = torch.softmax(self._fk(x), dim=-1)
+        v = torch.relu(self._fv(x))
+        q = self._mem(k)
+        x = torch.cat((v, q), dim=-1)
+
         return torch.softmax(self._f4(x), dim=-1)
 
 def select_action(

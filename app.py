@@ -69,7 +69,9 @@ server = Server(
     beta=config["beta"],
     gamma=config["gamma"],
     zeta=config["zeta"],
-    leverage=config["train_leverage"]
+    leverage=config["train_leverage"],
+    num_mem=config["num_mem"],
+    mem_dim=config["mem_dim"]
 )
 
 async def model_data_update_loop(ws: WebSocket, s: Server):
@@ -119,16 +121,6 @@ async def ws_handler(ws: WebSocket):
         for task in (model_loop, server_loop):
             if task: task.cancel()
 
-# @app.get("/tohlcv/last")
-# async def tohlcv_last():
-#     data = server.tohlcv()
-#     return JSONResponse(content=data)
-
-# @app.get("/tohlcv/all")
-# async def tohlcv_all():
-#     data = server.fetch_buffer()
-#     return JSONResponse(content=data)
-
 @app.get("/session")
 async def session_info():
     info = server.session_info
@@ -151,4 +143,4 @@ async def save_frame(request: Request, frame_id: str):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="localhost", port=29697)
+    uvicorn.run(app, host="0.0.0.0", port=29697)

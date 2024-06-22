@@ -41,6 +41,8 @@ class Server:
             beta:              float=0.5,
             zeta:              float=0.5,
             leverage:          float=1.0,
+            num_mem:           int=512,
+            mem_dim:           int=128,
             inference_method:  str="prob",
             checkpoint_path:   str="checkpoint",
             logger:            Optional[logging.Logger] = None,
@@ -81,7 +83,9 @@ class Server:
             input_dim     = state_dim, 
             output_dim    = action_dim, 
             position_dim  = len(Position), 
-            embedding_dim = embedding_dim)
+            embedding_dim = embedding_dim,
+            num_mem       = num_mem,
+            mem_dim       = mem_dim).to(device)
 
         self._env = TradeEnv(
             state_dim         = state_dim, 
@@ -101,7 +105,9 @@ class Server:
             beta              = beta,
             gamma             = gamma,
             zeta              = zeta,
-            leverage          = leverage)
+            leverage          = leverage,
+            mem_dim           = mem_dim,
+            num_mem           = num_mem)
 
         self._manager   = TradeManager(
             cov         = self._buffer.coef_of_var, 
