@@ -69,7 +69,9 @@ server = Server(
     beta=config["beta"],
     gamma=config["gamma"],
     zeta=config["zeta"],
-    leverage=config["train_leverage"]
+    leverage=config["train_leverage"],
+    num_mem=config["num_mem"],
+    mem_dim=config["mem_dim"]
 )
 
 async def model_data_update_loop(ws: WebSocket, s: Server):
@@ -118,16 +120,6 @@ async def ws_handler(ws: WebSocket):
     finally:
         for task in (model_loop, server_loop):
             if task: task.cancel()
-
-# @app.get("/tohlcv/last")
-# async def tohlcv_last():
-#     data = server.tohlcv()
-#     return JSONResponse(content=data)
-
-# @app.get("/tohlcv/all")
-# async def tohlcv_all():
-#     data = server.fetch_buffer()
-#     return JSONResponse(content=data)
 
 @app.get("/session")
 async def session_info():

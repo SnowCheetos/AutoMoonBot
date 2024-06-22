@@ -32,6 +32,8 @@ class TradeEnv(gym.Env):
             beta:              float | None=0.5,
             gamma:             float=0.15,
             zeta:              float=0.5,
+            num_mem:           int=512,
+            mem_dim:           int=256,
             feature_params:    Dict[str, List[int] | Dict[str, List[int]]] | None=None,
             logger:            Optional[logging.Logger]=None,
             testing:           bool=False,
@@ -61,7 +63,9 @@ class TradeEnv(gym.Env):
             input_dim      = state_dim, 
             output_dim     = action_dim, 
             position_dim   = len(Position), 
-            embedding_dim  = embedding_dim).to(device)
+            embedding_dim  = embedding_dim,
+            num_mem        = num_mem,
+            mem_dim        = mem_dim).to(device)
 
         self._manager = TradeManager(0, alpha, gamma, action_cost, leverage)
 

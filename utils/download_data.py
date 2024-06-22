@@ -47,8 +47,8 @@ def download_example(
 
 if __name__ == "__main__":
     download_example(
-        db_path  = "data/examples/TSLA.db", 
-        ticker   = "TSLA", 
+        db_path  = "data/examples/JPY.db", 
+        ticker   = "JPY=X", 
         period   = "2y",
         interval = "1h",
         flush    = True)

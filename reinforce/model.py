@@ -1,4 +1,5 @@
 import logging
+import math
 import torch
 import torch.nn as nn
 import numpy as np
@@ -6,17 +7,15 @@ import numpy as np
 from typing import Tuple, List
 
 class MemoryNet(nn.Module):
-    def __init__(
-            self,
-            num_mem: int,
-            mem_dim: int,
-            inp_dim: int) -> None:
-        
+    def __init__(self, num_mem: int, mem_dim: int, inp_dim: int) -> None:
         super().__init__()
-
         self._mem = nn.Parameter(torch.randn((num_mem, mem_dim), dtype=torch.float32))
         self._fk  = nn.Linear(mem_dim, inp_dim)
         self._fv  = nn.Linear(mem_dim, inp_dim)
+        
+        # Initialize parameters
+        nn.init.kaiming_uniform_(self._fk.weight, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self._fv.weight, a=math.sqrt(5))
 
     def forward(self, k: torch.Tensor) -> torch.Tensor:
         """
@@ -36,17 +35,15 @@ class MemoryNet(nn.Module):
 
         return output
 
-
 class PolicyNet(nn.Module):
     def __init__(
             self, 
-            input_dim:     int,
+            input_dim:     int, 
             output_dim:    int, 
             position_dim:  int,
-            embedding_dim: int,
-            num_mem:       int=512,
-            mem_dim:       int=256) -> None:
-        
+            embedding_dim: int, 
+            num_mem:       int = 512, 
+            mem_dim:       int = 256) -> None:
         super().__init__()
 
         self._embedding = nn.Embedding(position_dim, embedding_dim)
@@ -56,11 +53,29 @@ class PolicyNet(nn.Module):
         self._fv        = nn.Linear(256, 128)
         self._f4        = nn.Linear(256, output_dim)
         self._mem       = MemoryNet(num_mem, mem_dim, 128)
+        
+        # Adding dropout and normalization layers
+        self.dropout    = nn.Dropout(p=0.5)
+        self.norm1      = nn.LayerNorm(512)
+        self.norm2      = nn.LayerNorm(256)
 
     def forward(self, x: torch.Tensor, p: torch.Tensor, g: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass for the PolicyNet.
+
+        Parameters:
+        x (torch.Tensor): Input features tensor.
+        p (torch.Tensor): Position indices tensor.
+        g (torch.Tensor): Portfolio features tensor.
+        
+        Returns:
+        torch.Tensor: Output tensor after passing through the network.
+        """
         x = torch.cat((x, self._embedding(p).squeeze(1), g), dim=-1)
-        x = torch.relu(self._f1(x))
-        x = torch.relu(self._f2(x))
+        x = self.norm1(torch.relu(self._f1(x)))
+        x = self.dropout(x)
+        x = self.norm2(torch.relu(self._f2(x)))
+        x = self.dropout(x)
         
         k = torch.softmax(self._fk(x), dim=-1)
         v = torch.relu(self._fv(x))

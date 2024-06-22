@@ -1,5 +1,5 @@
 {
-    "ticker": "NVDA",
+    "ticker": "SPY",
     "period": "2y",
     "interval": "1h",
     "backtest_interval": "1s",
@@ -8,14 +8,16 @@
     "action_dim": 3,
     "embedding_dim": 8,
     "inaction_cost": 10,
-    "action_cost": 0.005,
+    "action_cost": 0.0,
     "device": "cpu",
     "return_thresh": 0.8,
     "sharpe_cutoff": 100,
     "record_frames": false,
-    "train_leverage": 2.0,
+    "train_leverage": 1.0,
     "frames_dir": "logs/frames",
     "full_port": false,
+    "num_mem": 1024,
+    "mem_dim": 256,
     "feature_params": {
         "ntw": [true],
         "nts": [true],
@@ -38,7 +40,7 @@
     "log_level": "INFO",
     "live_data": false,
     "training_params": {
-        "episodes": 200,
+        "episodes": 100,
         "learning_rate":0.01,
         "momentum": 0.9,
         "weight_decay": 0.9,
@@ -48,7 +50,7 @@
     "retrain_freq": 50,
     "inference_method": "prob",
     "max_training_data": 1000,
-    "alpha": 2.0,
+    "alpha": 1.0,
     "beta": 0.5,
     "gamma": 0.1,
     "zeta": 0.5
