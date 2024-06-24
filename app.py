@@ -71,7 +71,8 @@ server = Server(
     zeta=config["zeta"],
     leverage=config["train_leverage"],
     num_mem=config["num_mem"],
-    mem_dim=config["mem_dim"]
+    mem_dim=config["mem_dim"],
+    quick_sell=config["quick_sell"]
 )
 
 async def model_data_update_loop(ws: WebSocket, s: Server):

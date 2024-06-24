@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 from backend.buffer import DataBuffer
 from reinforce.model import PolicyNet, inference
 from reinforce.environment import TradeEnv, train
-from utils.trading import Position, Action, Status, Signal
+from utils.trading import Position, Action
 from backend.manager import TradeManager
 
 
@@ -41,6 +41,7 @@ class Server:
             beta:              float=0.5,
             zeta:              float=0.5,
             leverage:          float=1.0,
+            quick_sell:        bool=False,
             num_mem:           int=512,
             mem_dim:           int=128,
             inference_method:  str="prob",
@@ -107,18 +108,19 @@ class Server:
             zeta              = zeta,
             leverage          = leverage,
             mem_dim           = mem_dim,
-            num_mem           = num_mem)
+            num_mem           = num_mem,
+            quick_sell        = quick_sell)
 
         self._manager   = TradeManager(
             cov         = self._buffer.coef_of_var, 
             alpha       = alpha, 
             gamma       = gamma, 
             cost        = action_cost, 
-            full_port   = full_port)
+            full_port   = full_port,
+            qk_sell     = quick_sell)
 
         self._nounce           = 0
         self._beat             = 0
-        self._status           = Status(gamma * self._buffer.coef_of_var, alpha)
         self._max_access_accum = 0
         self._checkpoint_path  = checkpoint_path
         self._training_params  = training_params

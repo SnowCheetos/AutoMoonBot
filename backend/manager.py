@@ -10,9 +10,10 @@ class TradeManager:
             gamma:     float,
             cost:      float = 0,
             full_port: bool  = False,
-            leverage:  float = 0) -> None:
+            leverage:  float = 0,
+            qk_sell:   bool = False) -> None:
         
-        self._trade      = Trade(cov, alpha, gamma, cost, full_port, leverage)
+        self._trade      = Trade(cov, alpha, gamma, cost, full_port, leverage, qk_sell)
         self._position   = Position.Cash
         self._full_port  = full_port
         self._portfolio  = 1.0
