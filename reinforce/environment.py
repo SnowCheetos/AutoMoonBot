@@ -5,7 +5,6 @@ import torch.optim as optim
 import torch.nn as nn
 
 from gymnasium import spaces
-from collections import deque
 from typing import Dict, List, Any, Optional
 
 from reinforce.sampler import DataSampler
@@ -38,6 +37,7 @@ class TradeEnv(gym.Env):
             logger:            Optional[logging.Logger]=None,
             testing:           bool=False,
             leverage:          float = 0,
+            quick_sell:        bool=False,
             max_training_data: int | None=None) -> None:
         
         super().__init__()
@@ -67,8 +67,15 @@ class TradeEnv(gym.Env):
             num_mem        = num_mem,
             mem_dim        = mem_dim).to(device)
 
-        self._manager = TradeManager(0, alpha, gamma, action_cost, leverage)
+        self._manager = TradeManager(
+            cov      = 0, 
+            alpha    = alpha, 
+            gamma    = gamma, 
+            cost     = action_cost, 
+            leverage = leverage, 
+            qk_sell  = quick_sell)
 
+        self._quick_sell     = quick_sell
         self._leverage       = leverage
         self._device         = device
         self._sharpe_cutoff  = sharpe_cutoff
@@ -140,7 +147,8 @@ class TradeEnv(gym.Env):
             alpha     = self._alpha, 
             gamma     = self._gamma, 
             cost      = self._action_cost,
-            leverage  = self._leverage)
+            leverage  = self._leverage,
+            qk_sell   = self._quick_sell)
         
         self._position       = Position.Cash
         self._portfolio      = 1.0
@@ -157,6 +165,7 @@ class TradeEnv(gym.Env):
         end, price, state = self._sampler.sample_next()
         reward, done = 0, False
 
+        self._manager.curr_trade.local_max = price
         self._risk_free_rate = price / self._init_close
         # Validate buy
         if Action(action) == Action.Buy:
@@ -181,8 +190,7 @@ class TradeEnv(gym.Env):
                     returns        = self._manager.returns[-self._sharpe_cutoff:], 
                     risk_free_rate = self._risk_free_rate * (1 - self._action_cost))
                 
-                double  = self._manager.last_trade["amount"] > 0.5
-                reward += (1 - self._zeta) * sharpe + self._zeta * (gain - 1) * (2 if double else 1)
+                reward += (1 - self._zeta) * sharpe + self._zeta * (gain / self._manager.last_trade["max"] - 1)
 
         elif Action(action) == Action.Hold:
             if self._manager.asset or self._manager.partial:
@@ -242,12 +250,11 @@ def train(
             rewards += [reward]
 
         optimizer.zero_grad()
-        log_return = env.log_return
         loss = compute_loss(
             log_probs  = env.log_probs, 
             rewards    = rewards, 
             beta       = env.beta,
-            log_return = log_return,
+            log_return = env.log_return,
             device     = env._device)
         
         loss.backward()

@@ -1,5 +1,7 @@
 import datetime
 import numpy as np
+from scipy.stats import zscore, gzscore, skew, kurtosis
+
 from typing import List, Tuple, Dict
 
 def compute_sharpe_ratio(
@@ -31,17 +33,22 @@ class Descriptors:
         self._config = config
 
         self.f = {
-            "sma": self.compute_sma,
-            "ema": self.compute_ema,
-            "rsi": self.compute_rsi,
-            "sto": self.compute_stochastic_np,
-            "zsc": self.compute_z_score,
-            "nrm": self.compute_normalized_price,
-            "grd": self.compute_normalized_grad,
+            # "sma": self.compute_sma,
+            # "ema": self.compute_ema,
+            # "rsi": self.compute_rsi,
+            # "sto": self.compute_stochastic_np,
+            # "grd": self.compute_normalized_grad,
+            # "cdl": self.compute_candle,
+
             "cov": self.compute_coef_of_var,
-            "cdl": self.compute_candle,
             "nts": self.normalize_time_of_day,
-            "ntw": self.normalize_day_of_week
+            "ntw": self.normalize_day_of_week,
+            "zsc": self.compute_z_scores,
+            "gzs": self.compute_geometric_z_scores,
+            "dit": self.compute_detrended_integrals,
+            "kut": self.compute_kurtosis,
+            "skw": self.compute_skewness,
+            "grd": self.compute_gradients,
         }
 
     def __getitem__(self, key):
@@ -51,41 +58,121 @@ class Descriptors:
             self,
             data: np.ndarray) -> np.ndarray:
         
-        ts, open, high, low, close = data[:, 0], data[:, 1], data[:, 2], data[:, 3], data[:, 4]
+        ts, ohlcv = data[:, 0], data[:, 1:6]
         features = []
         for k in list(self._config.keys()):
             func = self.f[k]
-            if k == "sto":
-                params = self._config[k]
-                windows, ks, ds = params["window"], params["k"], params["d"]
-                for i in range(len(windows)):
-                    _k, _d = func(close, high, low, windows[i], ks[i], ds[i])
-                    if len(_k) > 0 and len(_d) > 0:
-                        features += [_k[-1], _d[-1]]
-                    else:
-                        return np.array([])
+            if k == "nts" or k == "ntw":
+                f = func(ts[-1])
+                features += [f]
             else:
-                for p in self._config[k]:
-                        if k == "cdl":
-                            f = func(open, high, low, close, p)
-                            if len(f) > 0: 
-                                features += f
-                            else:
-                                return np.array([])
-                        elif k == "nts" or k == "ntw":
-                            f = func(ts[-1])
-                            features += f
-                        else:
-                            f = func(close, p)
-                            if len(f) > 0: 
-                                features += [f[-1]]
-                            else:
-                                return np.array([])
+                params = self._config[k]
+                f = func(ohlcv, params)
+                if len(f) == 0:
+                    return np.array([])
+                features += [f]
+
+        # for k in list(self._config.keys()):
+        #     func = self.f[k]
+        #     if k == "sto":
+        #         params = self._config[k]
+        #         windows, ks, ds = params["window"], params["k"], params["d"]
+        #         for i in range(len(windows)):
+        #             _k, _d = func(close, high, low, windows[i], ks[i], ds[i])
+        #             if len(_k) > 0 and len(_d) > 0:
+        #                 features += [_k[-1], _d[-1]]
+        #             else:
+        #                 return np.array([])
+        #     else:
+        #         for p in self._config[k]:
+        #                 if k == "cdl":
+        #                     f = func(open, high, low, close, p)
+        #                     if len(f) > 0: 
+        #                         features += f
+        #                     else:
+        #                         return np.array([])
+        #                 elif k == "nts" or k == "ntw":
+        #                     f = func(ts[-1])
+        #                     features += f
+        #                 else:
+        #                     f = func(close, p)
+        #                     if len(f) > 0: 
+        #                         features += [f[-1]]
+        #                     else:
+        #                         return np.array([])
 
         if len(features) == 0: 
             return np.array([])
+
+        return np.concatenate(features, axis=0)[None, :]
+
+    @staticmethod
+    def compute_z_scores(ohlcv, windows=List[int]):
+        if len(ohlcv) < max(windows):
+            return np.array([])
+        z_scores = []
+        for window in windows:
+            zsc = zscore(ohlcv[-window:], axis=0)
+            z_scores += [zsc[-1]]
+        return np.concatenate(z_scores, axis=0)
+    
+    @staticmethod
+    def compute_geometric_z_scores(ohlcv, windows=List[int]):
+        if len(ohlcv) < max(windows):
+            return np.array([])
+        gz_scores = []
+        for window in windows:
+            gzs = gzscore(ohlcv[-window:], axis=0)
+            gz_scores += [gzs[-1]]
+        return np.concatenate(gz_scores, axis=0)
+    
+    @staticmethod
+    def compute_skewness(ohlcv, windows=List[int]):
+        if len(ohlcv) < max(windows):
+            return np.array([])
+        skewness = []
+        for window in windows:
+            data = ohlcv[-window:]
+            mean = data.mean(0)
+            centered = data - mean
+            skewness += [skew(centered, axis=0, bias=False)]
+        return np.concatenate(skewness, axis=0)
+
+    @staticmethod
+    def compute_kurtosis(ohlcv, windows=List[int]):
+        if len(ohlcv) < max(windows):
+            return np.array([])
         
-        return np.asarray(features)[None, :]
+        kurts = []
+        for window in windows:
+            kurts += [kurtosis(ohlcv[-window:], axis=0, fisher=True, bias=False)]
+        return np.concatenate(kurts, axis=0)
+
+    @staticmethod
+    def compute_gradients(ohlcv, windows=List[int]):
+        grads = []
+        for window in windows:
+            data = ohlcv[-window:]
+            gradient = np.gradient(data, axis=0)
+            grads += [gradient[-1] / data.mean(0)]
+        return np.concatenate(grads, axis=0)
+
+    @staticmethod
+    def compute_detrended_integrals(ohlcv, windows=List[int]):
+        '''
+        ohlcv: n x 5
+        '''
+        if len(ohlcv) < max(windows):
+            return np.array([])
+        integrals = []
+        for window in windows:
+            data = ohlcv[-window:] / ohlcv[-window]
+            ts = np.arange(window)
+            coeffs = np.polyfit(ts, data, 1)
+            trend = np.polyval(coeffs, ts[:, None])
+            deviations = data - trend
+            integrals += [np.trapz(deviations, ts, axis=0)]
+        return np.concatenate(integrals, axis=0)
 
     @staticmethod
     def normalize_time_of_day(unix_timestamp):
@@ -106,7 +193,7 @@ class Descriptors:
         # Normalize the total seconds to a range between -1 and 1
         normalized_time = (2 * total_seconds / seconds_in_day) - 1
 
-        return [normalized_time]
+        return np.array([normalized_time])
 
     @staticmethod
     def normalize_day_of_week(unix_timestamp):
@@ -120,7 +207,7 @@ class Descriptors:
         # day_of_week ranges from 0 to 6, we need to map this to -1 to 1
         normalized_day = (2 * day_of_week / 6) - 1
 
-        return [normalized_day]
+        return np.array([normalized_day])
 
     @staticmethod
     def compute_candle(
@@ -165,28 +252,28 @@ class Descriptors:
         diff = arr[-1] - arr[0]
         return [diff / mean]
 
-    @staticmethod
-    def compute_normalized_price(
-            prices: np.ndarray, 
-            window: int=64) -> np.ndarray:
-        if len(prices) < window:
-            return np.array([])
+    # @staticmethod
+    # def compute_normalized_price(
+    #         prices: np.ndarray, 
+    #         window: int=64) -> np.ndarray:
+    #     if len(prices) < window:
+    #         return np.array([])
         
-        arr  = prices[-window:]
-        mean = arr.mean()
-        return arr / mean - 1
+    #     arr  = prices[-window:]
+    #     mean = arr.mean()
+    #     return arr / mean - 1
 
-    @staticmethod
-    def compute_z_score(
-            prices: np.ndarray, 
-            window: int=64) -> np.ndarray:
-        if len(prices) < window:
-            return np.array([])
+    # @staticmethod
+    # def compute_z_score(
+    #         prices: np.ndarray, 
+    #         window: int=64) -> np.ndarray:
+    #     if len(prices) < window:
+    #         return np.array([])
         
-        arr  = prices[-window:]
-        mean = arr.mean()
-        std  = arr.std()
-        return (arr - mean) / std
+    #     arr  = prices[-window:]
+    #     mean = arr.mean()
+    #     std  = arr.std()
+    #     return (arr - mean) / std
 
     @staticmethod
     def compute_sma(

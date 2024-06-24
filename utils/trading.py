@@ -32,8 +32,9 @@ class Status:
     """
     def __init__(
             self, 
-            risk:  float, # allowed price movement for entry / exit
-            alpha: float  # take profit / stop loss ratio
+            risk:    float, # allowed price movement for entry / exit
+            alpha:   float, # take profit / stop loss ratio
+            qk_sell: bool=False
         ) -> None:
         
         self._signal      = Signal.Idle  # current signal
@@ -41,6 +42,7 @@ class Status:
         self._stop_loss   = float("nan") # current stop loss amount
         self._risk        = risk         # risk level
         self._alpha       = alpha        # tp:sl ratio
+        self._qk_sell     = qk_sell
 
     @property
     def signal(self):
@@ -64,11 +66,13 @@ class Status:
 
     def reset(
             self, 
-            risk:  float | None=None,
-            alpha: float | None=None):
+            risk:    float | None=None,
+            alpha:   float | None=None):
+        
         self._take_profit = float("nan")
         self._stop_loss   = float("nan")
         self._signal      = Signal.Idle
+        
         if risk:
             self._risk = risk
         if alpha:
@@ -107,9 +111,12 @@ class Status:
     def confirm_sell(self, close: float) -> bool:
         if self._signal != Signal.Sell:
             return False
-        if close <= self._stop_loss or close >= self._take_profit:
-            return True
-        return False
+        else:
+            if self._qk_sell:
+                return True
+            if close <= self._stop_loss or close >= self._take_profit:
+                return True
+            return False
 
 class Trade:
     """
@@ -122,7 +129,8 @@ class Trade:
             gamma:     float,
             cost:      float = 0,
             full_port: bool  = False,
-            leverage:  float = 0) -> None:
+            leverage:  float = 0,
+            qk_sell:   bool = False) -> None:
         
         self._open      = False
         self._cost      = cost
@@ -132,15 +140,17 @@ class Trade:
         self._entry     = 0
         self._exit      = 0
         self._amount    = 0
+        self._local_max = 0
         self._leverage  = leverage
-        self._status    = Status(cov * gamma, alpha)
+        self._status    = Status(cov * gamma, alpha, qk_sell)
 
     @property
     def data(self) -> Dict[str, float]:
         return {
             "entry":  self._entry,
             "exit":   self._exit,
-            "amount": self._amount
+            "amount": self._amount,
+            "max":    self._local_max / self._exit if self._exit else 1
         }
 
     @property
@@ -167,6 +177,15 @@ class Trade:
     def risk(self) -> float:
         return self.status.risk
     
+    @property
+    def local_max(self) -> float:
+        return self._local_max
+
+    @local_max.setter
+    def local_max(self, val: float):
+        if self.opened and val > self._local_max:
+            self._local_max = val
+
     @leverage.setter
     def leverage(self, val: float):
         self._leverage = val
@@ -232,7 +251,8 @@ class Trade:
         Tries to close
         """
         if self.status.confirm_sell(price):
-            self._open = False
+            self._open      = False
+            self._local_max = 0
 
             gain       = price / self._entry - 1
             gain      *= self._leverage - self._cost
