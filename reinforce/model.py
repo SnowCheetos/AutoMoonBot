@@ -1,28 +1,66 @@
 import logging
 import math
-import torch
-import torch.nn as nn
 import numpy as np
 
+import torch
+import torch.nn as nn
+
 from typing import Tuple, List
+from torch_geometric.data import Data
+from torch_geometric.nn import GCNConv, LayerNorm, SAGPooling, global_mean_pool
+
+
+class MarketGraphNet(nn.Module):
+    def __init__(
+            self, 
+            inp_dim: int, 
+            out_dim: int) -> None:
+        
+        super().__init__()
+
+        self._c1 = GCNConv(inp_dim, 512, improved=True)
+        self._c2 = GCNConv(512, 256, improved=True)
+        self._n1 = LayerNorm(512)
+        self._n2 = LayerNorm(256)
+        self._p1 = SAGPooling(512)
+        self._p2 = SAGPooling(256)
+        self._f  = nn.Linear(256, out_dim)
+
+    def forward(self, data: Data) -> torch.Tensor:
+        x, edge_index = data.x, data.edge_index
+        
+        x = self._c1(x, edge_index)
+        x = torch.relu(self._n1(x))
+        x, edge_index, _, _, _, _ = self._p1(x, edge_index)
+
+        x = self._c2(x, edge_index)
+        x = torch.relu(self._n2(x))
+        x, edge_index, _, _, _, _ = self._p2(x, edge_index)
+        
+        x = global_mean_pool(x, None)
+        return self._f(x)
+
 
 class MemoryNet(nn.Module):
-    def __init__(self, num_mem: int, mem_dim: int, out_dim: int) -> None:
-        super().__init__()
-        self._mem = nn.Parameter(torch.randn((num_mem, mem_dim), dtype=torch.float32))
-        self._fk  = nn.Linear(mem_dim, out_dim)
-        self._fv  = nn.Linear(mem_dim, out_dim)
+    def __init__(
+            self, 
+            num_mem: int, 
+            mem_dim: int, 
+            key_dim: int, 
+            val_dim: int) -> None:
         
-        # Initialize parameters
-        nn.init.kaiming_uniform_(self._fk.weight, a=math.sqrt(5))
-        nn.init.kaiming_uniform_(self._fv.weight, a=math.sqrt(5))
+        super().__init__()
+
+        self._mem = nn.Parameter(torch.randn((num_mem, mem_dim), dtype=torch.float32))
+        self._fk  = nn.Linear(mem_dim, key_dim)
+        self._fv  = nn.Linear(mem_dim, val_dim)
 
     def forward(self, k: torch.Tensor) -> torch.Tensor:
         """
         k: [n x d]
         """
-        key = torch.softmax(self._fk(self._mem), dim=-1) # [h x d]
-        val = self._fv(self._mem)                        # [h x d]
+        key = torch.softmax(self._fk(self._mem), dim=-1) # [h x k]
+        val = self._fv(self._mem)                        # [h x v]
 
         # Compute attention scores
         att = torch.matmul(k, key.t()) # [n x h]
@@ -31,17 +69,24 @@ class MemoryNet(nn.Module):
         att_weights = torch.softmax(att, dim=-1) # [n x h]
 
         # Compute the weighted sum of the values
-        output = torch.matmul(att_weights, val) # [n x d]
+        output = torch.matmul(att_weights, val) # [n x v]
 
         return output
 
 
 class MultiHeadMemory(nn.Module):
-    def __init__(self, num_heads: int, num_mem: int, mem_dim: int, out_dim: int) -> None:
+    def __init__(
+            self, 
+            heads:    int, 
+            mem_size: int, 
+            mem_dim:  int, 
+            key_dim:  int, 
+            val_dim:  int) -> None:
+        
         super().__init__()
 
-        self._mems = [MemoryNet(num_mem, mem_dim, out_dim) for _ in range(num_heads)]
-        self._f    = nn.Linear(num_heads * out_dim, out_dim)
+        self._mems = [MemoryNet(mem_size, mem_dim, key_dim, val_dim) for _ in range(heads)]
+        self._f    = nn.Linear(heads * val_dim, val_dim)
 
     def forward(self, k):
         outputs = []
@@ -56,54 +101,65 @@ class MultiHeadMemory(nn.Module):
 class PolicyNet(nn.Module):
     def __init__(
             self, 
-            input_dim:     int, 
-            output_dim:    int, 
-            position_dim:  int,
-            embedding_dim: int, 
-            num_mem:       int = 512, 
-            mem_dim:       int = 256) -> None:
+            inp_dim:   int, 
+            out_dim:   int, 
+            pos_dim:   int,
+            emb_dim:   int, 
+            mem_heads: int,
+            mem_size:  int, 
+            mem_dim:   int,
+            key_dim:   int,
+            val_dim:   int) -> None:
+        
         super().__init__()
 
-        self._embedding = nn.Embedding(position_dim, embedding_dim)
-        self._f1        = nn.Linear(input_dim + embedding_dim + 1, 512)
+        self._embedding = nn.Embedding(pos_dim, emb_dim)
+
+        self._gnn       = MarketGraphNet(inp_dim, 256)
+        self._f1        = nn.Linear(inp_dim + emb_dim + val_dim * 2 + 1, 512)
         self._f2        = nn.Linear(512, 256)
-        self._fk        = nn.Linear(256, 128)
-        self._fv        = nn.Linear(256, 128)
-        self._f4        = nn.Linear(256, output_dim)
-        self._mem       = MultiHeadMemory(4, num_mem, mem_dim, 128)
+        self._f3        = nn.Linear(256, out_dim)
+
+        self._fk        = nn.Linear(256, key_dim)
+        self._fv        = nn.Linear(256, val_dim)
+
+        self._mem       = MultiHeadMemory(mem_heads, mem_size, mem_dim, key_dim, val_dim)
         
         self._d  = nn.Dropout(p=0.5)
         self._n1 = nn.LayerNorm(512)
         self._n2 = nn.LayerNorm(256)
-        self._n3 = nn.LayerNorm(256)
 
-    def forward(self, x: torch.Tensor, p: torch.Tensor, g: torch.Tensor) -> torch.Tensor:
+    def forward(self, data: Data, index: int, pos: torch.Tensor, port: torch.Tensor) -> torch.Tensor:
         """
         Forward pass for the PolicyNet.
 
         Parameters:
-        x (torch.Tensor): Input features tensor.
-        p (torch.Tensor): Position indices tensor.
-        g (torch.Tensor): Portfolio features tensor.
+        data  (torch_geometric.data.Data): Input features tensor.
+        index (int):                       Node feature index.
+        pos   (torch.Tensor):              Position indices tensor.
+        port  (torch.Tensor):              Portfolio features tensor.
         
         Returns:
         torch.Tensor: Output tensor after passing through the network.
         """
-        x = torch.cat((x, self._embedding(p).squeeze(1), g), dim=-1)
-        x = self._n1(torch.relu(self._f1(x)))
-        x = self._d(x)
-        x = self._n2(torch.relu(self._f2(x)))
+        z = self._gnn(data)                    # Computes the market representation tensor, [1 x v]
+        k = torch.softmax(self._fk(z), dim=-1) # Computes the market key tensor, [1 x k]
+        v = self._fv(z)                        # Computes the market value tensor, [1 x v]
+        q = self._mem(k)                       # Queries the memory, [1 x v]
+        z = torch.cat((v, q), dim=-1)          # Concats the market value and memory, [1 x 2v]
+        x = data.x[index][None, :]             # Index the feature, [1 x inp]
+
+        x = torch.cat((x, self._embedding(pos).squeeze(1), port, z), dim=-1)
+        
+        x = self._f1(x)
+        x = torch.relu(self._n1(x))
         x = self._d(x)
         
-        k = torch.softmax(self._fk(x), dim=-1)
-        v = self._fv(x)
-        
-        q = self._mem(k)
-        x = torch.cat((v, q), dim=-1)
-        x = self._n3(x)
+        x = self._f2(x)
+        x = torch.relu(self._n2(x))
         x = self._d(x)
 
-        return torch.softmax(self._f4(x), dim=-1)
+        return torch.softmax(self._f3(x), dim=-1)
 
 def select_action(
         model:     nn.Module, 

@@ -1,6 +1,7 @@
 numpy
 pytest
 torch
+torch_geometric
 pandas
 yfinance
 fastapi[standard]

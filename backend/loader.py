@@ -5,7 +5,7 @@ import pandas as pd
 import yfinance as yf
 
 from typing import List, Dict, Tuple
-from describe import Descriptor
+from backend.describe import Descriptor
 
 
 class DataLoader:
@@ -33,6 +33,10 @@ class DataLoader:
         except sqlite3.Error as e:
             logging.error(f"An error occurred while connecting to the database: {e}")
             self._conn = None
+
+        if self._conn is not None:
+            self.init_db()
+            self.load_db(0)
 
     def __del__(self) -> None:
         self._conn.close()
