@@ -1,14 +1,19 @@
 import time
 import torch
+import logging
 import numpy as np
 import pandas as pd
 
+from collections import deque
 from typing import Dict, List
 from torch_geometric.data import Data
 from backend.loader import DataLoader
 
 
 class Session:
+    '''
+    This class holds the data loader as well as training and testing environment.
+    '''
     def __init__(
             self,
             ticker:         str,
@@ -17,9 +22,10 @@ class Session:
             device:         str,
             feature_config: Dict[str, List[str | int] | str],
             live:           bool       = False,
-            db_path:        str        = "data",
+            preload:        bool       = True,
+            db_path:        str        = 'data',
             session_id:     str | None = None,
-            market_rep:     List[str]  = []) -> None:
+            market_rep:     List[str]  = ['VTI', 'GLD', 'USO']) -> None:
         
         if not session_id:
             session_id = ticker + f'_{int(time.time())}'
@@ -29,13 +35,27 @@ class Session:
             tickers        = [ticker] + market_rep,
             db_path        = db_path,
             interval       = interval,
+            preload        = preload,
             buffer_size    = buffer_size,
             feature_config = feature_config)
         
-        self._device = device
-        self._live   = live
+        self._ticker      = ticker
+        self._device      = device
+        self._live        = live
+        self._buffer_size = buffer_size
+        self._dataset     = deque(maxlen=buffer_size)
 
-    def _build_graph(self, features: pd.DataFrame, corr: pd.DataFrame, corr_threshold: float=0.5) -> Data:
+    @property
+    def dataset(self) -> List[Data]:
+        return list(self._dataset)
+
+    def _build_graph(
+            self, 
+            features:       pd.DataFrame, 
+            corr:           pd.DataFrame, 
+            corr_threshold: float = 0.5,
+            cache:          bool  = False) -> Data:
+        
         cmat = corr.to_numpy()
         cmat[cmat < corr_threshold] = 0
         
@@ -48,6 +68,40 @@ class Session:
         df = features.iloc[-1:, (c1) & (c2)].sort_index(axis=1)
         df = df.stack(level=0, future_stack=True).reset_index(level=0).sort_index(axis=1).drop(columns=['level_0'])
         
-        return Data(
+        data = Data(
             x          = torch.from_numpy(df.values).float(),
             edge_index = torch.from_numpy(edge_index).long().contiguous())
+        
+        if cache:
+            self._dataset.append(data)
+        return data
+    
+    def _fetch_next(
+            self,
+            cache: bool = True) -> Data | None:
+        
+        if self._live:
+            success = self._loader.update_db()
+            if not success:
+                logging.error(f'no new data available at this time for {self._ticker} from Yahoo Finance API')
+                return None
+
+        success = self._loader.load_row()
+        if not success:
+            logging.error(f'reached last row in db for {self._ticker}')
+            return None
+        
+        features, corr = self._loader.features
+        return self._build_graph(
+            features = features,
+            corr     = corr,
+            cache    = cache)
+    
+    def _fill_dataset(self):
+        n = len(self._dataset)
+        for i in range(n, self._buffer_size):
+            logging.info(f'filling dataset, {i+1}/{self._buffer_size} done')
+            _ = self._fetch_next(True)
+        logging.info(f'dataset filled')
+    
+    

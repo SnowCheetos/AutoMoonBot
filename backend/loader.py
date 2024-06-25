@@ -16,8 +16,10 @@ class DataLoader:
             db_path:        str,
             interval:       str,
             buffer_size:    int,
+            preload:        bool,
             feature_config: Dict[str, List[str | int] | str]) -> None:
         
+        self._counter     = 0
         self._buffer      = None
         self._tickers     = yf.Tickers(tickers)
         self._interval    = interval
@@ -35,8 +37,14 @@ class DataLoader:
             self._conn = None
 
         if self._conn is not None:
-            self.init_db()
-            self.load_db(0)
+            if not preload:
+                self.init_db()
+                self.load_db()
+            else:
+                self.load_db()
+                if self._buffer.empty:
+                    self.init_db()
+                    self.load_db()
 
     def __del__(self) -> None:
         self._conn.close()
@@ -79,9 +87,13 @@ class DataLoader:
             data.set_index('Datetime', inplace=True)
             data.columns = pd.MultiIndex.from_product([data.columns, [ticker]])
             dfs.append(data)
-        self._buffer = pd.concat(dfs, axis=1)
+        self._buffer  = pd.concat(dfs, axis=1)
+        self._counter = start + self._buffer_size + 1
 
-    def load_row(self, row: int) -> bool:
+    def load_row(self, row: int | None = None) -> bool:
+        if not row:
+            row = self._counter
+            self._counter += 1
         new_data_list = []
         for ticker in self._tickers.symbols:
             query = f"SELECT * FROM {ticker} WHERE Id = {row}"

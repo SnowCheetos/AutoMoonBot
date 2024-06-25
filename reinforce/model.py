@@ -1,5 +1,4 @@
 import logging
-import math
 import numpy as np
 
 import torch
@@ -163,25 +162,23 @@ class PolicyNet(nn.Module):
 
 def select_action(
         model:     nn.Module, 
-        state:     np.ndarray, 
+        state:     Data, 
+        index:     int,
         potential: float,
         position:  int, 
         device:    str) -> Tuple[int, torch.Tensor]:
     
     probs = model(
-        x=torch.tensor(
-            state,
-            dtype=torch.float32,
-            device=device),
-        p=torch.tensor(
-            [[position]], 
-            dtype=torch.long, 
-            device=device),
-        g=torch.tensor(
-            [[potential]],
-            dtype=torch.float32, 
-            device=device
-        ))
+        data  = state.to(device),
+        index = index,
+        pos   = torch.tensor(
+                    [[position]], 
+                    dtype=torch.long, 
+                    device=device),
+        port  = torch.tensor(
+                    [[potential]],
+                    dtype=torch.float32, 
+                    device=device))
 
     action = np.random.choice(probs.size(-1), p=probs.detach().cpu().numpy()[0])
     return action, torch.log(probs[0, action])
@@ -220,36 +217,34 @@ def compute_loss(
     return policy_gradient.sum()
 
 def inference(
-        model:     nn.Module,
-        state:     np.ndarray,
-        position:  int,
+        model:     nn.Module, 
+        state:     Data, 
+        index:     int,
         potential: float,
-        device:    str="cpu",
+        position:  int, 
+        device:    str,
         method:    str="argmax",
-        min_prob:  float=0.31) -> Tuple[int, float]:
+        min_prob:  float=0.31) -> Tuple[int, float] | None:
     
     model.eval()
     min_prob = min(0.34, min_prob)
 
     if method not in {"argmax", "prob"}:
         logging.error("Method must be in one of [argmax, prob]")
-        return 1
+        return None
 
     with torch.no_grad():
         probs = model(
-            x=torch.tensor(
-                state,
-                dtype=torch.float32,
-                device=device),
-            p=torch.tensor(
-                [[position]], 
-                dtype=torch.long, 
-                device=device),
-            g=torch.tensor(
-                [[potential]],
-                dtype=torch.float32, 
-                device=device
-            ))
+            data  = state.to(device),
+            index = index,
+            pos   = torch.tensor(
+                        [[position]], 
+                        dtype=torch.long, 
+                        device=device),
+            port  = torch.tensor(
+                        [[potential]],
+                        dtype=torch.float32, 
+                        device=device))
     
     if method == "argmax":
         action = probs.argmax(1).item()
@@ -261,4 +256,4 @@ def inference(
         action = probs.argmax(1).item()
         prob = probs[0, action].item()
 
-    return action, prob
+    return (action, prob)

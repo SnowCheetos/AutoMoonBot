@@ -8,6 +8,7 @@ def session():
         interval='1h',
         buffer_size=100,
         device='cpu',
+        preload=True,
         feature_config={
             "columns": ["Open", "High", "Low", "Close", "Volume"],
             "windows": [8, 10, 12, 14, 16, 18, 20],

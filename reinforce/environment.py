@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-import gymnasium as gym
+import gymnasium as gym # There is really no reason to use gym
 import torch.optim as optim
 import torch.nn as nn
 
@@ -15,6 +15,9 @@ from backend.manager import TradeManager
 
 
 class TradeEnv(gym.Env):
+    '''
+    To be replced by Environment
+    '''
     def __init__(
             self, 
             state_dim:         int, 
@@ -287,3 +290,22 @@ def train(
     env._logger.info(f"training complete, best episode achieved {'+' if best_model['result'] > 1 else ''}{(best_model['result']-1) * 100:.4f}%")
     env.model_weights = best_model['weights']
     return best_model['result'] / buy_and_hold
+
+
+
+
+class Environment:
+    def __init__(self) -> None:
+        pass
+
+    def reset(self) -> None:
+        pass
+
+    def step(self) -> None:
+        pass
+
+    def train(self) -> None:
+        pass
+
+    def test(self) -> None:
+        pass
