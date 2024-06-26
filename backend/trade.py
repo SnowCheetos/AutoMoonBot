@@ -2,16 +2,30 @@ import time
 import uuid
 import numpy as np
 from enum import Enum
-from typing import Dict
-from collections import deque
+from typing import Dict, List
+
+
+class Action(Enum):
+    '''
+    An abstraction to the actions allowed in the environment
+    '''
+    Buy:  int = 0
+    Hold: int = 1
+    Sell: int = 2
 
 
 class TradeStatus(Enum):
+    '''
+    An abstraction to the states a trade can have
+    '''
     Opened: int = 0
     Closed: int = 1
 
 
 class TradeType(Enum):
+    '''
+    An abstraction to the types of trades
+    '''
     Market:    int = 0
     Long:      int = 1
     Short:     int = 2
@@ -22,6 +36,9 @@ class TradeType(Enum):
 
 
 class Trade:
+    '''
+    This class implements the attributes and methods that goes into a single position
+    '''
     def __init__(
             self, 
             uuid:       str,
@@ -39,6 +56,10 @@ class Trade:
         self._holding = 0
 
     @property
+    def type(self) -> TradeType:
+        return self._type
+
+    @property
     def uuid(self) -> str:
         return self._uuid
 
@@ -46,7 +67,13 @@ class Trade:
     def status(self) -> TradeStatus:
         return self._status
     
-    def open(self, price: float, amount: float) -> None:
+    def open(
+            self, 
+            price:  float, 
+            amount: float) -> None:
+        
+        assert price > 0, 'asset prices must be strictly positive'
+
         if self._type == TradeType.Long:
             self._status  = TradeStatus.Opened
             self._opened  = time.time()
@@ -55,7 +82,10 @@ class Trade:
         else:
             raise NotImplementedError('short and options are not implemented yet')
 
-    def close(self, price: float) -> float | None:
+    def close(
+            self, 
+            price: float) -> float | None:
+        
         if self._status == TradeStatus.Opened:
             self._status  = TradeStatus.Closed
             self._closed  = time.time()
@@ -65,34 +95,52 @@ class Trade:
         else:
             return None
     
-    def value(self, price: float) -> float | None:
+    def value(
+            self,
+            price:    float, 
+            absolute: bool = False) -> float | None:
+        
         if self._status == TradeStatus.Opened:
-            return (price / self._entry) * self._holding
+            return (price / self._entry) * (1 if absolute else self._holding)
         else:
             return None
 
 
 class Account:
     def __init__(self) -> None:
-        self._opened = deque()
-        self._closed = deque()
+        self._market_uuid = str(uuid.uuid4())
+        self._opened: Dict[str, Trade] = {}
+        self._closed: Dict[str, Trade] = {}
+
+    @property
+    def market_uuid(self) -> str:
+        return self._market_uuid
 
     def reset(self):
-        self._opened = deque()
-        self._closed = deque()
+        self._opened = {}
+        self._closed = {}
 
-    def value(
+    def open_positions(
             self, 
-            price:    float,
-            logscale: bool = False) -> Dict[str, float | None]:
+            price: float) -> List[Dict[str, str | int | float]]:
         
-        values = {}
-        for trade in self._opened:
-            val = trade.value(price)
-            if val is not None:
-                if logscale:
-                    val = np.log(val)
-                values[trade.uuid] = val
+        result = []
+        for trade in self._opened.values():
+            result.append({
+                'uuid':       trade.uuid,
+                'type':       trade.type.value,
+                'log_return': np.log(trade.value(price, True))
+            })
+        return result
+
+    def total_value(
+            self, 
+            price: float) -> float:
+        
+        values = 0
+        for trade in self._opened.values():
+            value   = trade.value(price, False)
+            values += value if value else 0
         return values
 
     def open(
@@ -100,7 +148,7 @@ class Account:
             trade_type: TradeType,
             price:      float,
             amount:     float,
-            cost:       float) -> str:
+            cost:       float) -> None:
         
         trade = Trade(
             uuid       = str(uuid.uuid4()),
@@ -108,29 +156,17 @@ class Account:
             cost       = cost)
         
         trade.open(price, amount)
-        self._opened.append(trade)
-        return trade.uuid
+        self._opened[trade.uuid] = trade
     
     def close(
             self, 
-            price: float, 
-            uid:   str | None) -> float:
+            price:    float, 
+            trade_id: str) -> float | None:
         
-        if uid is None and len(self._opened) > 0:
-            # If no trade specified, close the oldest trade
-            trade = self._opened.popleft()
-        else:
-            trade = None
-            for t in self._opened:
-                if t.uuid == uid:
-                    trade = t
-            if trade is None:
-                return 1
+        trade = self._opened.pop(trade_id, None)
+        if trade is None: 
+            return None
 
-        gain  = trade.close(price)
-        self._closed.append(trade)
-        
-        if gain is None:
-            return 1
-        else:
-            return gain
+        value = trade.close(price)
+        self._closed[trade_id] = trade
+        return value
