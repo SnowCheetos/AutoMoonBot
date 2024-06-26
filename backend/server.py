@@ -9,10 +9,9 @@ from collections import deque
 from typing import Dict, List, Optional
 
 from backend.buffer import DataBuffer
-from reinforce.model import PolicyNet, inference
-from reinforce.environment import TradeEnv, train
-from utils.trading import Position, Action
-from backend.manager import TradeManager
+from reinforce.model import PolicyNet
+from backend.session import Session
+from backend.manager import Manager
 
 
 class Server:
@@ -445,3 +444,35 @@ class Server:
             if action != Action.Hold:
                 self._append_action(data["timestamp"], actual_action, price, prob, self._manager.curr_trade.amount)
         self._inferencing = False
+
+
+class NewServer:
+    def __init__(
+            self,
+            ticker:         str,
+            interval:       str,
+            buffer_size:    int,
+            device:         str,
+            feature_config: Dict[str, List[str | int] | str],
+            live:           bool = False,
+            preload:        bool = True,
+            db_path:        str = 'data',
+            session_id:     str | None = None,
+            market_rep:     List[str] = ['VTI', 'GLD', 'USO']
+        ) -> None:
+        
+        self._manager = Manager()
+        self._session = Session(
+            ticker         = ticker,
+            interval       = interval,
+            buffer_size    = buffer_size,
+            device         = device,
+            feature_config = feature_config,
+            live           = live,
+            preload        = preload,
+            db_path        = db_path,
+            session_id     = session_id,
+            market_rep     = market_rep
+        )
+
+        self._session.start()

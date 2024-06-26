@@ -2,7 +2,8 @@ import pytest
 import torch
 
 from torch_geometric.data import Data
-from reinforce.model import PolicyNet, select_action
+from reinforce.model import PolicyNet
+from reinforce.utils import select_action
 
 
 INP_DIM = 10

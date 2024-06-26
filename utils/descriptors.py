@@ -1,3 +1,7 @@
+'''
+DEPRECATED
+'''
+
 import datetime
 import numpy as np
 from scipy.stats import zscore, gzscore, skew, kurtosis

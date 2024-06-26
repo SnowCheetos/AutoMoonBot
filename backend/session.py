@@ -1,6 +1,7 @@
 import time
 import torch
 import logging
+import threading
 import numpy as np
 import pandas as pd
 
@@ -8,6 +9,7 @@ from collections import deque
 from typing import Dict, List
 from torch_geometric.data import Data
 from backend.loader import DataLoader
+from reinforce.environment import Environment
 
 
 class Session:
@@ -21,11 +23,12 @@ class Session:
             buffer_size:    int,
             device:         str,
             feature_config: Dict[str, List[str | int] | str],
-            live:           bool       = False,
-            preload:        bool       = True,
-            db_path:        str        = 'data',
-            session_id:     str | None = None,
-            market_rep:     List[str]  = ['VTI', 'GLD', 'USO']) -> None:
+            live:           bool         = False,
+            preload:        bool         = True,
+            db_path:        str          = 'data',
+            session_id:     str | None   = None,
+            timer_interval: float | None = None,
+            market_rep:     List[str]    = ['VTI', 'GLD', 'USO']) -> None:
         
         if not session_id:
             session_id = ticker + f'_{int(time.time())}'
@@ -39,22 +42,42 @@ class Session:
             buffer_size    = buffer_size,
             feature_config = feature_config)
         
-        self._ticker      = ticker
-        self._device      = device
-        self._live        = live
-        self._buffer_size = buffer_size
-        self._dataset     = deque(maxlen=buffer_size)
+        self._environment = Environment(
+            device  = device,
+            min_val = 0.5,
+            dataset = None)
+
+        self._ticker         = ticker
+        self._device         = device
+        self._live           = live
+        self._timer_interval = timer_interval if not live else 10 #TODO Convert interval to seconds
+        self._buffer_size    = buffer_size
+        self._dataset        = deque(maxlen=buffer_size)
 
     @property
-    def dataset(self) -> List[Dict[str, pd.DataFrame | Data]]:
+    def dataset(self) -> List[Dict[str, pd.DataFrame | Data | float | str | int]]:
         return list(self._dataset)
+
+    def start(self) -> None:
+        self._fill_dataset()
+        self._environment.dataset = self.dataset
+
+    def _start_timer(self):
+        thread = threading.Thread(
+            group  = None,
+            target = 0,
+            args   = (0,)
+        )
+
+    def _timer(self):
+        pass
 
     def _build_graph(
             self, 
             features:       pd.DataFrame, 
             corr:           pd.DataFrame, 
             corr_threshold: float = 0.5,
-            cache:          bool  = False) -> Dict[str, pd.DataFrame | Data]:
+            cache:          bool  = False) -> Dict[str, pd.DataFrame | Data | float | str | int]:
         
         cmat = corr.to_numpy()
         cmat[cmat < corr_threshold] = 0
@@ -69,12 +92,13 @@ class Session:
         df = df.stack(level=0, future_stack=True).reset_index(level=0).sort_index(axis=1).drop(columns=['level_0'])
         
         data = {
-            'asset': self._ticker,
-            'index': df.index.get_loc(self._ticker),
-            'graph': Data(
+            'asset':      self._ticker,
+            'index':      df.index.get_loc(self._ticker),
+            'graph':      Data(
                 x = torch.from_numpy(df.values).float(),
                 edge_index = torch.from_numpy(edge_index).long().contiguous()),
-            'price': features.iloc[-1:, features.columns.get_level_values('Type') == 'Price']
+            'price':      features.iloc[-1:, features.columns.get_level_values('Type') == 'Price'],
+            'log_return': np.log(features[self._ticker]['Price']['Close'].dropna().mean(1)).diff(2).iloc[-1]
         }
         
         if cache:
@@ -83,7 +107,7 @@ class Session:
     
     def _fetch_next(
             self,
-            cache: bool = True) -> Dict[str, pd.DataFrame | Data] | None:
+            cache: bool = True) -> Dict[str, pd.DataFrame | Data | float | str | int] | None:
         
         if self._live:
             success = self._loader.update_db()
@@ -108,4 +132,3 @@ class Session:
             logging.info(f'filling dataset, {i+1}/{self._buffer_size} done')
             _ = self._fetch_next(True)
         logging.info(f'dataset filled')
-    

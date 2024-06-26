@@ -1,7 +1,6 @@
 import torch
 import logging
 import numpy as np
-
 from torch_geometric.data import Data
 from typing import List, Tuple
 from reinforce.model import PolicyNet

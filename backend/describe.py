@@ -51,6 +51,8 @@ class Descriptor:
     
             # Set the first 'window' rows to NaN (already handled by rolling().mean())
             df.iloc[:window, :] = float('nan')
+
+            log_return = df.diff(1)
     
             # Create a new MultiIndex for the columns with the window size as an additional level
             new_tuples = [(ticker, 'Price', price, f'Window={window}') for price, ticker in df.columns]

@@ -14,11 +14,14 @@ from reinforce.utils import select_action, compute_loss
 
 
 class Environment:
+    '''
+    This class is the reinforcement learning environment used for training and testing
+    '''
     def __init__(
             self,
             device:  str,
             min_val: float,
-            dataset: List[Dict[str, pd.DataFrame | Data]]) -> None:
+            dataset: List[Dict[str, pd.DataFrame | Data]] | None) -> None:
         
         self._device  = device
         self._min_val = min_val
@@ -54,7 +57,7 @@ class Environment:
         types       = [position['type'] for position in positions]
         log_returns = [position['log_return'] for position in positions]
         
-        market_log_return = 0 # TODO Somehow get market log return
+        market_log_return = data['log_return']
         if self._manager.liquid:
             uuids.append(self._manager.market_uuid)
             types.append(TradeType.Market.value)
