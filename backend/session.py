@@ -46,7 +46,7 @@ class Session:
         self._dataset     = deque(maxlen=buffer_size)
 
     @property
-    def dataset(self) -> List[Data]:
+    def dataset(self) -> List[Dict[str, pd.DataFrame | Data]]:
         return list(self._dataset)
 
     def _build_graph(
@@ -54,7 +54,7 @@ class Session:
             features:       pd.DataFrame, 
             corr:           pd.DataFrame, 
             corr_threshold: float = 0.5,
-            cache:          bool  = False) -> Data:
+            cache:          bool  = False) -> Dict[str, pd.DataFrame | Data]:
         
         cmat = corr.to_numpy()
         cmat[cmat < corr_threshold] = 0
@@ -68,9 +68,14 @@ class Session:
         df = features.iloc[-1:, (c1) & (c2)].sort_index(axis=1)
         df = df.stack(level=0, future_stack=True).reset_index(level=0).sort_index(axis=1).drop(columns=['level_0'])
         
-        data = Data(
-            x          = torch.from_numpy(df.values).float(),
-            edge_index = torch.from_numpy(edge_index).long().contiguous())
+        data = {
+            'asset': self._ticker,
+            'index': df.index.get_loc(self._ticker),
+            'graph': Data(
+                x = torch.from_numpy(df.values).float(),
+                edge_index = torch.from_numpy(edge_index).long().contiguous()),
+            'price': features.iloc[-1:, features.columns.get_level_values('Type') == 'Price']
+        }
         
         if cache:
             self._dataset.append(data)
@@ -78,7 +83,7 @@ class Session:
     
     def _fetch_next(
             self,
-            cache: bool = True) -> Data | None:
+            cache: bool = True) -> Dict[str, pd.DataFrame | Data] | None:
         
         if self._live:
             success = self._loader.update_db()
@@ -103,5 +108,4 @@ class Session:
             logging.info(f'filling dataset, {i+1}/{self._buffer_size} done')
             _ = self._fetch_next(True)
         logging.info(f'dataset filled')
-    
     

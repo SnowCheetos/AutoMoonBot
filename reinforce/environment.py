@@ -1,8 +1,13 @@
+from dataclasses import dataclass
 import logging
 import numpy as np
 import gymnasium as gym # There is really no reason to use gym
+import pandas as pd
+import torch
 import torch.optim as optim
 import torch.nn as nn
+
+from torch_geometric.data import Data
 
 from gymnasium import spaces
 from typing import Dict, List, Any, Optional
@@ -11,7 +16,7 @@ from reinforce.sampler import DataSampler
 from reinforce.model import PolicyNet, select_action, compute_loss
 from utils.trading import Position, Action
 from utils.descriptors import compute_sharpe_ratio
-from backend.manager import TradeManager
+from backend.manager import TradeManager, Manager
 
 
 class TradeEnv(gym.Env):
@@ -291,21 +296,105 @@ def train(
     env.model_weights = best_model['weights']
     return best_model['result'] / buy_and_hold
 
-
-
-
 class Environment:
-    def __init__(self) -> None:
-        pass
+    def __init__(
+            self,
+            dataset: List[Dict[str, pd.DataFrame | Data]]) -> None:
+        
+        self._dataset = dataset
+        self._manager = Manager()
 
-    def reset(self) -> None:
-        pass
+    @property
+    def dataset(self) -> List[Dict[str, pd.DataFrame | Data]]:
+        return self._dataset
+    
+    @dataset.setter
+    def dataset(self, new_set: List[Data]) -> None:
+        self._dataset = new_set
 
-    def step(self) -> None:
-        pass
+    def _reset(self) -> None:
+        self._manager.reset()
 
-    def train(self) -> None:
-        pass
+    def _step(
+            self, 
+            data:           Dict[str, pd.DataFrame | Data], 
+            policy_net:     PolicyNet, 
+            risk_free_rate: float):
+        
+        done      = False
+        reward    = 0
+        graph     = data['graph']
+        price     = data['price']
+        index     = data['index']
+        ticker    = data['asset']
+        close     = price[ticker]['Close'].mean()
+        position  = self._manager.position.value
+        potential = self._manager.potential_gain(close)
+        
+        action, log_prob = select_action(
+            model     = policy_net,
+            state     = graph,
+            index     = index,
+            potential = potential,
+            position  = position,
+            device    = 'cpu'
+        )
+
+        action       = Action(action)
+        final_action = Action.Hold
+
+        if action == Action.Buy:
+            final_action = self._manager.long(close, np.exp(log_prob.item()))
+
+        elif action == Action.Sell:
+            final_action = self._manager.short(close, np.exp(log_prob.item()))
+
+        elif action == Action.Hold:
+            final_action = self._manager.hold(close, np.exp(log_prob.item()))
+
+        else: # Impossible
+            raise NotImplementedError('the selected action is not a valid one')
+
+        log_return = 0
+        return done, final_action, log_prob, log_return, reward
+
+    def train(
+            self,
+            episodes:   int,
+            policy_net: PolicyNet,
+            optimizer:  optim.Optimizer) -> None:
+        
+        policy_net.train()
+        for episode in range(episodes):
+            logging.info(f'episode {episode+1}/{episodes} started\n')
+            self._reset()
+            rewards     = []
+            log_probs   = []
+            log_returns = 0
+            for i in range(len(self._dataset)):
+                data = self._dataset[i]
+
+                done, action, log_prob, log_return, reward = self._step(
+                    data           = data,
+                    policy_net     = policy_net,
+                    risk_free_rate = 0)
+
+                rewards.append(reward)
+                log_probs.append(log_prob)
+                log_returns += log_return
+
+                if done: break
+
+            loss = compute_loss(
+                log_probs = log_probs,
+                rewards   = rewards,
+            )
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            logging.info(f'episode {episode+1}/{episodes} done, loss={loss.item():.4f}, returns={np.exp(log_returns):.4f}')
 
     def test(self) -> None:
         pass

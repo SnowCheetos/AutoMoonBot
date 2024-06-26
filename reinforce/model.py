@@ -102,7 +102,7 @@ class PolicyNet(nn.Module):
             self, 
             inp_dim:   int, 
             out_dim:   int, 
-            pos_dim:   int,
+            inp_types: int,
             emb_dim:   int, 
             mem_heads: int,
             mem_size:  int, 
@@ -112,7 +112,7 @@ class PolicyNet(nn.Module):
         
         super().__init__()
 
-        self._embedding = nn.Embedding(pos_dim, emb_dim)
+        self._embedding = nn.Embedding(inp_types, emb_dim)
 
         self._gnn       = MarketGraphNet(inp_dim, 256)
         self._f1        = nn.Linear(inp_dim + emb_dim + val_dim * 2 + 1, 512)
@@ -128,27 +128,42 @@ class PolicyNet(nn.Module):
         self._n1 = nn.LayerNorm(512)
         self._n2 = nn.LayerNorm(256)
 
-    def forward(self, data: Data, index: int, pos: torch.Tensor, port: torch.Tensor) -> torch.Tensor:
+    def forward(
+            self,
+            data:       Data,       # Market graph data
+            index:      int,        # Node index of the position of the ticker
+            inp_types:  List[int],  # Type of input, trade or market
+            log_return: List[float] # Log return of the input
+    ) -> torch.Tensor:
         """
-        Forward pass for the PolicyNet.
+        Forward pass for the PolicyNet. Data contains the features from market data in graph format.
 
         Parameters:
-        data  (torch_geometric.data.Data): Input features tensor.
-        index (int):                       Node feature index.
-        pos   (torch.Tensor):              Position indices tensor.
-        port  (torch.Tensor):              Portfolio features tensor.
+        data       (torch_geometric.data.Data): Input features tensor.
+        index      (int):                       Node feature index.
+        inp_type   (List[int]):                 Type of input, trade or market.
+        log_return (List[float]):               Log return of the input.
         
         Returns:
         torch.Tensor: Output tensor after passing through the network.
         """
+        assert len(inp_types) == len(log_return), "input types and log returns must have the same length"
+
         z = self._gnn(data)                    # Computes the market representation tensor, [1 x v]
         k = torch.softmax(self._fk(z), dim=-1) # Computes the market key tensor, [1 x k]
         v = self._fv(z)                        # Computes the market value tensor, [1 x v]
         q = self._mem(k)                       # Queries the memory, [1 x v]
         z = torch.cat((v, q), dim=-1)          # Concats the market value and memory, [1 x 2v]
         x = data.x[index][None, :]             # Index the feature, [1 x inp]
+        
+        p = torch.tensor(inp_types, device=x.device).long()
+        l = torch.tensor(log_return, device=x.device).float().view(-1, 1)
 
-        x = torch.cat((x, self._embedding(pos).squeeze(1), port, z), dim=-1)
+        x = x.expand(p.size(0), x.size(1))
+        z = z.expand(p.size(0), z.size(1))
+
+        p = self._embedding(p)
+        x = torch.cat((x, p, l, z), dim=-1)
         
         x = self._f1(x)
         x = torch.relu(self._n1(x))
@@ -158,30 +173,34 @@ class PolicyNet(nn.Module):
         x = torch.relu(self._n2(x))
         x = self._d(x)
 
-        return torch.softmax(self._f3(x), dim=-1)
+        x = torch.softmax(self._f3(x), dim=-1)
+        return x
+
 
 def select_action(
-        model:     nn.Module, 
-        state:     Data, 
-        index:     int,
-        potential: float,
-        position:  int, 
-        device:    str) -> Tuple[int, torch.Tensor]:
+        model:      PolicyNet, 
+        state:      Data, 
+        index:      int,
+        inp_types:  List[int],
+        log_return: List[float], 
+        device:     str) -> Tuple[List[int], torch.Tensor]:
     
     probs = model(
-        data  = state.to(device),
-        index = index,
-        pos   = torch.tensor(
-                    [[position]], 
-                    dtype=torch.long, 
-                    device=device),
-        port  = torch.tensor(
-                    [[potential]],
-                    dtype=torch.float32, 
-                    device=device))
+        data       = state.to(device),
+        index      = index,
+        inp_types  = inp_types,
+        log_return = log_return)
 
-    action = np.random.choice(probs.size(-1), p=probs.detach().cpu().numpy()[0])
-    return action, torch.log(probs[0, action])
+    actions   = []
+    log_probs = []
+    for i in range(probs.size(0)):
+        prob_np = probs[i].detach().cpu().numpy()
+        action = np.random.choice(probs.size(-1), p=prob_np)
+        actions.append(action)
+        log_probs.append(torch.log(probs[i, action]))
+
+    log_probs = torch.stack(log_probs)
+    return actions, log_probs
 
 def compute_discounted_rewards(
         rewards: List[float], 
@@ -217,7 +236,7 @@ def compute_loss(
     return policy_gradient.sum()
 
 def inference(
-        model:     nn.Module, 
+        model:     PolicyNet, 
         state:     Data, 
         index:     int,
         potential: float,
