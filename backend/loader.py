@@ -31,7 +31,7 @@ class DataLoader:
         db_file_path = os.path.join(self._db_path, 'data.db')
         
         try:
-            self._conn = sqlite3.connect(db_file_path)
+            self._conn = sqlite3.connect(db_file_path, check_same_thread=False)
         except sqlite3.Error as e:
             logging.error(f"An error occurred while connecting to the database: {e}")
             self._conn = None
@@ -59,18 +59,26 @@ class DataLoader:
 
     @property
     def features(self) -> Tuple[pd.DataFrame]:
-        f = self._descriptor.compute(self.data)
-        c = self._descriptor.compute_correlation_matrix(self.data, ['Close'])
+        f = self._descriptor.compute(self._buffer)
+        c = self._descriptor.compute_correlation_matrix(self._buffer, ['Close'])
         return (f, c)
 
     def init_db(self) -> None:
-        history = self._tickers.history(interval=self._interval, period='2y', threads=True)
+        history = self._tickers.history(
+            interval = self._interval, 
+            period   = '2y', 
+            threads  = True,
+            actions  = False)
         for ticker in self._tickers.symbols:
             data = history.xs(ticker, level='Ticker', axis=1).reset_index()
             data.to_sql(ticker, self._conn, if_exists='replace', index_label='Id')
 
     def update_db(self) -> bool:
-        history = self._tickers.history(interval=self._interval, start=self.last_timestamp, threads=True)
+        history = self._tickers.history(
+            interval = self._interval, 
+            start    = self.last_timestamp, 
+            threads  = True,
+            actions  = False)
         history = history[history.index > self.last_timestamp]
         if len(history) == 0:
             return False

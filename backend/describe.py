@@ -31,7 +31,7 @@ class Descriptor:
     def _setup_data(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df[self._columns].dropna()
         result = []
-    
+
         for window in self._windows:
             # Compute the moving average for the specified window
             sma = df.rolling(window=window).mean()
@@ -51,9 +51,7 @@ class Descriptor:
     
             # Set the first 'window' rows to NaN (already handled by rolling().mean())
             df.iloc[:window, :] = float('nan')
-
-            log_return = df.diff(1)
-    
+            
             # Create a new MultiIndex for the columns with the window size as an additional level
             new_tuples = [(ticker, 'Price', price, f'Window={window}') for price, ticker in df.columns]
             sma_tuples = [(ticker, 'SMA', price, f'Window={window}') for price, ticker in sma.columns]
@@ -65,7 +63,7 @@ class Descriptor:
             multi_index           = pd.MultiIndex.from_tuples(combined_tuples, names=['Ticker', 'Type', 'Price', 'Window'])
             combined_data.columns = multi_index
             result.append(combined_data)
-    
+
         # Combine the windowed DataFrames along the columns
         return pd.concat(result, axis=1)
     
@@ -111,6 +109,7 @@ class Descriptor:
         detrended = detrended.dropna()
         if detrended.empty:
             return None
+        
         dt          = pd.DataFrame([detrended.mean(axis=0)], index=idx)
         cols        = [(ticker, 'DetrendMean', price, window) for ticker, price, window in dt.columns]
         res         = pd.concat([df, dt], axis=1)

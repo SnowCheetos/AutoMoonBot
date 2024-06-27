@@ -1,6 +1,3 @@
-import logging
-import numpy as np
-
 import torch
 import torch.nn as nn
 
@@ -10,7 +7,8 @@ from torch_geometric.nn import (
     SAGEConv, 
     LayerNorm, 
     SoftmaxAggregation, 
-    MemPooling)
+    MemPooling
+)
 
 
 class MarketGraphNet(nn.Module):
@@ -99,17 +97,17 @@ class PolicyNet(nn.Module):
             val_dim:   int) -> None:
         super().__init__()
 
-        self._embedding = nn.Embedding(inp_types, emb_dim)
-        self._gnn       = MarketGraphNet(inp_dim, 256)
-        self._f1        = nn.Linear(inp_dim + emb_dim + val_dim * 2 + 1, 512, bias=False)
-        self._f2        = nn.Linear(512, 256, bias=False)
-        self._f3        = nn.Linear(256, out_dim)
-        self._fk        = nn.Linear(256, key_dim)
-        self._fv        = nn.Linear(256, val_dim)
-        self._mem       = MultiHeadMemory(mem_heads, mem_size, mem_dim, key_dim, val_dim)
-        self._d         = nn.Dropout(p=0.5)
-        self._n1        = nn.LayerNorm(512)
-        self._n2        = nn.LayerNorm(256)
+        self._emb = nn.Embedding(inp_types, emb_dim)
+        self._gnn = MarketGraphNet(inp_dim, 256)
+        self._f1  = nn.Linear(inp_dim + emb_dim + val_dim * 2 + 1, 512, bias=False)
+        self._f2  = nn.Linear(512, 256, bias=False)
+        self._f3  = nn.Linear(256, out_dim)
+        self._fk  = nn.Linear(256, key_dim)
+        self._fv  = nn.Linear(256, val_dim)
+        self._mem = MultiHeadMemory(mem_heads, mem_size, mem_dim, key_dim, val_dim)
+        self._d   = nn.Dropout(p=0.5)
+        self._n1  = nn.LayerNorm(512)
+        self._n2  = nn.LayerNorm(256)
 
     def forward(
             self,
@@ -118,7 +116,7 @@ class PolicyNet(nn.Module):
             inp_types:  List[int],  # Type of input, trade or market
             log_return: List[float] # Log return of the input
     ) -> torch.Tensor:
-        """
+        '''
         Forward pass for the PolicyNet. Data contains the features from market data in graph format.
 
         Parameters:
@@ -129,8 +127,7 @@ class PolicyNet(nn.Module):
         
         Returns:
         torch.Tensor: Output tensor after passing through the network.
-        """
-        assert len(inp_types) == len(log_return), "input types and log returns must have the same length"
+        '''
 
         z = self._gnn(data)                    # Computes the market representation tensor, [1 x v]
         q = torch.softmax(self._fk(z), dim=-1) # Computes the market key tensor, [1 x k]
@@ -145,7 +142,7 @@ class PolicyNet(nn.Module):
         x = x.expand(p.size(0), x.size(1))
         z = z.expand(p.size(0), z.size(1))
 
-        p = self._embedding(p)
+        p = self._emb(p)
         x = torch.cat((x, p, l, z), dim=-1)
         
         x = self._f1(x)

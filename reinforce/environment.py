@@ -76,19 +76,21 @@ class Environment:
             action     = Action(choice)
             uuid       = uuids[i]
             log_return = log_returns[i]
-            if action == Action.Buy and uuid == self._manager.market_uuid:
-                final = self._manager.long(close, np.exp(log_probs[i].item()))
-                if final == Action.Buy:
-                    reward += np.log(self._manager.value) # Did buy, add total log return
-                else:
-                    reward -= market_log_return # Did not buy, subtract market log return
+            if action == Action.Buy:
+                if uuid == self._manager.market_uuid:
+                    final = self._manager.long(close, np.exp(log_probs[i].item()))
+                    if final == Action.Buy:
+                        reward += np.log(self._manager.value) # Did buy, add total log return
+                    else:
+                        reward -= market_log_return # Did not buy, subtract market log return
 
-            elif action == Action.Sell and uuid != self._manager.market_uuid:
-                final = self._manager.short(close, np.exp(log_probs[i].item()))
-                if final == Action.Sell:
-                    reward += log_return # Did sell, add trade log return
-                else:
-                    reward -= log_return # Did not sell, subtract trade log return
+            elif action == Action.Sell:
+                if uuid != self._manager.market_uuid:
+                    final = self._manager.short(close, np.exp(log_probs[i].item()), uuid)
+                    if final == Action.Sell:
+                        reward += log_return # Did sell, add trade log return
+                    else:
+                        reward -= log_return # Did not sell, subtract trade log return
 
             elif action == Action.Hold:
                 final = self._manager.hold(close, np.exp(log_probs[i].item()))
@@ -114,10 +116,13 @@ class Environment:
             policy_net: PolicyNet,
             optimizer:  optim.Optimizer) -> None:
         
+        print('hi')
         policy_net.train()
         for episode in range(episodes):
             logging.info(f'episode {episode+1}/{episodes} started\n')
             self._reset()
+            optimizer.zero_grad()
+
             rewards   = 0
             log_probs = []
             for i in range(len(self._dataset)):
@@ -131,7 +136,8 @@ class Environment:
                 rewards.append(reward)
                 log_probs.append(log_probs)
 
-                if done: break
+                if done: 
+                    break
 
             loss = compute_loss(
                 log_probs = log_probs,
@@ -139,15 +145,15 @@ class Environment:
                 device    = self._device
             )
 
-            optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-
             logging.info(f'episode {episode+1}/{episodes} done, loss={loss.item():.4f}, returns={self._manager.value:.4f}')
+        logging.info('training complete')
 
+    @torch.no_grad()
     def test(
             self,
-            policy_net: PolicyNet) -> None:
+            policy_net: PolicyNet) -> float:
 
         self._reset()
         policy_net.eval()
@@ -165,6 +171,8 @@ class Environment:
             rewards.append(reward)
             log_probs.append(log_probs)
 
-            if done: break
+            if done: 
+                break
         
         logging.info(f'testing done, returns={self._manager.value:.4f}')
+        return self._manager.value

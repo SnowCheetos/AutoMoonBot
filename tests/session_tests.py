@@ -13,6 +13,7 @@ def session():
             "columns": ["Open", "High", "Low", "Close", "Volume"],
             "windows": [8, 10, 12, 14, 16, 18, 20],
         },
+        combile_models=False,
         session_id='test',
         live=False,
         db_path='../data',
@@ -23,4 +24,4 @@ def test_graph_building(session: Session):
     f, c = session._loader.features
     data = session._build_graph(f, c)
 
-    assert data.x.size(0) == 4, 'graph returned the wrong sized node features'
+    assert data['graph'].x.size(0) == 4, 'graph returned the wrong sized node features'
