@@ -3,12 +3,12 @@ from backend.session import Session
 
 TICKER = 'SPY'
 INTERV = '1h'
-BUFFER = 150
+BUFFER = 10
 DEVICE = 'cpu'
 PRELOA = True
 CONFIG = {
     "columns": ["Open", "High", "Low", "Close", "Volume"],
-    "windows": [8, 16, 32, 64, 128],
+    "windows": [8, 16, 32],
 }
 SESSID = 'test'
 LIVEDT = False

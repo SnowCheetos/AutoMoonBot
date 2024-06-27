@@ -97,7 +97,6 @@ class DataLoader:
             data = data.pivot(columns='Ticker')
             data.sort_index(axis=1, level=0, inplace=True)
             data.columns.set_names(['Price', 'Ticker'], inplace=True)
-
             self._buffer = data
             self._counter = start + self._buffer_size + 1
 
@@ -108,8 +107,7 @@ class DataLoader:
 
         queries    = [f"SELECT *, '{ticker}' as Ticker FROM {ticker} WHERE Id = {row}" for ticker in self._tickers.symbols]
         full_query = " UNION ALL ".join(queries)
-
-        new_data = pd.read_sql(full_query, self._conn)
+        new_data   = pd.read_sql(full_query, self._conn)
         
         if not new_data.empty:
             new_data.set_index('Datetime', inplace=True)
