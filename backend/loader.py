@@ -88,9 +88,12 @@ class DataLoader:
         return True
 
     def load_db(self, start: int = 0) -> None:
-        queries    = [f"SELECT *, '{ticker}' as Ticker FROM {ticker} WHERE Id BETWEEN {start} AND {start + self._buffer_size}" for ticker in self._tickers.symbols]
-        full_query = " UNION ALL ".join(queries)
-        data       = pd.read_sql(full_query, self._conn)
+        stop = start + self._buffer_size
+        data = pd.read_sql(
+            sql = " UNION ALL ".join([
+                f"SELECT *, '{ticker}' AS Ticker FROM {ticker} WHERE Id BETWEEN {start} AND {stop}"
+                for ticker in self._tickers.symbols]), 
+            con = self._conn)
         
         if not data.empty:
             data.set_index('Datetime', inplace=True)
@@ -104,10 +107,12 @@ class DataLoader:
         if row is None:
             row = self._counter
             self._counter += 1
-
-        queries    = [f"SELECT *, '{ticker}' as Ticker FROM {ticker} WHERE Id = {row}" for ticker in self._tickers.symbols]
-        full_query = " UNION ALL ".join(queries)
-        new_data   = pd.read_sql(full_query, self._conn)
+        
+        new_data = pd.read_sql(
+            sql = " UNION ALL ".join([
+                f"SELECT *, '{ticker}' AS Ticker FROM {ticker} WHERE Id = {row}"
+                for ticker in self._tickers.symbols]), 
+            con = self._conn)
         
         if not new_data.empty:
             new_data.set_index('Datetime', inplace=True)

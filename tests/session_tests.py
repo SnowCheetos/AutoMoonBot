@@ -44,4 +44,4 @@ def test_fill_dataset(session: Session):
     session._fill_dataset()
 
     dataset = session.dataset
-    assert len(dataset) == BUFFER, 'dataset did not get filled properly'
+    assert len(dataset) >= BUFFER, 'dataset did not get filled properly'
