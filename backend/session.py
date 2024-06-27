@@ -29,10 +29,10 @@ class Session:
             session_id:     str | None   = None,
             timer_interval: float | None = None,
             market_rep:     List[str]    = ['VTI', 'GLD', 'USO']) -> None:
-        
         if not session_id:
             session_id = ticker + f'_{int(time.time())}'
-
+        
+        buffer_size  = max(buffer_size, max(feature_config['windows']) + 5)    
         self._loader = DataLoader(
             session_id     = session_id,
             tickers        = [ticker] + market_rep,
@@ -98,7 +98,7 @@ class Session:
                 x = torch.from_numpy(df.values).float(),
                 edge_index = torch.from_numpy(edge_index).long().contiguous()),
             'price':      features.iloc[-1:, features.columns.get_level_values('Type') == 'Price'],
-            'log_return': np.log(features[self._ticker]['Price']['Close'].dropna().mean(1)).diff(2).iloc[-1]
+            'log_return': np.log(features[self._ticker]['Price']['Close'].dropna().mean(1)).diff().iloc[-1]
         }
         
         if cache:

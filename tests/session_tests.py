@@ -1,26 +1,47 @@
 import pytest
 from backend.session import Session
 
+TICKER = 'SPY'
+INTERV = '1h'
+BUFFER = -1
+DEVICE = 'cpu'
+PRELOA = False
+CONFIG = {
+    "columns": ["Open", "High", "Low", "Close", "Volume"],
+    "windows": [8, 16, 32],
+}
+SESSID = 'test'
+LIVEDT = False
+DBPATH = '../data'
+MARKET = ['QQQ', 'USO', 'GLD', 'VTI']
+
 @pytest.fixture
 def session():
     return Session(
-        ticker='SPY',
-        interval='1h',
-        buffer_size=100,
-        device='cpu',
-        preload=True,
-        feature_config={
-            "columns": ["Open", "High", "Low", "Close", "Volume"],
-            "windows": [8, 10, 12, 14, 16, 18, 20],
-        },
-        session_id='test',
-        live=False,
-        db_path='../data',
-        market_rep=['QQQ', 'USO', 'GLD']
-    )
+        ticker         = TICKER,
+        interval       = INTERV,
+        buffer_size    = BUFFER,
+        device         = DEVICE,
+        preload        = PRELOA,
+        feature_config = CONFIG,
+        session_id     = SESSID,
+        live           = LIVEDT,
+        db_path        = DBPATH,
+        market_rep     = MARKET)
 
 def test_graph_building(session: Session):
     f, c = session._loader.features
     data = session._build_graph(f, c)
 
-    assert data.x.size(0) == 4, 'graph returned the wrong sized node features'
+    assert data['graph'].x.size(0) == len(MARKET) + 1, 'graph returned the wrong sized node features'
+
+def test_fetch_next(session: Session):
+    data = session._fetch_next()
+
+    assert data['graph'].x.size(0) == len(MARKET) + 1, 'graph returned the wrong sized node features'
+
+def test_fill_dataset(session: Session):
+    session._fill_dataset()
+    dataset = session.dataset
+
+    assert len(dataset) >= BUFFER, 'dataset did not get filled properly'

@@ -18,6 +18,10 @@ class Descriptor:
         self._columns = config['columns']
         self._windows = config['windows']
 
+    @property
+    def feature_dim(self) -> int:
+        return 148 * len(self._windows)
+
     def compute(self, data: pd.DataFrame) -> pd.DataFrame:
         df = data.copy()
         df = self._setup_data(df)
@@ -28,19 +32,21 @@ class Descriptor:
         df = self.compute_log_detrend_differential_entropy(df)
         return df
 
-    def _setup_data(self, df: pd.DataFrame) -> pd.DataFrame:
-        df = df[self._columns].dropna()
+    def _setup_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        data = data[self._columns].dropna()
         result = []
-    
+
         for window in self._windows:
+            df = data.copy()
+
             # Compute the moving average for the specified window
             sma = df.rolling(window=window).mean()
-    
+
             # Calculate the differences
             delta = df.diff()
             gain  = delta.clip(lower=0)
             loss  = -delta.clip(upper=0)
-    
+
             # Calculate average gains and losses
             avg_gain = gain.rolling(window=window).mean()
             avg_loss = loss.rolling(window=window).mean()
@@ -50,15 +56,13 @@ class Descriptor:
             rsi = 0.5 - (1 / (1 + rs))
     
             # Set the first 'window' rows to NaN (already handled by rolling().mean())
-            df.iloc[:window, :] = float('nan')
-
-            log_return = df.diff(1)
+            df.loc[df.index[:window], self._columns] = float('nan')
     
             # Create a new MultiIndex for the columns with the window size as an additional level
             new_tuples = [(ticker, 'Price', price, f'Window={window}') for price, ticker in df.columns]
             sma_tuples = [(ticker, 'SMA', price, f'Window={window}') for price, ticker in sma.columns]
             rsi_tuples = [(ticker, 'RSI', price, f'Window={window}') for price, ticker in rsi.columns]
-    
+
             # Combine the original data and moving average data with new MultiIndex
             combined_tuples       = new_tuples + sma_tuples + rsi_tuples
             combined_data         = pd.concat([df, sma, rsi], axis=1)
@@ -106,7 +110,6 @@ class Descriptor:
     def compute_log_detrend_mean(df: pd.DataFrame) -> pd.DataFrame | None:
         idx       = [df.index[-1]]
         dt        = df.loc[:, df.columns.get_level_values('Price') != 'Volume']
-        
         detrended = np.log(dt.xs('Price', level='Type', axis=1)) - np.log(dt.xs('SMA', level='Type', axis=1))
         detrended = detrended.dropna()
         if detrended.empty:
@@ -123,10 +126,8 @@ class Descriptor:
         dt        = df.loc[:, df.columns.get_level_values('Price') != 'Volume']
         detrended = np.log(dt.xs('Price', level='Type', axis=1)) - np.log(dt.xs('SMA', level='Type', axis=1))
         detrended = detrended.dropna()
-        
         if detrended.empty:
             return None
-        
         dt          = detrended.apply(differential_entropy, nan_policy='omit', keepdims=True)
         dt.index    = idx
         cols        = [(ticker, 'DetrendDiffEntropy', price, window) for ticker, price, window in dt.columns]

@@ -62,15 +62,27 @@ class DataLoader:
         f = self._descriptor.compute(self.data)
         c = self._descriptor.compute_correlation_matrix(self.data, ['Close'])
         return (f, c)
+    
+    @property
+    def feature_dim(self) -> int:
+        return self._descriptor.feature_dim
 
     def init_db(self) -> None:
-        history = self._tickers.history(interval=self._interval, period='2y', threads=True)
+        history = self._tickers.history(
+            interval = self._interval, 
+            period   = '2y', 
+            threads  = True, 
+            actions  = False)
         for ticker in self._tickers.symbols:
             data = history.xs(ticker, level='Ticker', axis=1).reset_index()
             data.to_sql(ticker, self._conn, if_exists='replace', index_label='Id')
 
     def update_db(self) -> bool:
-        history = self._tickers.history(interval=self._interval, start=self.last_timestamp, threads=True)
+        history = self._tickers.history(
+            interval = self._interval, 
+            start    = self.last_timestamp, 
+            threads  = True, 
+            actions  = False)
         history = history[history.index > self.last_timestamp]
         if len(history) == 0:
             return False
@@ -80,32 +92,44 @@ class DataLoader:
         return True
 
     def load_db(self, start: int = 0) -> None:
-        dfs = []
-        for ticker in self._tickers.symbols:
-            query = f'SELECT * FROM {ticker} WHERE Id BETWEEN {start} AND {start + self._buffer_size}'
-            data = pd.read_sql(query, self._conn)
+        stop = start + self._buffer_size
+        data = pd.read_sql(
+            sql = " UNION ALL ".join([
+                f"SELECT *, '{ticker}' AS Ticker FROM {ticker} WHERE Id BETWEEN {start} AND {stop}"
+                for ticker in self._tickers.symbols]), 
+            con = self._conn)
+        
+        if not data.empty:
             data.set_index('Datetime', inplace=True)
-            data.columns = pd.MultiIndex.from_product([data.columns, [ticker]])
-            dfs.append(data)
-        self._buffer  = pd.concat(dfs, axis=1)
-        self._counter = start + self._buffer_size + 1
+            data = data.pivot(columns='Ticker')
+            data.sort_index(axis=1, level=0, inplace=True)
+            data.columns.set_names(['Price', 'Ticker'], inplace=True)
+            self._buffer = data
+            self._counter = start + self._buffer_size + 1
 
     def load_row(self, row: int | None = None) -> bool:
-        if not row:
+        if row is None:
             row = self._counter
             self._counter += 1
-        new_data_list = []
-        for ticker in self._tickers.symbols:
-            query = f"SELECT * FROM {ticker} WHERE Id = {row}"
-            new_data = pd.read_sql(query, self._conn)
-            if not new_data.empty:
-                new_data.set_index('Datetime', inplace=True)
-                new_data.columns = pd.MultiIndex.from_product([new_data.columns, [ticker]])
-                new_data_list.append(new_data)
-        if new_data_list:
-            new_data_df = pd.concat(new_data_list, axis=1)
-            self._buffer = pd.concat([self._buffer, new_data_df]).sort_index()
-            if len(self._buffer) > self._buffer_size:
-                self._buffer = self._buffer.iloc[-self._buffer_size:]
+        
+        new_data = pd.read_sql(
+            sql = " UNION ALL ".join([
+                f"SELECT *, '{ticker}' AS Ticker FROM {ticker} WHERE Id = {row}"
+                for ticker in self._tickers.symbols]), 
+            con = self._conn)
+        
+        if not new_data.empty:
+            new_data.set_index('Datetime', inplace=True)
+            new_data = new_data.pivot(columns='Ticker')
+            new_data.sort_index(axis=1, level=0, inplace=True)
+            new_data.columns.set_names(['Price', 'Ticker'], inplace=True)
+            
+            if self._buffer is None:
+                self._buffer = new_data
+            else:
+                self._buffer = pd.concat([self._buffer, new_data]).sort_index()
+                if len(self._buffer) > self._buffer_size:
+                    self._buffer = self._buffer.iloc[-self._buffer_size:]
+
             return True
         return False
