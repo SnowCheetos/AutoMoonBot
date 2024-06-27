@@ -3,7 +3,7 @@ from backend.session import Session
 
 TICKER = 'SPY'
 INTERV = '1h'
-BUFFER = 10
+BUFFER = -1
 DEVICE = 'cpu'
 PRELOA = True
 CONFIG = {

@@ -62,6 +62,10 @@ class DataLoader:
         f = self._descriptor.compute(self.data)
         c = self._descriptor.compute_correlation_matrix(self.data, ['Close'])
         return (f, c)
+    
+    @property
+    def feature_dim(self) -> int:
+        return self._descriptor.feature_dim
 
     def init_db(self) -> None:
         history = self._tickers.history(

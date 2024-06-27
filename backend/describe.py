@@ -18,6 +18,10 @@ class Descriptor:
         self._columns = config['columns']
         self._windows = config['windows']
 
+    @property
+    def feature_dim(self) -> int:
+        return 148 * len(self._windows)
+
     def compute(self, data: pd.DataFrame) -> pd.DataFrame:
         df = data.copy()
         df = self._setup_data(df)
