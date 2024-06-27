@@ -5,7 +5,7 @@ TICKER = 'SPY'
 INTERV = '1h'
 BUFFER = -1
 DEVICE = 'cpu'
-PRELOA = True
+PRELOA = False
 CONFIG = {
     "columns": ["Open", "High", "Low", "Close", "Volume"],
     "windows": [8, 16, 32],
@@ -13,7 +13,7 @@ CONFIG = {
 SESSID = 'test'
 LIVEDT = False
 DBPATH = '../data'
-MARKET = ['QQQ', 'USO', 'GLD']
+MARKET = ['QQQ', 'USO', 'GLD', 'VTI']
 
 @pytest.fixture
 def session():
@@ -33,15 +33,15 @@ def test_graph_building(session: Session):
     f, c = session._loader.features
     data = session._build_graph(f, c)
 
-    assert data['graph'].x.size(0) == 4, 'graph returned the wrong sized node features'
+    assert data['graph'].x.size(0) == len(MARKET) + 1, 'graph returned the wrong sized node features'
 
 def test_fetch_next(session: Session):
     data = session._fetch_next()
 
-    assert data['graph'].x.size(0) == 4, 'graph returned the wrong sized node features'
+    assert data['graph'].x.size(0) == len(MARKET) + 1, 'graph returned the wrong sized node features'
 
 def test_fill_dataset(session: Session):
     session._fill_dataset()
-
     dataset = session.dataset
+
     assert len(dataset) >= BUFFER, 'dataset did not get filled properly'
