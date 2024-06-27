@@ -88,22 +88,25 @@ class DataLoader:
         return True
 
     def load_db(self, start: int = 0) -> None:
-        dfs = []
-        for ticker in self._tickers.symbols:
-            query = f'SELECT * FROM {ticker} WHERE Id BETWEEN {start} AND {start + self._buffer_size}'
-            data = pd.read_sql(query, self._conn)
+        queries    = [f"SELECT *, '{ticker}' as Ticker FROM {ticker} WHERE Id BETWEEN {start} AND {start + self._buffer_size}" for ticker in self._tickers.symbols]
+        full_query = " UNION ALL ".join(queries)
+        data       = pd.read_sql(full_query, self._conn)
+        
+        if not data.empty:
             data.set_index('Datetime', inplace=True)
-            data.columns = pd.MultiIndex.from_product([data.columns, [ticker]])
-            dfs.append(data)
-        self._buffer  = pd.concat(dfs, axis=1)
-        self._counter = start + self._buffer_size + 1
+            data = data.pivot(columns='Ticker')
+            data.sort_index(axis=1, level=0, inplace=True)
+            data.columns.set_names(['Price', 'Ticker'], inplace=True)
+
+            self._buffer = data
+            self._counter = start + self._buffer_size + 1
 
     def load_row(self, row: int | None = None) -> bool:
         if row is None:
             row = self._counter
             self._counter += 1
 
-        queries = [f"SELECT *, '{ticker}' as Ticker FROM {ticker} WHERE Id = {row}" for ticker in self._tickers.symbols]
+        queries    = [f"SELECT *, '{ticker}' as Ticker FROM {ticker} WHERE Id = {row}" for ticker in self._tickers.symbols]
         full_query = " UNION ALL ".join(queries)
 
         new_data = pd.read_sql(full_query, self._conn)
@@ -111,8 +114,8 @@ class DataLoader:
         if not new_data.empty:
             new_data.set_index('Datetime', inplace=True)
             new_data = new_data.pivot(columns='Ticker')
-            new_data.columns = new_data.columns.swaplevel(0, 1)
             new_data.sort_index(axis=1, level=0, inplace=True)
+            new_data.columns.set_names(['Price', 'Ticker'], inplace=True)
             
             if self._buffer is None:
                 self._buffer = new_data
@@ -122,5 +125,4 @@ class DataLoader:
                     self._buffer = self._buffer.iloc[-self._buffer_size:]
 
             return True
-
         return False

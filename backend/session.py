@@ -85,7 +85,7 @@ class Session:
         edge_index = np.nonzero(cmat)
         # edge_attrs = cmat[edge_index][None,:] # Not using for now
         edge_index = np.stack(edge_index)
-
+        
         c1 = features.columns.get_level_values('Type') != 'Price'
         c2 = features.columns.get_level_values('Type') != 'SMA'
         df = features.iloc[-1:, (c1) & (c2)].sort_index(axis=1)
