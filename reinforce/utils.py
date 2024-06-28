@@ -55,14 +55,14 @@ def compute_loss(
         gamma:      float=0.99,
         device:     str="cpu") -> torch.Tensor:
     
-    log_probs = torch.stack(log_probs)
+    log_probs = torch.vstack(log_probs)
     rewards = torch.tensor(rewards, dtype=torch.float32, device=device)
 
     discounted_rewards = compute_discounted_rewards(rewards.tolist(), gamma)
     discounted_rewards = torch.tensor(discounted_rewards, dtype=torch.float32, device=device)
-    # normalized_rewards = (discounted_rewards - discounted_rewards.mean()) / (discounted_rewards.std() + 1e-9)
+    normalized_rewards = (discounted_rewards - discounted_rewards.mean()) / (discounted_rewards.std() + 1e-9)
 
-    policy_gradient = -log_probs * discounted_rewards
+    policy_gradient = -log_probs * normalized_rewards
     return policy_gradient.sum()
 
 # TODO Fix this

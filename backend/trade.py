@@ -71,7 +71,7 @@ class Trade:
             self, 
             price:  float, 
             amount: float) -> None:
-        
+
         assert price > 0, 'asset prices must be strictly positive'
 
         if self._type == TradeType.Long:
@@ -90,7 +90,7 @@ class Trade:
             self._status  = TradeStatus.Closed
             self._closed  = time.time()
             self._exit    = price
-            self._holding = 0
+            # self._holding = 0
             return (self._exit / self._entry - self._cost) * self._holding
         else:
             return None

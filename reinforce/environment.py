@@ -51,7 +51,7 @@ class Environment:
         price       = data['price']
         index       = data['index']
         ticker      = data['asset']
-        close       = price[ticker]['Close'].mean()
+        close       = price[ticker]['Price']['Close'].mean(None)
         positions   = self._manager.positions(close)
         uuids       = [position['uuid'] for position in positions]
         types       = [position['type'] for position in positions]
@@ -62,7 +62,7 @@ class Environment:
             uuids.append(self._manager.market_uuid)
             types.append(TradeType.Market.value)
             log_returns.append(market_log_return)
-        
+
         actions, log_probs = select_action(
             model      = model,
             state      = graph,
@@ -115,26 +115,25 @@ class Environment:
             episodes:   int,
             policy_net: PolicyNet,
             optimizer:  optim.Optimizer) -> None:
-        
-        print('hi')
+
         policy_net.train()
         for episode in range(episodes):
-            logging.info(f'episode {episode+1}/{episodes} started\n')
+            logging.debug(f'episode {episode+1}/{episodes} started\n')
             self._reset()
             optimizer.zero_grad()
 
-            rewards   = 0
+            rewards   = []
             log_probs = []
             for i in range(len(self._dataset)):
                 data = self._dataset[i]
 
-                done, _, log_probs, reward = self._step(
+                done, _, log_prob, reward = self._step(
                     model  = policy_net,
                     data   = data,
                     argmax = False)
 
                 rewards.append(reward)
-                log_probs.append(log_probs)
+                log_probs.append(log_prob.view(-1, 1))
 
                 if done: 
                     break
@@ -147,7 +146,7 @@ class Environment:
 
             loss.backward()
             optimizer.step()
-            logging.info(f'episode {episode+1}/{episodes} done, loss={loss.item():.4f}, returns={self._manager.value:.4f}')
+            logging.debug(f'episode {episode+1}/{episodes} done, loss={loss.item():.4f}, returns={self._manager.value:.4f}')
         logging.info('training complete')
 
     @torch.no_grad()
@@ -157,22 +156,22 @@ class Environment:
 
         self._reset()
         policy_net.eval()
-        rewards   = 0
+        rewards   = []
         log_probs = []
 
         for i in range(len(self._dataset)):
             data = self._dataset[i]
 
-            done, _, log_probs, reward = self._step(
+            done, _, log_prob, reward = self._step(
                 model  = policy_net,
                 data   = data,
                 argmax = True)
 
             rewards.append(reward)
-            log_probs.append(log_probs)
+            log_probs.append(log_prob)
 
             if done: 
                 break
         
-        logging.info(f'testing done, returns={self._manager.value:.4f}')
+        logging.debug(f'testing done, returns={self._manager.value:.4f}')
         return self._manager.value

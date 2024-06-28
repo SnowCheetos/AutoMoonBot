@@ -15,12 +15,13 @@ class Descriptor:
             "windows": [8, 10, 12, 14, 16, 18, 20, ...],
         }
         '''
+        self._tickers = config['tickers']
         self._columns = config['columns']
         self._windows = config['windows']
 
     @property
     def feature_dim(self) -> int:
-        return 148 * len(self._windows)
+        return len(self._windows) * 27
 
     def compute(self, data: pd.DataFrame) -> pd.DataFrame:
         df = data.copy()
@@ -80,7 +81,7 @@ class Descriptor:
         cols        = [(ticker, 'ZScore', price, window) for ticker, _, price, window in dt.columns]
         res         = pd.concat([df, dt], axis=1)
         res.columns = pd.MultiIndex.from_tuples(list(df.columns) + cols, names=['Ticker', 'Type', 'Price', 'Window'])
-        return res
+        return res # [n x 5]
     
     @staticmethod
     def compute_skews(df: pd.DataFrame) -> pd.DataFrame:
@@ -93,7 +94,7 @@ class Descriptor:
         cols        = [(ticker, 'Skews', price, window) for ticker, _, price, window in dt.columns]
         res         = pd.concat([df, dt], axis=1)
         res.columns = pd.MultiIndex.from_tuples(list(df.columns) + cols, names=['Ticker', 'Type', 'Price', 'Window'])
-        return res
+        return res # [n x 4]
     
     @staticmethod
     def compute_kurtosis(df: pd.DataFrame) -> pd.DataFrame:
@@ -104,7 +105,7 @@ class Descriptor:
         cols        = [(ticker, 'Kurtosis', price, window) for ticker, _, price, window in dt.columns]
         res         = pd.concat([df, dt], axis=1)
         res.columns = pd.MultiIndex.from_tuples(list(df.columns) + cols, names=['Ticker', 'Type', 'Price', 'Window'])
-        return res
+        return res # [n x 5]
     
     @staticmethod
     def compute_log_detrend_mean(df: pd.DataFrame) -> pd.DataFrame | None:
@@ -119,7 +120,7 @@ class Descriptor:
         cols        = [(ticker, 'DetrendMean', price, window) for ticker, price, window in dt.columns]
         res         = pd.concat([df, dt], axis=1)
         res.columns = pd.MultiIndex.from_tuples(list(df.columns) + cols, names=['Ticker', 'Type', 'Price', 'Window'])
-        return res
+        return res # [n x 4]
     
     @staticmethod
     def compute_log_detrend_differential_entropy(df: pd.DataFrame) -> pd.DataFrame | None:
@@ -134,7 +135,7 @@ class Descriptor:
         cols        = [(ticker, 'DetrendDiffEntropy', price, window) for ticker, price, window in dt.columns]
         res         = pd.concat([df, dt], axis=1)
         res.columns = pd.MultiIndex.from_tuples(list(df.columns) + cols, names=['Ticker', 'Type', 'Price', 'Window'])
-        return res
+        return res # [n x 4]
     
     @staticmethod
     def compute_correlation_matrix(df: pd.DataFrame, column: List[str]=['Close']) -> pd.DataFrame:

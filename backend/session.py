@@ -56,9 +56,10 @@ class Session:
             min_val = 0.5,
             dataset = None)
 
+        input_dim = self._loader.feature_dim
         self._infer_net = PolicyNet(
-            inp_dim=81,
-            out_dim=3,
+            inp_dim=input_dim,
+            out_dim=len(Action),
             inp_types=len(TradeType),
             emb_dim=10,
             mem_dim=10,
@@ -67,9 +68,10 @@ class Session:
             key_dim=10,
             val_dim=50
         ).to(device)
+
         self._valid_net = PolicyNet(
-            inp_dim=81,
-            out_dim=3,
+            inp_dim=input_dim,
+            out_dim=len(Action),
             inp_types=len(TradeType),
             emb_dim=10,
             mem_dim=10,
@@ -78,9 +80,10 @@ class Session:
             key_dim=10,
             val_dim=50
         ).to(device)
+
         self._train_net = PolicyNet(
-            inp_dim=81,
-            out_dim=3,
+            inp_dim=input_dim,
+            out_dim=len(Action),
             inp_types=len(TradeType),
             emb_dim=10,
             mem_dim=10,
@@ -89,6 +92,7 @@ class Session:
             key_dim=10,
             val_dim=50
         ).to(device)
+
         if combile_models:
             self._compile_models()
 
@@ -187,7 +191,7 @@ class Session:
             market_uuid = self._manager.market_uuid
             positions   = self._manager.positions(close)
             liquid      = self._manager.liquid
-        
+
         uuids       = [position['uuid'] for position in positions]
         types       = [position['type'] for position in positions]
         log_returns = [position['log_return'] for position in positions]
@@ -246,7 +250,7 @@ class Session:
             episodes   = self._train_eps,
             policy_net = self._train_net,
             optimizer  = self._train_opt)
-        
+
         train_score = self._environment.test(self._train_net)
         valid_score = self._environment.test(self._valid_net)
 
@@ -256,6 +260,11 @@ class Session:
                 self._valid_net.load_state_dict(weights)
                 self._infer_net.load_state_dict(weights)
             logging.info('model updated')
+        else:
+            weights = self._valid_net.state_dict()
+            with self._thread_lock:
+                self._train_net.load_state_dict(weights)
+            logging.info('model reverted')
 
     def _timer(
             self, 
@@ -284,7 +293,7 @@ class Session:
         c2 = features.columns.get_level_values('Type') != 'SMA'
         df = features.iloc[-1:, (c1) & (c2)].sort_index(axis=1)
         df = df.stack(level=0, future_stack=True).reset_index(level=0).sort_index(axis=1).drop(columns=['level_0'])
-        
+
         data = {
             'asset':      self._ticker,
             'index':      df.index.get_loc(self._ticker),
