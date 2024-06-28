@@ -67,6 +67,13 @@ class Trade:
     def status(self) -> TradeStatus:
         return self._status
     
+    @property
+    def gain(self) -> float | None:
+        if self._closed:
+            return (self._exit / self._entry) * self._holding
+        else:
+            return None
+    
     def open(
             self, 
             price:  float, 
@@ -107,7 +114,8 @@ class Trade:
 
 
 class Account:
-    def __init__(self) -> None:
+    def __init__(self, cost: float) -> None:
+        self._cost = cost
         self._market_uuid = str(uuid.uuid4())
         self._opened: Dict[str, Trade] = {}
         self._closed: Dict[str, Trade] = {}
@@ -115,6 +123,10 @@ class Account:
     @property
     def market_uuid(self) -> str:
         return self._market_uuid
+
+    @property
+    def history(self) -> Dict[str, Trade]:
+        return self._closed
 
     def reset(self):
         self._opened = {}
@@ -147,13 +159,12 @@ class Account:
             self, 
             trade_type: TradeType,
             price:      float,
-            amount:     float,
-            cost:       float) -> None:
+            amount:     float) -> None:
         
         trade = Trade(
             uuid       = str(uuid.uuid4()),
             trade_type = trade_type,
-            cost       = cost)
+            cost       = self._cost)
         
         trade.open(price, amount)
         self._opened[trade.uuid] = trade

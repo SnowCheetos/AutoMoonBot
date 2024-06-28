@@ -7,7 +7,7 @@ import pandas as pd
 
 from collections import deque
 from typing import Callable, Dict, List
-from torch.optim import SGD
+from torch.optim import SGD, Adam, AdamW
 from torch_geometric.data import Data
 from backend.loader import DataLoader
 from backend.manager import Manager
@@ -28,6 +28,7 @@ class Session:
             buffer_size:    int,
             device:         str,
             feature_config: Dict[str, List[str | int] | str],
+            trading_cost:   float      = 0.0,
             combile_models: bool       = True,
             live:           bool       = False,
             preload:        bool       = True,
@@ -35,7 +36,7 @@ class Session:
             session_id:     str | None = None,
             inf_interval:   int | None = None,
             trn_interval:   int | None = None,
-            market_rep:     List[str]  = ['VTI', 'GLD', 'USO']) -> None:
+            market_rep:     List[str]  = ['VTI']) -> None:
         if not session_id:
             session_id = ticker + f'_{int(time.time())}'
         
@@ -49,59 +50,60 @@ class Session:
             buffer_size    = buffer_size,
             feature_config = feature_config)
         
-        self._manager = Manager()
+        self._manager = Manager(
+            trading_cost=trading_cost)
 
         self._environment = Environment(
             device  = device,
-            min_val = 0.5,
-            dataset = None)
+            min_val = 0.8,
+            dataset = None,
+            cost    = trading_cost)
 
         input_dim = self._loader.feature_dim
         self._infer_net = PolicyNet(
             inp_dim=input_dim,
             out_dim=len(Action),
-            inp_types=len(TradeType),
-            emb_dim=10,
-            mem_dim=10,
-            mem_size=10,
-            mem_heads=2,
-            key_dim=10,
-            val_dim=50
+            inp_types=2,
+            emb_dim=8,
+            mem_dim=128,
+            mem_size=256,
+            mem_heads=4,
+            key_dim=64,
+            val_dim=128
         ).to(device)
 
         self._valid_net = PolicyNet(
             inp_dim=input_dim,
             out_dim=len(Action),
-            inp_types=len(TradeType),
-            emb_dim=10,
-            mem_dim=10,
-            mem_size=10,
-            mem_heads=2,
-            key_dim=10,
-            val_dim=50
+            inp_types=2,
+            emb_dim=8,
+            mem_dim=128,
+            mem_size=256,
+            mem_heads=4,
+            key_dim=64,
+            val_dim=128
         ).to(device)
 
         self._train_net = PolicyNet(
             inp_dim=input_dim,
             out_dim=len(Action),
-            inp_types=len(TradeType),
-            emb_dim=10,
-            mem_dim=10,
-            mem_size=10,
-            mem_heads=2,
-            key_dim=10,
-            val_dim=50
+            inp_types=2,
+            emb_dim=8,
+            mem_dim=128,
+            mem_size=256,
+            mem_heads=4,
+            key_dim=64,
+            val_dim=128
         ).to(device)
 
         if combile_models:
             self._compile_models()
 
         self._train_eps = 100
-        self._train_opt = SGD(
-            params       = self._train_net.parameters(),
-            lr           = 1e-3,
-            momentum     = 0.9,
-            weight_decay = 0.9)
+        # self._train_opt = AdamW(
+        #     params       = self._train_net.parameters(),
+        #     lr           = 1e-7,
+        #     weight_decay = 1e-2)
 
         self._ticker        = ticker
         self._device        = device
@@ -110,7 +112,7 @@ class Session:
         self._trn_interval  = trn_interval if not live else 10 #TODO Convert interval to seconds
         self._buffer_size   = buffer_size
         self._dataset       = deque(maxlen=buffer_size)
-        self._actions_queue = deque()
+        self._actions_queue = deque(maxlen=buffer_size)
 
         self._inference_timer  = None
         self._retrain_timer    = None
@@ -177,7 +179,6 @@ class Session:
 
     @torch.no_grad()
     def _inference_(self) -> None:
-        #with self._thread_lock:
         data = self._fetch_next(cache=True)
         
         graph      = data['graph']
@@ -188,6 +189,7 @@ class Session:
         log_return = data['log_return']
 
         with self._thread_lock:
+            self._infer_net.eval()
             market_uuid = self._manager.market_uuid
             positions   = self._manager.positions(close)
             liquid      = self._manager.liquid
@@ -233,6 +235,8 @@ class Session:
         
             with self._thread_lock:
                 self._actions_queue.append(final)
+        
+        logging.info(f'portfolio value: {self._manager.value:.4f}')
 
     def _retrain(self) -> None:
         if self._retrain_thread and self._retrain_thread.is_alive():
@@ -246,25 +250,35 @@ class Session:
 
     def _retrain_(self) -> None:
         logging.info('training starts')
+        optimizer = AdamW(
+            params       = self._train_net.parameters(),
+            lr           = 1e-7,
+            weight_decay = 1e-2)
+
         self._environment.train(
             episodes   = self._train_eps,
             policy_net = self._train_net,
-            optimizer  = self._train_opt)
+            optimizer  = optimizer)
 
+        self._train_net.eval()
+        self._valid_net.eval()
         train_score = self._environment.test(self._train_net)
         valid_score = self._environment.test(self._valid_net)
 
         if train_score > valid_score:
-            weights = self._train_net.state_dict()
-            with self._thread_lock:
+            with (self._thread_lock, torch.no_grad()):
+                weights = self._train_net.state_dict()
                 self._valid_net.load_state_dict(weights)
                 self._infer_net.load_state_dict(weights)
             logging.info('model updated')
         else:
-            weights = self._valid_net.state_dict()
-            with self._thread_lock:
+            with (self._thread_lock, torch.no_grad()):
+                weights = self._valid_net.state_dict()
                 self._train_net.load_state_dict(weights)
             logging.info('model reverted')
+        
+        with self._thread_lock:
+            self._environment.dataset = self.dataset
 
     def _timer(
             self, 
@@ -284,7 +298,8 @@ class Session:
         
         cmat = corr.to_numpy()
         cmat[cmat < corr_threshold] = 0
-        
+        cmat = np.triu(cmat)
+
         edge_index = np.nonzero(cmat)
         # edge_attrs = cmat[edge_index][None,:] # Not using for now
         edge_index = np.stack(edge_index)

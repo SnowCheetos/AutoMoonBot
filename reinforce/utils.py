@@ -13,7 +13,7 @@ def select_action(
         log_return: List[float], 
         device:     str,
         argmax:     bool = False) -> Tuple[List[int], torch.Tensor]:
-    
+
     probs = model(
         data       = state.to(device),
         index      = index,
@@ -50,60 +50,18 @@ def compute_discounted_rewards(
     return discounted_rewards
 
 def compute_loss(
-        log_probs:  List[torch.Tensor], 
-        rewards:    List[float],
-        gamma:      float=0.99,
-        device:     str="cpu") -> torch.Tensor:
-    
-    log_probs = torch.vstack(log_probs)
-    rewards = torch.tensor(rewards, dtype=torch.float32, device=device)
+        log_probs: List[torch.Tensor], 
+        rewards:   List[float],
+        sharpe:    float,
+        gamma:     float=0.99,
+        device:    str="cpu") -> torch.Tensor:
 
-    discounted_rewards = compute_discounted_rewards(rewards.tolist(), gamma)
-    discounted_rewards = torch.tensor(discounted_rewards, dtype=torch.float32, device=device)
-    normalized_rewards = (discounted_rewards - discounted_rewards.mean()) / (discounted_rewards.std() + 1e-9)
+    log_probs          = torch.vstack(log_probs)
+    discounted_rewards = compute_discounted_rewards(rewards, gamma)
+    discounted_rewards = torch.tensor(discounted_rewards, device=device).float()
+    # normalized_rewards = (discounted_rewards - discounted_rewards.mean()) / (discounted_rewards.std() + 1e-9)
 
-    policy_gradient = -log_probs * normalized_rewards
-    return policy_gradient.sum()
+    policy_gradient = -log_probs * discounted_rewards.sum() #normalized_rewards
+    loss = policy_gradient.sum()
 
-# TODO Fix this
-def inference(
-        model:     PolicyNet, 
-        state:     Data, 
-        index:     int,
-        potential: float,
-        position:  int, 
-        device:    str,
-        method:    str="argmax",
-        min_prob:  float=0.31) -> Tuple[int, float] | None:
-    
-    model.eval()
-    min_prob = min(0.34, min_prob)
-
-    if method not in {"argmax", "prob"}:
-        logging.error("Method must be in one of [argmax, prob]")
-        return None
-
-    with torch.no_grad():
-        probs = model(
-            data  = state.to(device),
-            index = index,
-            pos   = torch.tensor(
-                        [[position]], 
-                        dtype=torch.long, 
-                        device=device),
-            port  = torch.tensor(
-                        [[potential]],
-                        dtype=torch.float32, 
-                        device=device))
-    
-    if method == "argmax":
-        action = probs.argmax(1).item()
-    else:
-        action = np.random.choice(probs.size(-1), p=probs.detach().cpu().numpy()[0])
-        
-    prob = probs[0, action].item()
-    if method == "prob" and prob < min_prob:
-        action = probs.argmax(1).item()
-        prob = probs[0, action].item()
-
-    return (action, prob)
+    return loss

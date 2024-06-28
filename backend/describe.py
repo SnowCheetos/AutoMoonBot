@@ -15,7 +15,6 @@ class Descriptor:
             "windows": [8, 10, 12, 14, 16, 18, 20, ...],
         }
         '''
-        self._tickers = config['tickers']
         self._columns = config['columns']
         self._windows = config['windows']
 

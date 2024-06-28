@@ -5,6 +5,7 @@ import pandas as pd
 import torch
 import torch.optim as optim
 
+from torch.nn.utils import clip_grad_norm_
 from torch_geometric.data import Data
 from typing import Dict, List, Tuple
 from backend.manager import Manager
@@ -21,12 +22,13 @@ class Environment:
             self,
             device:  str,
             min_val: float,
+            cost:    float,
             dataset: List[Dict[str, pd.DataFrame | Data]] | None) -> None:
         
         self._device  = device
         self._min_val = min_val
         self._dataset = dataset
-        self._manager = Manager()
+        self._manager = Manager(trading_cost=cost)
 
     @property
     def dataset(self) -> List[Dict[str, pd.DataFrame | Data]]:
@@ -80,7 +82,7 @@ class Environment:
                 if uuid == self._manager.market_uuid:
                     final = self._manager.long(close, np.exp(log_probs[i].item()))
                     if final == Action.Buy:
-                        reward += np.log(self._manager.value) # Did buy, add total log return
+                        reward -= 0.1 #np.log(self._manager.value) # Did buy, add total log return
                     else:
                         reward -= market_log_return # Did not buy, subtract market log return
 
@@ -101,7 +103,7 @@ class Environment:
                         reward -= log_return # Did hold, subtract trade log return
                 else:
                     pass # TODO Surprise action
-
+            
             else: # Impossible
                 raise NotImplementedError('the selected action is not a valid one')
 
@@ -124,9 +126,7 @@ class Environment:
 
             rewards   = []
             log_probs = []
-            for i in range(len(self._dataset)):
-                data = self._dataset[i]
-
+            for data in self._dataset:
                 done, _, log_prob, reward = self._step(
                     model  = policy_net,
                     data   = data,
@@ -138,14 +138,21 @@ class Environment:
                 if done: 
                     break
 
-            loss = compute_loss(
+            sharpe = self._manager.sharpe_ratio
+            loss   = compute_loss(
                 log_probs = log_probs,
                 rewards   = rewards,
+                sharpe    = sharpe,
                 device    = self._device
             )
 
             loss.backward()
+            clip_grad_norm_(
+                parameters = policy_net.parameters(), 
+                max_norm   = 1.0,
+                error_if_nonfinite=True)
             optimizer.step()
+
             logging.debug(f'episode {episode+1}/{episodes} done, loss={loss.item():.4f}, returns={self._manager.value:.4f}')
         logging.info('training complete')
 
