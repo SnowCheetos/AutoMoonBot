@@ -12,10 +12,11 @@ if __name__ == '__main__':
         buffer_size=-1,
         device='cpu',
         preload=True,
+        actor_critic=True,
         combile_models=False,
         feature_config={
             "columns": ["Open", "High", "Low", "Close", "Volume"],
-            "windows": [8, 12, 16, 20, 24, 30, 36, 42, 56, 64],
+            "windows": [8, 16, 32, 64],
         },
         session_id='test',
         inf_interval=1,

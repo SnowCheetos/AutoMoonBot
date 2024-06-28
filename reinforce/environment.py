@@ -10,8 +10,8 @@ from torch_geometric.data import Data
 from typing import Dict, List, Tuple
 from backend.manager import Manager
 from backend.trade import TradeType, Action
-from reinforce.model import PolicyNet
-from reinforce.utils import select_action, compute_loss
+from reinforce.model import PolicyNet, CriticNet
+from reinforce.utils import select_action, compute_policy_loss, compute_critic_loss
 
 
 class Environment:
@@ -43,12 +43,13 @@ class Environment:
 
     def _step(
             self, 
-            model:  PolicyNet,
-            data:   Dict[str, pd.DataFrame | Data],
-            argmax: bool = False) -> Tuple[bool, List[int], torch.Tensor, float]:
+            data:       Dict[str, pd.DataFrame | Data],
+            argmax:     bool,
+            policy_net: PolicyNet,
+            critic_net: CriticNet | None = None) -> Tuple[bool, List[int], torch.Tensor, float]:
         
         done        = False
-        reward      = 0
+        reward      = []
         graph       = data['graph']
         price       = data['price']
         index       = data['index']
@@ -66,7 +67,7 @@ class Environment:
             log_returns.append(market_log_return)
 
         actions, log_probs = select_action(
-            model      = model,
+            model      = policy_net,
             state      = graph,
             index      = index,
             inp_types  = types,
@@ -82,25 +83,29 @@ class Environment:
                 if uuid == self._manager.market_uuid:
                     final = self._manager.long(close, np.exp(log_probs[i].item()))
                     if final == Action.Buy:
-                        reward -= 0.1 #np.log(self._manager.value) # Did buy, add total log return
+                        reward.append(np.log(self._manager.value)) # Did buy, add total log return
                     else:
-                        reward -= market_log_return # Did not buy, subtract market log return
+                        reward.append(-market_log_return) # Did not buy, subtract market log return
+                else: # TODO Close short position
+                    reward.append(-1)
 
             elif action == Action.Sell:
                 if uuid != self._manager.market_uuid:
                     final = self._manager.short(close, np.exp(log_probs[i].item()), uuid)
                     if final == Action.Sell:
-                        reward += log_return # Did sell, add trade log return
+                        reward.append(log_return) # Did sell, add trade log return
                     else:
-                        reward -= log_return # Did not sell, subtract trade log return
+                        reward.append(-log_return) # Did not sell, subtract trade log return
+                else: # TODO Short selling
+                    reward.append(-1)
 
             elif action == Action.Hold:
                 final = self._manager.hold(close, np.exp(log_probs[i].item()))
                 if final == Action.Hold:
                     if uuid == self._manager.market_uuid:
-                        reward -= market_log_return # Did hold, subtract market log return
+                        reward.append(market_log_return) # Did hold, subtract market log return
                     else:
-                        reward -= log_return # Did hold, subtract trade log return
+                        reward.append(-log_return) # Did hold, subtract trade log return
                 else:
                     pass # TODO Surprise action
             
@@ -110,50 +115,80 @@ class Environment:
         if self._manager.value < self._min_val:
             done = True
         
-        return done, actions, log_probs, reward
+        values = critic_net(
+            data       = graph,
+            index      = index,
+            inp_types  = types,
+            log_return = log_returns) if critic_net is not None else None
+
+        return done, values, log_probs, reward
 
     def train(
             self,
             episodes:   int,
             policy_net: PolicyNet,
-            optimizer:  optim.Optimizer) -> None:
+            policy_opt: optim.Optimizer,
+            critic_net: CriticNet | None = None,
+            critic_opt: optim.Optimizer | None = None) -> None:
 
         policy_net.train()
+        if critic_net is not None:
+            critic_net.train()
+
         for episode in range(episodes):
             logging.debug(f'episode {episode+1}/{episodes} started\n')
             self._reset()
-            optimizer.zero_grad()
+            policy_opt.zero_grad()
+            if critic_opt is not None:
+                critic_opt.zero_grad()
 
             rewards   = []
             log_probs = []
+            values    = []
             for data in self._dataset:
-                done, _, log_prob, reward = self._step(
-                    model  = policy_net,
-                    data   = data,
-                    argmax = False)
+                done, value, log_prob, reward = self._step(
+                    policy_net = policy_net,
+                    critic_net = critic_net,
+                    data       = data,
+                    argmax     = False)
 
-                rewards.append(reward)
+                rewards += reward
                 log_probs.append(log_prob.view(-1, 1))
-
+                if value is not None:
+                    values.append(value)
                 if done: 
                     break
 
+            if critic_opt is not None:
+                critic_loss = compute_critic_loss(
+                    rewards = rewards,
+                    values  = values,
+                    device  = self._device
+                )
+                critic_loss.backward()
+                clip_grad_norm_(
+                    parameters = critic_net.parameters(), 
+                    max_norm   = 1.0,
+                    error_if_nonfinite=True)
+                critic_opt.step()
+
             sharpe = self._manager.sharpe_ratio
-            loss   = compute_loss(
+            policy_loss = compute_policy_loss(
                 log_probs = log_probs,
                 rewards   = rewards,
+                values    = values if len(values) > 0 else None,
                 sharpe    = sharpe,
                 device    = self._device
             )
 
-            loss.backward()
+            policy_loss.backward()
             clip_grad_norm_(
                 parameters = policy_net.parameters(), 
                 max_norm   = 1.0,
                 error_if_nonfinite=True)
-            optimizer.step()
+            policy_opt.step()
 
-            logging.debug(f'episode {episode+1}/{episodes} done, loss={loss.item():.4f}, returns={self._manager.value:.4f}')
+            logging.debug(f'episode {episode+1}/{episodes} done, loss={policy_loss.item():.4f}, returns={self._manager.value:.4f}')
         logging.info('training complete')
 
     @torch.no_grad()
@@ -170,7 +205,7 @@ class Environment:
             data = self._dataset[i]
 
             done, _, log_prob, reward = self._step(
-                model  = policy_net,
+                policy_net = policy_net,
                 data   = data,
                 argmax = True)
 

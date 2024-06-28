@@ -1,6 +1,7 @@
 import torch
 import logging
 import numpy as np
+import torch.nn.functional as F
 from torch_geometric.data import Data
 from typing import List, Tuple
 from reinforce.model import PolicyNet
@@ -49,19 +50,38 @@ def compute_discounted_rewards(
         discounted_rewards.insert(0, cumulative)
     return discounted_rewards
 
-def compute_loss(
+def compute_policy_loss(
         log_probs: List[torch.Tensor], 
         rewards:   List[float],
-        sharpe:    float,
-        gamma:     float=0.99,
-        device:    str="cpu") -> torch.Tensor:
+        values:    List[torch.Tensor] | None = None,
+        sharpe:    float | None = None,
+        gamma:     float = 0.99,
+        device:    str   = "cpu") -> torch.Tensor:
 
     log_probs          = torch.vstack(log_probs)
     discounted_rewards = compute_discounted_rewards(rewards, gamma)
     discounted_rewards = torch.tensor(discounted_rewards, device=device).float()
-    # normalized_rewards = (discounted_rewards - discounted_rewards.mean()) / (discounted_rewards.std() + 1e-9)
 
-    policy_gradient = -log_probs * discounted_rewards.sum() #normalized_rewards
+    if values is not None:
+        values     = torch.vstack(values).detach()
+        advantages = discounted_rewards - values
+    else:
+        advantages = discounted_rewards
+
+    policy_gradient = -log_probs * advantages
     loss = policy_gradient.sum()
 
+    return loss
+
+def compute_critic_loss(
+        rewards:   List[float],
+        values:    List[torch.Tensor] | None = None,
+        gamma:     float = 0.99,
+        device:    str   = "cpu") -> torch.Tensor:
+    
+    values             = torch.vstack(values)
+    discounted_rewards = compute_discounted_rewards(rewards, gamma)
+    discounted_rewards = torch.tensor(discounted_rewards, device=device).float()
+
+    loss = F.mse_loss(values.view(-1,), discounted_rewards)
     return loss

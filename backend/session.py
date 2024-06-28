@@ -7,12 +7,12 @@ import pandas as pd
 
 from collections import deque
 from typing import Callable, Dict, List
-from torch.optim import SGD, Adam, AdamW
+from torch.optim import SGD, Adam, AdamW, Rprop
 from torch_geometric.data import Data
 from backend.loader import DataLoader
 from backend.manager import Manager
 from backend.trade import Action, TradeType
-from reinforce.model import PolicyNet
+from reinforce.model import PolicyNet, CriticNet
 from reinforce.environment import Environment
 from reinforce.utils import select_action
 
@@ -28,7 +28,8 @@ class Session:
             buffer_size:    int,
             device:         str,
             feature_config: Dict[str, List[str | int] | str],
-            trading_cost:   float      = 0.0,
+            actor_critic:   bool       = True,
+            trading_cost:   float      = 0.005,
             combile_models: bool       = True,
             live:           bool       = False,
             preload:        bool       = True,
@@ -40,7 +41,7 @@ class Session:
         if not session_id:
             session_id = ticker + f'_{int(time.time())}'
         
-        buffer_size  = max(buffer_size, max(feature_config['windows']) + 5)    
+        buffer_size  = max(buffer_size, max(feature_config['windows']) + 7)    
         self._loader = DataLoader(
             session_id     = session_id,
             tickers        = [ticker] + market_rep,
@@ -55,7 +56,7 @@ class Session:
 
         self._environment = Environment(
             device  = device,
-            min_val = 0.8,
+            min_val = 0.9,
             dataset = None,
             cost    = trading_cost)
 
@@ -96,15 +97,17 @@ class Session:
             val_dim=128
         ).to(device)
 
+        self._actor_critic = actor_critic
+        self._critic_net = CriticNet(
+            inp_dim=input_dim,
+            inp_types=2,
+            emb_dim=8,
+            val_dim=128).to(device) if actor_critic else None
+
         if combile_models:
             self._compile_models()
 
-        self._train_eps = 100
-        # self._train_opt = AdamW(
-        #     params       = self._train_net.parameters(),
-        #     lr           = 1e-7,
-        #     weight_decay = 1e-2)
-
+        self._train_eps     = 100
         self._ticker        = ticker
         self._device        = device
         self._live          = live
@@ -131,6 +134,7 @@ class Session:
     def start(self) -> None:
         self._fill_dataset()
         self._environment.dataset = self.dataset
+        self._retrain_()
         self._start_inference_timer()
         self._start_retrain_timer()
 
@@ -139,6 +143,8 @@ class Session:
         self._infer_net = torch.compile(self._infer_net)
         self._valid_net = torch.compile(self._valid_net)
         self._train_net = torch.compile(self._train_net)
+        if self._actor_critic:
+            self._critic_net = torch.compile(self._critic_net)
         logging.info('model compilation complete')
 
     def _start_inference_timer(self) -> None:
@@ -250,15 +256,23 @@ class Session:
 
     def _retrain_(self) -> None:
         logging.info('training starts')
-        optimizer = AdamW(
-            params       = self._train_net.parameters(),
-            lr           = 1e-7,
-            weight_decay = 1e-2)
+        policy_opt = Adam(
+            params = self._train_net.parameters(),
+            lr     = 1e-5,
+            weight_decay=0.9)
+
+        critic_opt = SGD(
+            params = self._critic_net.parameters(),
+            lr     = 1e-5,
+            momentum=0.9,
+            weight_decay=0.9) if self._actor_critic else None
 
         self._environment.train(
             episodes   = self._train_eps,
             policy_net = self._train_net,
-            optimizer  = optimizer)
+            policy_opt = policy_opt,
+            critic_net = self._critic_net,
+            critic_opt = critic_opt)
 
         self._train_net.eval()
         self._valid_net.eval()
@@ -270,12 +284,12 @@ class Session:
                 weights = self._train_net.state_dict()
                 self._valid_net.load_state_dict(weights)
                 self._infer_net.load_state_dict(weights)
-            logging.info('model updated')
+            logging.info(f'model updated, train score={train_score:.4f}, valid score={valid_score:.4f}')
         else:
             with (self._thread_lock, torch.no_grad()):
                 weights = self._valid_net.state_dict()
                 self._train_net.load_state_dict(weights)
-            logging.info('model reverted')
+            logging.info(f'model reverted, train score={train_score:.4f}, valid score={valid_score:.4f}')
         
         with self._thread_lock:
             self._environment.dataset = self.dataset
@@ -315,6 +329,7 @@ class Session:
             'graph':      Data(
                 x = torch.from_numpy(df.values).float(),
                 edge_index = torch.from_numpy(edge_index).long().contiguous()),
+                # edge_attr  = torch.from_numpy(edge_attrs).t().float()),
             'price':      features.iloc[-1:, features.columns.get_level_values('Type') == 'Price'],
             'log_return': np.log(features[self._ticker]['Price']['Close'].dropna().mean(1)).diff().iloc[-1]
         }
@@ -335,7 +350,7 @@ class Session:
 
         success = self._loader.load_row()
         if not success:
-            logging.error(f'reached last row in db for {self._ticker}')
+            logging.warning(f'reached last row in db for {self._ticker}')
             return None
         
         features, corr = self._loader.features

@@ -5,6 +5,7 @@ from typing import List
 from torch_geometric.data import Data
 from torch_geometric.nn import (
     SAGEConv, 
+    GATConv,
     LayerNorm, 
     SoftmaxAggregation, 
     PowerMeanAggregation,
@@ -24,6 +25,8 @@ class MarketGraphNet(nn.Module):
             in_channels  = inp_dim, 
             out_channels = 512, 
             bias         = True,
+            normalize    = True,
+            project      = True,
             aggr         = SoftmaxAggregation(
                 channels = inp_dim, 
                 learn    = True))
@@ -32,30 +35,29 @@ class MarketGraphNet(nn.Module):
             in_channels  = 512, 
             out_channels = 256, 
             bias         = True,
+            normalize    = True,
+            project      = True,
             aggr         = SoftmaxAggregation(
                 channels = 512, 
                 learn    = True))
 
-        self._n1 = LayerNorm(512)
-        self._n2 = LayerNorm(256)
-        # self._px = MemPooling(256, 128, 4, 4)
-        self._fx = nn.Linear(256, out_dim, bias=True)
+        self._px = MemPooling(256, 128, 4, 4)
+        self._fx = nn.Linear(128, out_dim, bias=True)
         self._nx = nn.LayerNorm(out_dim)
 
     def forward(self, data: Data) -> torch.Tensor:
         x, edge_index = data.x, data.edge_index
 
         x = self._c1(x, edge_index)
-        x = torch.relu(self._n1(x))
+        x = torch.relu(x)
 
         x = self._c2(x, edge_index)
-        x = torch.relu(self._n2(x))
+        x = torch.relu(x)
         
-        x = global_mean_pool(x, None)
+        x, _ = self._px(x)
+        x = global_mean_pool(x.squeeze(0), None)
         x = self._nx(self._fx(x))
         return torch.relu(x)
-        # x, _ = self._px(x)
-        # return self._fx(x.squeeze_(1))
 
 
 class MultiHeadMemory(nn.Module):
@@ -172,3 +174,56 @@ class PolicyNet(nn.Module):
         x = self._f3(x)
         x = self._n3(x)
         return torch.softmax(x, dim=-1)
+
+
+class CriticNet(nn.Module):
+    def __init__(
+            self, 
+            inp_dim:   int, 
+            inp_types: int,
+            emb_dim:   int,
+            val_dim:   int) -> None:
+        super().__init__()
+
+        self._emb = nn.Embedding(inp_types, emb_dim)
+        self._gnn = MarketGraphNet(inp_dim, val_dim)
+        cat_dim   = inp_dim + emb_dim + val_dim + 1
+        self._f1  = nn.Linear(cat_dim, 512, bias=True)
+        self._f2  = nn.Linear(512, 256, bias=True)
+        self._f3  = nn.Linear(256, 1, bias=True)
+        self._n1  = nn.LayerNorm(512)
+        self._n2  = nn.LayerNorm(256)
+        self._n3  = nn.LayerNorm(1)
+
+    def forward(
+            self,
+            data:       Data,       # Market graph data
+            index:      int,        # Node index of the position of the ticker
+            inp_types:  List[int],  # Type of input, trade or market
+            log_return: List[float] # Log return of the input
+    ) -> torch.Tensor:
+        
+        p = torch.tensor(inp_types, device=data.x.device).long()
+        l = torch.tensor(log_return, device=data.x.device).float().view(-1, 1)
+        
+        z = self._gnn(data)    
+        x = data.x[None, index, :]
+
+        x = x.expand(p.size(0), x.size(1))
+        z = z.expand(p.size(0), z.size(1))
+
+        p = self._emb(p)
+        x = torch.cat((x, p, l, z), dim=-1)
+
+        x = self._f1(x)
+        x = torch.relu(self._n1(x))
+        #x = self._d(x)
+        
+        x = self._f2(x)
+        x = torch.relu(self._n2(x))
+        #x = self._d(x)
+
+        x = self._f3(x)
+        x = self._n3(x)
+        return x
+
