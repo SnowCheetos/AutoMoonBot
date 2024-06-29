@@ -37,7 +37,11 @@ def critic():
         inp_dim   = INP_DIM,
         inp_types = INP_TPS,
         emb_dim   = EMB_DIM,
-        val_dim   = VAL_DIM)
+        val_dim   = VAL_DIM,
+        mem_heads = MEM_HEA,
+        mem_size  = MEM_SIZ,
+        mem_dim   = MEM_DIM,
+        key_dim   = KEY_DIM)
 
 def test_policy_output_shape(policy: PolicyNet):
     x = torch.rand((NUM_NDS, INP_DIM))

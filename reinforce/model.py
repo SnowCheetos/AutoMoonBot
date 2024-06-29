@@ -18,12 +18,13 @@ class MarketGraphNet(nn.Module):
     def __init__(
             self, 
             inp_dim: int, 
-            out_dim: int) -> None:
+            out_dim: int,
+            dropout: float=0.3) -> None:
         super().__init__()
 
         self._c1 = SAGEConv(
             in_channels  = inp_dim, 
-            out_channels = 512, 
+            out_channels = 256, 
             bias         = True,
             normalize    = True,
             project      = True,
@@ -32,16 +33,17 @@ class MarketGraphNet(nn.Module):
                 learn    = True))
         
         self._c2 = SAGEConv(
-            in_channels  = 512, 
-            out_channels = 256, 
+            in_channels  = 256, 
+            out_channels = 128, 
             bias         = True,
             normalize    = True,
             project      = True,
             aggr         = SoftmaxAggregation(
-                channels = 512, 
+                channels = 256, 
                 learn    = True))
 
-        self._px = MemPooling(256, 128, 4, 4)
+        self._dp = nn.Dropout(p=dropout)
+        self._px = MemPooling(128, 128, 4, 4)
         self._fx = nn.Linear(128, out_dim, bias=True)
         self._nx = nn.LayerNorm(out_dim)
 
@@ -50,14 +52,20 @@ class MarketGraphNet(nn.Module):
 
         x = self._c1(x, edge_index)
         x = torch.relu(x)
+        x = self._dp(x)
 
         x = self._c2(x, edge_index)
         x = torch.relu(x)
+        x = self._dp(x)
         
         x, _ = self._px(x)
         x = global_mean_pool(x.squeeze(0), None)
+        x = self._dp(x)
+
         x = self._nx(self._fx(x))
-        return torch.relu(x)
+        x = torch.relu(x)
+        x = self._dp(x)
+        return x
 
 
 class MultiHeadMemory(nn.Module):
@@ -67,7 +75,8 @@ class MultiHeadMemory(nn.Module):
             mem_size: int,
             mem_dim:  int,
             key_dim:  int,
-            val_dim:  int) -> None:
+            val_dim:  int,
+            dropout:  float=0.3) -> None:
         super().__init__()
 
         self._mem = nn.Parameter(torch.randn((heads, mem_size, mem_dim)).float())
@@ -77,6 +86,7 @@ class MultiHeadMemory(nn.Module):
         self._nk  = nn.LayerNorm(key_dim)
         self._nv  = nn.LayerNorm(val_dim)
         self._nx  = nn.LayerNorm(val_dim)
+        self._dp  = nn.Dropout(p=dropout)
     
     def forward(self, q: torch.Tensor) -> torch.Tensor:
         '''
@@ -84,16 +94,23 @@ class MultiHeadMemory(nn.Module):
         '''
         k = self._nk(self._fk(self._mem))      # [h x n x k]
         k = torch.softmax(k, dim=-1)           # Memory keys
+
         v = self._fv(self._mem)                # [h x n x v]
         v = torch.relu(self._nv(v))
+        v = self._dp(v)
+
         q = q.unsqueeze(1)                     # [b x 1 x k]
         a = torch.einsum('bqk,hnk->bhn', q, k) # [b x h x n]
         w = torch.softmax(a, dim=-1)           # Attention weights
         v = torch.einsum('bhn,hnv->bhv', w, v) # [b x h x v]
-        x = v.view(v.size(0), -1)              # [b x (h * v)]
+        v = self._dp(v)
+
+        x = v.reshape(v.size(0), -1)           # [b x (h * v)]
         x = self._fx(x)                        # Queried memory
         x = self._nx(x)
-        return torch.relu(x)
+        x = torch.relu(x)
+        x = self._dp(x)
+        return x
 
 
 class PolicyNet(nn.Module):
@@ -107,24 +124,28 @@ class PolicyNet(nn.Module):
             mem_size:  int, 
             mem_dim:   int,
             key_dim:   int,
-            val_dim:   int) -> None:
+            val_dim:   int,
+            dropout:   float=0.3) -> None:
         super().__init__()
 
         self._emb = nn.Embedding(inp_types, emb_dim)
-        self._gnn = MarketGraphNet(inp_dim, 256)
-        cat_dim   = inp_dim + emb_dim + val_dim * 2 + 1
-        self._f1  = nn.Linear(cat_dim, 512, bias=True)
+        self._gnn = MarketGraphNet(inp_dim, val_dim)
+        cat_dim   = inp_dim + emb_dim + val_dim + 1
+        self._f1  = nn.Linear(2 * val_dim, 512, bias=True)
         self._f2  = nn.Linear(512, 256, bias=True)
         self._f3  = nn.Linear(256, out_dim, bias=True)
-        self._fk  = nn.Linear(256, key_dim, bias=True)
-        self._fv  = nn.Linear(256, val_dim, bias=True)
-        self._mem = MultiHeadMemory(mem_heads, mem_size, mem_dim, key_dim, val_dim)
-        #self._d   = nn.Dropout(p=0.5)
+
+        self._fk  = nn.Linear(cat_dim, key_dim, bias=True)
+        self._fv  = nn.Linear(cat_dim, val_dim, bias=True)
+
+        self._mem = MultiHeadMemory(mem_heads, mem_size, mem_dim, key_dim, val_dim, dropout)
         self._n1  = nn.LayerNorm(512)
         self._n2  = nn.LayerNorm(256)
-        self._n3  = nn.LayerNorm(out_dim)
+        # self._n3  = nn.LayerNorm(out_dim)
+
         self._nk  = nn.LayerNorm(key_dim)
         self._nv  = nn.LayerNorm(val_dim)
+        self._dp  = nn.Dropout(p=dropout)
 
     def forward(
             self,
@@ -147,33 +168,37 @@ class PolicyNet(nn.Module):
         '''
         p = torch.tensor(inp_types, device=data.x.device).long()
         l = torch.tensor(log_return, device=data.x.device).float().view(-1, 1)
+        p = self._emb(p)
+        x = data.x[None, index, :]             # Index the feature, [1 x inp]
+        x = x.expand(p.size(0), x.size(1))
 
         z = self._gnn(data)                    # Computes the market representation tensor, [1 x v]
-        k = self._nk(self._fk(z))              # Computes the market key tensor, [1 x k]
-        k = torch.softmax(k, dim=-1)
-        v = self._nv(self._fv(z))              # Computes the market value tensor, [1 x v]
-        v = torch.relu(v)
-        m = self._mem(k)                       # Queries the memory, [1 x v]
-        z = torch.cat((v, m), dim=-1)          # Concats the market value and memory, [1 x 2v]
-        x = data.x[None, index, :]             # Index the feature, [1 x inp]
-
-        x = x.expand(p.size(0), x.size(1))
         z = z.expand(p.size(0), z.size(1))
+        x = torch.cat((x, p, l, z), dim=-1)    # [n x (inp_dim + emb_dim + 1 + gnn_dim)]
+        x = self._dp(x)
 
-        p = self._emb(p)
-        x = torch.cat((x, p, l, z), dim=-1)
-        
+        k = self._nk(self._fk(x))              # Computes the market key tensor, [n x k]
+        k = torch.softmax(k, dim=-1)
+        v = self._nv(self._fv(x))              # Computes the market value tensor, [n x v]
+        v = torch.relu(v)
+        v = self._dp(v)
+
+        m = self._mem(k)                       # Queries the memory, [n x v]
+        x = torch.cat((v, m), dim=-1)          # Concats the market value and memory, [n x 2v]
+        x = self._dp(x)
+
         x = self._f1(x)
         x = torch.relu(self._n1(x))
-        #x = self._d(x)
-        
+        x = self._dp(x)
+
         x = self._f2(x)
         x = torch.relu(self._n2(x))
-        #x = self._d(x)
+        x = self._dp(x)
 
         x = self._f3(x)
-        x = self._n3(x)
-        return torch.softmax(x, dim=-1)
+        return x
+        # x = self._n3(x)
+        # return torch.softmax(x, dim=-1)
 
 
 class CriticNet(nn.Module):
@@ -182,18 +207,31 @@ class CriticNet(nn.Module):
             inp_dim:   int, 
             inp_types: int,
             emb_dim:   int,
-            val_dim:   int) -> None:
+            val_dim:   int,
+            mem_heads: int,
+            mem_size:  int, 
+            mem_dim:   int,
+            key_dim:   int,
+            dropout:   float=0.3) -> None:
         super().__init__()
 
         self._emb = nn.Embedding(inp_types, emb_dim)
         self._gnn = MarketGraphNet(inp_dim, val_dim)
         cat_dim   = inp_dim + emb_dim + val_dim + 1
-        self._f1  = nn.Linear(cat_dim, 512, bias=True)
+        self._f1  = nn.Linear(2 * val_dim, 512, bias=True)
         self._f2  = nn.Linear(512, 256, bias=True)
         self._f3  = nn.Linear(256, 1, bias=True)
+
+        self._fk  = nn.Linear(cat_dim, key_dim, bias=True)
+        self._fv  = nn.Linear(cat_dim, val_dim, bias=True)
+
+        self._mem = MultiHeadMemory(mem_heads, mem_size, mem_dim, key_dim, val_dim, dropout)
         self._n1  = nn.LayerNorm(512)
         self._n2  = nn.LayerNorm(256)
-        self._n3  = nn.LayerNorm(1)
+
+        self._nk  = nn.LayerNorm(key_dim)
+        self._nv  = nn.LayerNorm(val_dim)
+        self._dp  = nn.Dropout(p=dropout)
 
     def forward(
             self,
@@ -205,25 +243,33 @@ class CriticNet(nn.Module):
         
         p = torch.tensor(inp_types, device=data.x.device).long()
         l = torch.tensor(log_return, device=data.x.device).float().view(-1, 1)
-        
-        z = self._gnn(data)    
-        x = data.x[None, index, :]
-
-        x = x.expand(p.size(0), x.size(1))
-        z = z.expand(p.size(0), z.size(1))
-
         p = self._emb(p)
-        x = torch.cat((x, p, l, z), dim=-1)
+        x = data.x[None, index, :]             # Index the feature, [1 x inp]
+        x = x.expand(p.size(0), x.size(1))
+
+        z = self._gnn(data)                    # Computes the market representation tensor, [1 x v]
+        z = z.expand(p.size(0), z.size(1))
+        x = torch.cat((x, p, l, z), dim=-1)    # [n x (inp_dim + emb_dim + 1 + gnn_dim)]
+        x = self._dp(x)
+
+        k = self._nk(self._fk(x))              # Computes the market key tensor, [n x k]
+        k = torch.softmax(k, dim=-1)
+        v = self._nv(self._fv(x))              # Computes the market value tensor, [n x v]
+        v = torch.relu(v)
+        v = self._dp(v)
+
+        m = self._mem(k)                       # Queries the memory, [n x v]
+        x = torch.cat((v, m), dim=-1)          # Concats the market value and memory, [n x 2v]
+        x = self._dp(x)
 
         x = self._f1(x)
         x = torch.relu(self._n1(x))
-        #x = self._d(x)
-        
+        x = self._dp(x)
+
         x = self._f2(x)
         x = torch.relu(self._n2(x))
-        #x = self._d(x)
+        x = self._dp(x)
 
         x = self._f3(x)
-        x = self._n3(x)
         return x
 

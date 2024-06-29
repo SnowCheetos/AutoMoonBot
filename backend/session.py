@@ -56,53 +56,58 @@ class Session:
 
         self._environment = Environment(
             device  = device,
-            min_val = 0.9,
+            min_val = 0.5,
             dataset = None,
             cost    = trading_cost)
 
         input_dim = self._loader.feature_dim
         self._infer_net = PolicyNet(
-            inp_dim=input_dim,
-            out_dim=len(Action),
-            inp_types=2,
-            emb_dim=8,
-            mem_dim=128,
-            mem_size=256,
-            mem_heads=4,
-            key_dim=64,
-            val_dim=128
+            inp_dim   = input_dim,
+            out_dim   = 3,
+            inp_types = 2,
+            emb_dim   = 32,
+            mem_dim   = 128,
+            mem_size  = 512,
+            mem_heads = 4,
+            key_dim   = 128,
+            val_dim   = 512
         ).to(device)
 
         self._valid_net = PolicyNet(
-            inp_dim=input_dim,
-            out_dim=len(Action),
-            inp_types=2,
-            emb_dim=8,
-            mem_dim=128,
-            mem_size=256,
-            mem_heads=4,
-            key_dim=64,
-            val_dim=128
+            inp_dim   = input_dim,
+            out_dim   = 3,
+            inp_types = 2,
+            emb_dim   = 32,
+            mem_dim   = 128,
+            mem_size  = 512,
+            mem_heads = 4,
+            key_dim   = 128,
+            val_dim   = 512
         ).to(device)
 
         self._train_net = PolicyNet(
-            inp_dim=input_dim,
-            out_dim=len(Action),
-            inp_types=2,
-            emb_dim=8,
-            mem_dim=128,
-            mem_size=256,
-            mem_heads=4,
-            key_dim=64,
-            val_dim=128
+            inp_dim   = input_dim,
+            out_dim   = 3,
+            inp_types = 2,
+            emb_dim   = 32,
+            mem_dim   = 128,
+            mem_size  = 512,
+            mem_heads = 4,
+            key_dim   = 128,
+            val_dim   = 512
         ).to(device)
 
         self._actor_critic = actor_critic
         self._critic_net = CriticNet(
-            inp_dim=input_dim,
-            inp_types=2,
-            emb_dim=8,
-            val_dim=128).to(device) if actor_critic else None
+            inp_dim   = input_dim,
+            inp_types = 2,
+            emb_dim   = 32,
+            mem_dim   = 128,
+            mem_size  = 512,
+            mem_heads = 4,
+            key_dim   = 128,
+            val_dim   = 512
+        ).to(device) if actor_critic else None
 
         if combile_models:
             self._compile_models()
@@ -195,7 +200,6 @@ class Session:
         log_return = data['log_return']
 
         with self._thread_lock:
-            self._infer_net.eval()
             market_uuid = self._manager.market_uuid
             positions   = self._manager.positions(close)
             liquid      = self._manager.liquid
@@ -204,12 +208,16 @@ class Session:
         types       = [position['type'] for position in positions]
         log_returns = [position['log_return'] for position in positions]
 
+        for position in positions:
+            print(position)
+
         if liquid:
             uuids.append(market_uuid)
             types.append(TradeType.Market.value)
             log_returns.append(log_return)
 
-        actions, log_probs = select_action(
+        self._infer_net.eval()
+        actions, log_probs, entropy = select_action(
             model      = self._infer_net,
             state      = graph,
             index      = index,
@@ -218,30 +226,36 @@ class Session:
             device     = self._device,
             argmax     = True)
 
+        print(actions)
+
         for i, choice in enumerate(actions):
             action = Action(choice)
             uuid   = uuids[i]
             final  = Action.Hold
             if action == Action.Buy:
-                if uuid == market_uuid:
-                    with self._thread_lock:
-                        final = self._manager.long(close, np.exp(log_probs[i].item()))
+                with self._thread_lock:
+                    if uuid == market_uuid:
+                        final = self._manager.long(close, np.exp(log_probs[i].item()), uuid)
+                    else: # TODO Close short position
+                        final = self._manager.hold(close, 1, uuid)
 
             elif action == Action.Sell:
-                if uuid != market_uuid:
-                    with self._thread_lock:
+                with self._thread_lock:
+                    if uuid != market_uuid:
                         final = self._manager.short(close, np.exp(log_probs[i].item()), uuid)
+                    else: # TODO Open short position
+                        final = self._manager.hold(close, 1, uuid)
 
             elif action == Action.Hold:
                 with self._thread_lock:
-                    final = self._manager.hold(close, np.exp(log_probs[i].item()))
+                    final = self._manager.hold(close, 1, uuid)
 
             else: # Impossible
                 raise NotImplementedError('the selected action is not a valid one')
         
             with self._thread_lock:
                 self._actions_queue.append(final)
-        
+
         logging.info(f'portfolio value: {self._manager.value:.4f}')
 
     def _retrain(self) -> None:
@@ -256,9 +270,10 @@ class Session:
 
     def _retrain_(self) -> None:
         logging.info('training starts')
-        policy_opt = Adam(
+        policy_opt = SGD(
             params = self._train_net.parameters(),
             lr     = 1e-5,
+            momentum=0.9,
             weight_decay=0.9)
 
         critic_opt = SGD(
@@ -267,11 +282,12 @@ class Session:
             momentum=0.9,
             weight_decay=0.9) if self._actor_critic else None
 
+        self._train_net.train()
         self._environment.train(
             episodes   = self._train_eps,
             policy_net = self._train_net,
-            policy_opt = policy_opt,
             critic_net = self._critic_net,
+            policy_opt = policy_opt,
             critic_opt = critic_opt)
 
         self._train_net.eval()
@@ -289,6 +305,7 @@ class Session:
             with (self._thread_lock, torch.no_grad()):
                 weights = self._valid_net.state_dict()
                 self._train_net.load_state_dict(weights)
+                self._infer_net.load_state_dict(weights)
             logging.info(f'model reverted, train score={train_score:.4f}, valid score={valid_score:.4f}')
         
         with self._thread_lock:
@@ -311,7 +328,7 @@ class Session:
             cache:          bool  = False) -> Dict[str, pd.DataFrame | Data | float | str | int]:
         
         cmat = corr.to_numpy()
-        cmat[cmat < corr_threshold] = 0
+        cmat[np.abs(cmat) < corr_threshold] = 0
         cmat = np.triu(cmat)
 
         edge_index = np.nonzero(cmat)

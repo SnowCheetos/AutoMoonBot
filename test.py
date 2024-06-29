@@ -8,20 +8,30 @@ logging.basicConfig(
 if __name__ == '__main__':
     session = Session(
         ticker='SPY',
-        interval='1h',
+        interval='5m',
         buffer_size=-1,
         device='cpu',
         preload=True,
         actor_critic=True,
         combile_models=False,
         feature_config={
-            "columns": ["Open", "High", "Low", "Close", "Volume"],
+            "columns": ["Open", "High", "Low", "Close"], #, "Volume"],
             "windows": [8, 16, 32, 64],
         },
         session_id='test',
         inf_interval=1,
         trn_interval=10,
-        market_rep=['VTI', 'IWM', 'QQQ', 'EEM', 'VEA', 'IYR', 'VFH', 'BND', 'XLE', 'GLD']
+        market_rep=[
+            'VTI', 
+            'IWM', 
+            'QQQ', 
+            'EEM', 
+            'VEA', 
+            'IYR',  
+            'BND', 
+            'XLE', 
+            'GLD'
+        ]
     )
 
     session.start()
