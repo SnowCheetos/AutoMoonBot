@@ -1,3 +1,7 @@
+'''
+DEPRECATED
+'''
+
 import logging
 import sqlite3
 import numpy as np

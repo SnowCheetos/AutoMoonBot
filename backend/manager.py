@@ -1,107 +1,102 @@
-from collections import deque
-from typing import Dict
-from utils.trading import Position, Trade, Action, Signal
+from typing import Dict, List
 
-class TradeManager:
+import numpy as np
+from backend.trade import Account, TradeType, Action
+
+
+class Manager:
+    '''
+    This class is an account manager that abstracts a lot of the trading functionalities.
+    '''
     def __init__(
-            self,
-            cov:       float,
-            alpha:     float,
-            gamma:     float,
-            cost:      float = 0,
-            full_port: bool  = False,
-            leverage:  float = 0,
-            qk_sell:   bool = False) -> None:
+            self, 
+            risk_free_rate:  float = 1.05,
+            min_probability: float = 0.34,
+            max_trade_size:  float = 0.5,
+            min_balance:     float = 0,
+            trading_cost:    float = 0.005) -> None:
         
-        self._trade      = Trade(cov, alpha, gamma, cost, full_port, leverage, qk_sell)
-        self._position   = Position.Cash
-        self._full_port  = full_port
-        self._portfolio  = 1.0
-        self._returns    = []
-        self._prev_exit  = 0.0
-        self._trade_hist = deque(maxlen=10)
+        self._value           = 1
+        self._balance         = 1
+        self._risk_free_rate  = risk_free_rate
+        self._min_probability = min_probability
+        self._max_trade_size  = max_trade_size
+        self._min_balance     = min_balance
+        self._account         = Account(cost=trading_cost)
 
     @property
-    def cash(self) -> bool:
-        return self._position == Position.Cash
-    
-    @property
-    def partial(self) -> bool:
-        return self._position == Position.Partial
-    
-    @property
-    def asset(self) -> bool:
-        return self._position == Position.Asset
+    def liquid(self) -> bool:
+        return self._balance > self._min_balance
 
     @property
-    def signal(self) -> Signal:
-        return self._trade.signal
+    def value(self) -> float:
+        return self._value
 
     @property
-    def portfolio(self):
-        return self._portfolio
+    def market_uuid(self) -> float:
+        return self._account.market_uuid
 
     @property
-    def returns(self):
-        return self._returns
+    def sharpe_ratio(self) -> float:
+        history = self._account.history
+        gains = []
+        for trade in history.values():
+            gains.append(trade.gain - 1)
+        if len(gains) < 2:
+            return 0.5
+        excess_return = self.value - self._risk_free_rate
+        return excess_return / (np.std(gains) + 1e-9)
 
-    @property
-    def prev_exit(self):
-        return self._prev_exit
+    def reset(self) -> None:
+        self._value    = 1
+        self._balance  = 1
+        self._account.reset()
 
-    @property
-    def curr_trade(self) -> Trade:
-        return self._trade
+    def positions(
+            self, 
+            price: float) ->  List[Dict[str, str | int | float]]:
+        
+        return self._account.open_positions(price)
 
-    @property
-    def last_trade(self) -> Dict[str, float] | None:
-        return self._trade_hist[-1]
+    def _update_value(
+            self, 
+            price: float) -> None:
+        
+        self._value = self._account.total_value(price) + self._balance
 
-    def log_trade(self):
-        self._trade_hist.append(self._trade.data)
-
-    def try_buy(self, price: float, cov: float, amount: float | None=None) -> Action:
-        self._trade.risk = cov
-        if self._trade.opened:
-            if self.partial and not self._full_port:
-                # double down
-                action = self._trade.double(price)
-                if action == Action.Double: 
-                    self._position = Position.Asset
-                    self._trade.hold()
-                    return Action.Double
-                elif action == Action.Sell:
-                    self._portfolio = Position.Cash
-                    self._portfolio = 0
-                    self._trade.hold()
-                    return Action.Sell
+    def long(
+            self, 
+            price: float, 
+            prob:  float) -> Action:
+        
+        if self._balance > self._min_balance and prob > self._min_probability:
+            amount = min(self._max_trade_size, prob)
+            self._account.open(TradeType.Long, price, amount)
+            self._balance -= amount
+            self._update_value(price)
+            return Action.Buy
         else:
-            # new trade
-            success = self._trade.open(price, amount)
-            if success: 
-                self._position = Position.Partial
-                self._trade.hold()
-                return Action.Buy
+            self._update_value(price)
+            return Action.Hold
+
+    def short(
+            self, 
+            price:    float, 
+            prob:     float,
+            trade_id: str) -> Action:
+        
+        if prob > self._min_probability:
+            value = self._account.close(price, trade_id)
+            if value is not None:
+                self._balance += value
+                self._update_value(price)
+                return Action.Sell
         return Action.Hold
 
-    def try_sell(self, price: float, cov: float) -> float:
-        self._trade.risk = cov
-        if self._trade.opened:
-            gain = self._trade.close(price)
-            if gain > 0: 
-                self._position   = Position.Cash
-                self._portfolio *= gain
-                self._returns   += [gain]
-                self._prev_exit  = price
-                self.log_trade()
-                self._trade.hold()
-            return gain
-        return -1
-
-    def hold(self, cov: float):
-        self._trade.risk = cov
-        if self._trade.opened:
-            self._trade.hold()
-
-    def potential_gain(self, price: float) -> float:
-        return self._trade.potential_gain(price)
+    def hold(
+            self, 
+            price: float, 
+            prob:  float) -> Action:
+        
+        self._update_value(price)
+        return Action.Hold

@@ -1,289 +1,219 @@
 import logging
 import numpy as np
-import gymnasium as gym
+import pandas as pd
+
+import torch
 import torch.optim as optim
-import torch.nn as nn
 
-from gymnasium import spaces
-from typing import Dict, List, Any, Optional
-
-from reinforce.sampler import DataSampler
-from reinforce.model import PolicyNet, select_action, compute_loss
-from utils.trading import Position, Action
-from utils.descriptors import compute_sharpe_ratio
-from backend.manager import TradeManager
+from torch.nn.utils import clip_grad_norm_
+from torch_geometric.data import Data
+from typing import Dict, List, Tuple
+from backend.manager import Manager
+from backend.trade import TradeType, Action
+from reinforce.model import PolicyNet, CriticNet
+from reinforce.utils import select_action, compute_policy_loss, compute_critic_loss
 
 
-class TradeEnv(gym.Env):
+class Environment:
+    '''
+    This class is the reinforcement learning environment used for training and testing
+    '''
     def __init__(
+            self,
+            device:  str,
+            min_val: float,
+            cost:    float,
+            dataset: List[Dict[str, pd.DataFrame | Data]] | None) -> None:
+        
+        self._device  = device
+        self._min_val = min_val
+        self._dataset = dataset
+        self._manager = Manager(trading_cost=cost)
+
+    @property
+    def dataset(self) -> List[Dict[str, pd.DataFrame | Data]]:
+        return self._dataset
+    
+    @dataset.setter
+    def dataset(self, new_set: List[Data]) -> None:
+        self._dataset = new_set
+
+    def _reset(self) -> None:
+        self._manager.reset()
+
+    def _step(
             self, 
-            state_dim:         int, 
-            action_dim:        int, 
-            embedding_dim:     int,
-            queue_size:        int,
-            inaction_cost:     float,
-            action_cost:       float,
-            device:            str,
-            db_path:           str,
-            return_thresh:     float,
-            sharpe_cutoff:     int=30,
-            alpha:             float=1.5,
-            beta:              float | None=0.5,
-            gamma:             float=0.15,
-            zeta:              float=0.5,
-            num_mem:           int=512,
-            mem_dim:           int=256,
-            feature_params:    Dict[str, List[int] | Dict[str, List[int]]] | None=None,
-            logger:            Optional[logging.Logger]=None,
-            testing:           bool=False,
-            leverage:          float = 0,
-            quick_sell:        bool=False,
-            max_training_data: int | None=None) -> None:
+            data:       Dict[str, pd.DataFrame | Data],
+            argmax:     bool,
+            policy_net: PolicyNet,
+            critic_net: CriticNet | None = None) -> Tuple[bool, List[int], torch.Tensor, float]:
         
-        super().__init__()
-
-        if logger:
-            self._logger = logger
-        else:
-            self._logger = logging.getLogger(__name__)
-
-        self.action_space = spaces.Discrete(action_dim)
-        self.observation_space = spaces.Discrete(state_dim)
-
-        db_max_access = None if not testing else queue_size+2
-
-        self._sampler         = DataSampler(
-            db_path           = db_path, 
-            queue_size        = queue_size, 
-            max_access        = db_max_access, 
-            feature_params    = feature_params,
-            max_training_data = max_training_data)
+        done        = False
+        reward      = []
+        graph       = data['graph']
+        price       = data['price']
+        index       = data['index']
+        ticker      = data['asset']
+        close       = price[ticker]['Price']['Close'].mean(None)
+        positions   = self._manager.positions(close)
+        uuids       = [position['uuid'] for position in positions]
+        types       = [position['type'] for position in positions]
+        log_returns = [position['log_return'] for position in positions]
         
-        self._policy_net   = PolicyNet(
-            input_dim      = state_dim, 
-            output_dim     = action_dim, 
-            position_dim   = len(Position), 
-            embedding_dim  = embedding_dim,
-            num_mem        = num_mem,
-            mem_dim        = mem_dim).to(device)
+        market_log_return = data['log_return']
+        if self._manager.liquid:
+            uuids.append(self._manager.market_uuid)
+            types.append(TradeType.Market.value)
+            log_returns.append(market_log_return)
 
-        self._manager = TradeManager(
-            cov      = 0, 
-            alpha    = alpha, 
-            gamma    = gamma, 
-            cost     = action_cost, 
-            leverage = leverage, 
-            qk_sell  = quick_sell)
+        actions, log_probs = select_action(
+            model      = policy_net,
+            state      = graph,
+            index      = index,
+            inp_types  = types,
+            log_return = log_returns,
+            device     = self._device,
+            argmax     = argmax)
 
-        self._quick_sell     = quick_sell
-        self._leverage       = leverage
-        self._device         = device
-        self._sharpe_cutoff  = sharpe_cutoff
-        self._return_thresh  = return_thresh
-        self._inaction_cost  = inaction_cost
-        self._action_cost    = action_cost
-        self._alpha          = alpha
-        self._beta           = beta
-        self._gamma          = gamma
-        self._zeta           = zeta
-        self._portfolio      = 1.0
-        self._returns        = []
-        self._log_probs      = []
-        self._init_close     = 0.0
-        self._risk_free_rate = 1.0
-        self._entry          = 0.0
-        self._exit           = 0.0
-        self._log_return     = 0.0
+        for i, choice in enumerate(actions):
+            action     = Action(choice)
+            uuid       = uuids[i]
+            log_return = log_returns[i]
+            if action == Action.Buy:
+                if uuid == self._manager.market_uuid:
+                    final = self._manager.long(close, np.exp(log_probs[i].item()))
+                    if final == Action.Buy:
+                        reward.append(np.log(self._manager.value)) # Did buy, add total log return
+                    else:
+                        reward.append(-market_log_return) # Did not buy, subtract market log return
+                else: # TODO Close short position
+                    reward.append(-1)
 
-    @property
-    def beta(self):
-        return self._beta
+            elif action == Action.Sell:
+                if uuid != self._manager.market_uuid:
+                    final = self._manager.short(close, np.exp(log_probs[i].item()), uuid)
+                    if final == Action.Sell:
+                        reward.append(log_return) # Did sell, add trade log return
+                    else:
+                        reward.append(-log_return) # Did not sell, subtract trade log return
+                else: # TODO Short selling
+                    reward.append(-1)
 
-    @property
-    def sampler(self):
-        return self._sampler
-
-    @property
-    def model(self):
-        return self._policy_net
-
-    @property
-    def model_weights(self) -> Dict[str, Any]:
-        self._policy_net.eval()
-        return self._policy_net.state_dict()
-
-    @property
-    def log_return(self) -> float:
-        return self._log_return
-
-    @model_weights.setter
-    def model_weights(self, state_dict: Dict[str, Any]) -> None:
-        self._policy_net.eval()
-        self._policy_net.to("cpu")
-        self._policy_net.load_state_dict(state_dict)
-        self._policy_net.to(self._device)
-
-    @property
-    def log_probs(self) -> list:
-        return self._log_probs
-    
-    @property
-    def portfolio(self) -> float:
-        return self._portfolio
-    
-    @property
-    def init_close(self) -> float:
-        return self._init_close
-
-    def reset(self):
-        self._sampler.reset()
-        _, close, state = self._sampler.sample_next()
-
-        while len(state) == 0:
-            _, close, state = self._sampler.sample_next()
-
-        self._manager = TradeManager(
-            cov       = self.sampler.coef_of_var, 
-            alpha     = self._alpha, 
-            gamma     = self._gamma, 
-            cost      = self._action_cost,
-            leverage  = self._leverage,
-            qk_sell   = self._quick_sell)
-        
-        self._position       = Position.Cash
-        self._portfolio      = 1.0
-        self._returns        = []
-        self._log_probs      = []
-        self._init_close     = close
-        self._risk_free_rate = 1.0
-        self._entry          = 0.0
-        self._exit           = 0.0
-        self._log_return     = 0.0
-        return state
-
-    def step(self, action: int):
-        end, price, state = self._sampler.sample_next()
-        reward, done = 0, False
-
-        self._manager.curr_trade.local_max = price
-        self._risk_free_rate = price / self._init_close
-        # Validate buy
-        if Action(action) == Action.Buy:
-            a = self._manager.try_buy(price, self.sampler.coef_of_var)
-            if a == Action.Double:
-                reward -= self._action_cost * (self._manager.potential_gain(price) - 1)
-            elif a == Action.Sell:
-                done    = True
-                reward -= self._manager.curr_trade.leverage * (1 + self._action_cost)
-            else:
-                reward -= self._action_cost
-        
-        elif Action(action) == Action.Sell:
-            gain = self._manager.try_sell(price, self.sampler.coef_of_var)
-            if gain > 0:
-                if self._manager.portfolio < self._return_thresh:
-                    self._logger.info("portfolio threshold hit, episode done")
-                    done = True
-                
-                self._log_return  += np.log(gain)
-                sharpe = compute_sharpe_ratio(
-                    returns        = self._manager.returns[-self._sharpe_cutoff:], 
-                    risk_free_rate = self._risk_free_rate * (1 - self._action_cost))
-                
-                reward += (1 - self._zeta) * sharpe + self._zeta * (gain / self._manager.last_trade["max"] - 1)
-
-        elif Action(action) == Action.Hold:
-            if self._manager.asset or self._manager.partial:
-                potential_gain = self._manager.potential_gain(price)
-                reward        -= self._inaction_cost * potential_gain
-            else:
-                if self._manager.cash:
-                    prev_exit = self._manager.prev_exit
-                    prev_exit = prev_exit if prev_exit > 0 else price
-                    reward   -= self._inaction_cost * (price / prev_exit)
+            elif action == Action.Hold:
+                final = self._manager.hold(close, np.exp(log_probs[i].item()))
+                if final == Action.Hold:
+                    if uuid == self._manager.market_uuid:
+                        reward.append(market_log_return) # Did hold, subtract market log return
+                    else:
+                        reward.append(-log_return) # Did hold, subtract trade log return
                 else:
-                    reward   -= self._inaction_cost * self._risk_free_rate * (1 - self._action_cost)
+                    pass # TODO Surprise action
+            
+            else: # Impossible
+                raise NotImplementedError('the selected action is not a valid one')
 
-        action, log_prob = select_action(
-            model     = self._policy_net, 
-            state     = state, 
-            potential = self._manager.potential_gain(price) - 1,
-            position  = int(self._position.value), 
-            device    = self._device)
+        if self._manager.value < self._min_val:
+            done = True
         
-        self._log_probs += [log_prob]
+        values = critic_net(
+            data       = graph,
+            index      = index,
+            inp_types  = types,
+            log_return = log_returns) if critic_net is not None else None
 
-        if end: done = True
+        return done, values, log_probs, reward
 
-        return action, reward, done, False, {"price": price}
+    def train(
+            self,
+            episodes:   int,
+            policy_net: PolicyNet,
+            policy_opt: optim.Optimizer,
+            critic_net: CriticNet | None = None,
+            critic_opt: optim.Optimizer | None = None) -> None:
 
-def train(
-        env:            TradeEnv, 
-        episodes:       int, 
-        learning_rate:  float=1e-3, 
-        momentum:       float=0.9,
-        weight_decay:   float=0.9,
-        max_grad_norm:  float=1.0,
-        min_episodes:   int=10) -> float:
-    
-    env._logger.info("training starts")
-    optimizer = optim.SGD(
-        env.model.parameters(), 
-        lr=learning_rate, 
-        momentum=momentum,
-        weight_decay=weight_decay)
+        policy_net.train()
+        if critic_net is not None:
+            critic_net.train()
 
-    buy_and_hold = None
-    best_model = {
-        "result": -1,
-        "weights": None,
-    }
+        for episode in range(episodes):
+            logging.debug(f'episode {episode+1}/{episodes} started\n')
+            self._reset()
+            policy_opt.zero_grad()
+            if critic_opt is not None:
+                critic_opt.zero_grad()
 
-    for e in range(episodes):
-        env._logger.info(f"episode {e+1}/{episodes} began")
-        _ = env.reset()
-        env.model.train()
-        action, reward, done, _, close = env.step(1)
-        rewards = [reward]
-        while not done:
-            action, reward, done, _, close = env.step(action)
-            rewards += [reward]
+            rewards   = []
+            log_probs = []
+            values    = []
+            for data in self._dataset:
+                done, value, log_prob, reward = self._step(
+                    policy_net = policy_net,
+                    critic_net = critic_net,
+                    data       = data,
+                    argmax     = False)
 
-        optimizer.zero_grad()
-        loss = compute_loss(
-            log_probs  = env.log_probs, 
-            rewards    = rewards, 
-            beta       = env.beta,
-            log_return = env.log_return,
-            device     = env._device)
+                rewards += reward
+                log_probs.append(log_prob.view(-1, 1))
+                if value is not None:
+                    values.append(value)
+                if done: 
+                    break
+
+            if critic_opt is not None:
+                critic_loss = compute_critic_loss(
+                    rewards = rewards,
+                    values  = values,
+                    device  = self._device
+                )
+                critic_loss.backward()
+                clip_grad_norm_(
+                    parameters = critic_net.parameters(), 
+                    max_norm   = 1.0,
+                    error_if_nonfinite=True)
+                critic_opt.step()
+
+            sharpe = self._manager.sharpe_ratio
+            policy_loss = compute_policy_loss(
+                log_probs = log_probs,
+                rewards   = rewards,
+                values    = values if len(values) > 0 else None,
+                sharpe    = sharpe,
+                device    = self._device
+            )
+
+            policy_loss.backward()
+            clip_grad_norm_(
+                parameters = policy_net.parameters(), 
+                max_norm   = 1.0,
+                error_if_nonfinite=True)
+            policy_opt.step()
+
+            logging.debug(f'episode {episode+1}/{episodes} done, loss={policy_loss.item():.4f}, returns={self._manager.value:.4f}')
+        logging.info('training complete')
+
+    @torch.no_grad()
+    def test(
+            self,
+            policy_net: PolicyNet) -> float:
+
+        self._reset()
+        policy_net.eval()
+        rewards   = []
+        log_probs = []
+
+        for i in range(len(self._dataset)):
+            data = self._dataset[i]
+
+            done, _, log_prob, reward = self._step(
+                policy_net = policy_net,
+                data   = data,
+                argmax = True)
+
+            rewards.append(reward)
+            log_probs.append(log_prob)
+
+            if done: 
+                break
         
-        loss.backward()
-        nn.utils.clip_grad_norm_(env.model.parameters(), max_grad_norm)
-        optimizer.step()
-
-        if not buy_and_hold:
-            buy_and_hold = close["price"] / env.init_close
-
-        env._logger.info(f"""\n
-        episode {e+1}/{episodes} done
-        loss:            {' ' if loss.item() > 0 else ''}{loss.item():.4f}
-        model portfolio: {'+' if env._manager.portfolio > 1 else ''}{(env._manager.portfolio-1) * 100:.4f}%
-        buy and hold:    {'+' if buy_and_hold > 1 else ''}{(buy_and_hold-1) * 100:.4f}%
-        """)
-        env.model.eval()
-
-        if env._manager.portfolio > best_model["result"]:
-            best_model["result"]  = env._manager.portfolio
-            best_model['weights'] = env.model_weights
-
-        if env._manager.portfolio > max(1.0, buy_and_hold) and e+1 >= min_episodes:
-            env._logger.info(f"target reached, best episode achieved {'+' if best_model['result'] > 1 else ''}{(best_model['result']-1) * 100:.4f}%, exiting.")
-            env.model_weights = best_model['weights']
-            return best_model['result'] / buy_and_hold
-        else:
-            if best_model['weights']:
-                env.model_weights = best_model['weights']
-
-    env._logger.info(f"training complete, best episode achieved {'+' if best_model['result'] > 1 else ''}{(best_model['result']-1) * 100:.4f}%")
-    env.model_weights = best_model['weights']
-    return best_model['result'] / buy_and_hold
+        logging.debug(f'testing done, returns={self._manager.value:.4f}')
+        return self._manager.value
