@@ -1,8 +1,16 @@
 # Intuition
 
-#### Q-Learning
+## Reinforcement Learning
 
-The most basic form of reinforcement learning is *Q-Learning*, where the states and actions are both discrete, and a *Q-table* (sometimes interpreted as *quality*) is constructed, where $Q(s_t, a_t) = value$. The *Q-table* is updated via $Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha \left[ R(s_t, a_t) + \gamma \max_{a'} Q(s_{t+1}, a') - Q(s_t, a_t) \right]$, where
+### Q-Learning
+
+The most basic form of reinforcement learning is *Q-Learning*, where the states and actions are both discrete, and a *Q-table* (sometimes interpreted as *quality*) is constructed, where $Q(s_t, a_t) = value$. The *Q-table* is updated like so
+
+$$
+Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha \left[ R(s_t, a_t) + \gamma \max_{a'} Q(s_{t+1}, a') - Q(s_t, a_t) \right]
+$$
+
+Where
 
 * $\alpha$ is the learning rate.
 * $R(s, a)$ is the reward function that evaluates the reward .of taking action $a$ at state $s$.
@@ -11,7 +19,7 @@ The most basic form of reinforcement learning is *Q-Learning*, where the states 
 
 While simple and intuitive in nature, standard Q-learning requires states to be discrete so it can be mapped with actions, it cannot easily account for continuous states such as market conditions.
 
-#### Deep Q-Learning
+### Deep Q-Learning
 
 Instead of creating a Q-table to map states to actions, deep Q-learning (DQN) aims to approximate $Q$ as a continuous function of state $s$ and action $a$. DQN training typically starts with a exploration factor $\epsilon$, which determines whether or not a model should select a random action at a given step (this practice is called *epsilon-greedy*). The results of each step is added to a memory buffer, which is used to train the DQN. Below is the pesudo code that describes the training process of DQN.
 
@@ -68,7 +76,7 @@ END
     * **Non-stationarity of Environment:** DQN assumes a stationary environment. In non-stationary environments where dynamics change over time, DQN may struggle to adapt quickly.
     * **Epsilon-greedy Limitations:** The epsilon-greedy exploration strategy used in DQN is relatively simplistic and may not explore the environment efficiently or thoroughly.
 
-#### Policy Gradient
+### Policy Gradient
 
 Instead of approximating a Q-value function, policy gradient methods directly optimize the policy, which is a mapping from states to actions. The policy is typically represented as a neural network, parameterized by $\theta$, and the goal is to find the optimal policy parameters that maximize the expected cumulative reward. The agent improves its policy by following the gradient of the expected reward with respect to the policy parameters.
 
@@ -112,3 +120,31 @@ END
     * **Stochastic Policies:** These methods can naturally handle stochastic policies, which are beneficial in environments where exploration is critical.
     * **Continuous and High-Dimensional Action Spaces:** Trading often involves continuous decision variables, such as determining the exact amount of an asset to buy or sell. Policy gradient methods can handle these continuous action spaces directly, making them more appropriate for such tasks.
     * **Inherent Stochasticity:** Financial markets are inherently uncertain and noisy. Stochastic policies in policy gradient methods can naturally incorporate this uncertainty into the decision-making process, leading to more robust trading strategies.
+
+## Reward Function Design
+
+A well designed reward function is crucial for the performance of reinforcement learning. For this specific case, the reward function should have the following properties:
+
+1. The cumulative reward for taking only a single action for all states is zero. 
+    $$
+    \sum_{t=0}^{\infty} R(s_t, a) \, dt = 0
+    $$
+
+    This implies that if the policy should not be rewarded for taking only a single action for all states (*i.e. only hold*), preventing the policy from "hacking" the reward function and settle into a local optima.
+
+2. As the entropy of the action approaches its maximum value, the expected reward approaches zero. 
+
+    $$
+    \lim_{H( \tau ) \to\ \log(N)} \mathbb{E}_{\tau \sim \pi_{\theta}} \left[ \sum_{t=0}^{\infty} R(\tau) \right]
+    $$
+
+    Where
+    
+    * $\pi_{\theta}$ represents the policy, parameterized by $\theta$.
+    * $N$ represents the total number of possible actions.
+    * $H(\tau)$ is the entropy of the trajectory. 
+    * $\tau \sim \pi_{\theta}$ represents trajectories sampled from the policy.
+
+    This implies that as the policy becomes more random (*i.e. randomly placing buy / sell actions*), the average cumulative reward gets closer to zero. When the policy is completely random, the average cumulative reward is zero.
+
+3. The cumulative reward should have a positive correlation with the cumulative return
