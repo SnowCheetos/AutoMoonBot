@@ -1,3 +1,4 @@
+from typing import Dict
 from trading import Positions, Category, Status
 
 
@@ -7,6 +8,9 @@ class Portfolio:
         self._balance = 1.0
         self._price = price
         self._cost = cost
+
+    def open_positions(self) -> Dict[str, Positions]:
+        return self._positions.fetch_opened()
 
     def reset(self, price: float) -> None:
         self._positions.reset(price)
@@ -20,9 +24,8 @@ class Portfolio:
     def value(self) -> float:
         return self._balance + self._positions.value()
 
-    def open(self, category: Category, prob: float) -> Status:
-        size = prob
-        cost = size * self._price * (1 + self._cost)
+    def open(self, category: Category, size: float) -> Status:
+        cost = size * (1 + self._cost)
         if cost > self._balance:
             return Status.NOFUNDS
         else:
