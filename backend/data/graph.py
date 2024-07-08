@@ -1,4 +1,5 @@
 import hashlib
+import numpy as np
 import pandas as pd
 import networkx as nx
 from collections import deque
@@ -108,30 +109,37 @@ class Graph:
         for node_id in self.G.nodes:
             self.compute_node_edges(node_id)
 
-    def compute_node_edges(self, node_id: str) -> None:
+    def compute_node_edges(self, node_id: str, min_corr_norm: float = 2.5) -> None:
         curr = self.G.nodes.get(node_id)
 
         if curr["node_type"] == Node.News:
             curr_ticker = None
             curr_source = curr["source"]
             curr_authors = set(curr["authors"])
-            curr_topics = {t["topic"] for t in curr["topics"]}
-            curr_tickers = {t["ticker"] for t in curr["ticker_sentiment"]}
+            curr_topics = {
+                t["topic"]: float(t["relevance_score"]) for t in curr["topics"]
+            }
+            curr_tickers = {
+                t["ticker"]: float(t["relevance_score"])
+                for t in curr["ticker_sentiment"]
+            }
         elif curr["node_type"] == Node.Price:
             if len(curr["prices"]) == 0:
                 return
             curr_ticker = node_id
             curr_source = None
-            curr_authors = set()
-            curr_topics = set()
-            curr_tickers = set()
+            curr_authors = {}
+            curr_topics = {}
+            curr_tickers = {}
 
         for name, node in self.G.nodes.items():
             if name != node_id:
                 if node["node_type"] == Node.News:
                     node_source = node["source"]
                     node_authors = set(node["authors"])
-                    node_topics = {t["topic"] for t in node["topics"]}
+                    node_topics = {
+                        t["topic"]: float(t["relevance_score"]) for t in node["topics"]
+                    }
                     node_tickers = {t["ticker"] for t in node["ticker_sentiment"]}
 
                     # Checks if the two nodes have the same publisher
@@ -140,27 +148,51 @@ class Graph:
 
                     # Checks if the two nodes have common topics
                     if curr_topics:
-                        common_topics = node_topics & curr_topics
-                        unique_topics = node_topics.union(curr_topics)
+                        common_topics = set(node_topics) & set(curr_topics)
+                        unique_topics = set(node_topics).union(set(curr_topics))
                         common_ratio = len(common_topics) / len(unique_topics)
-                        self.G.add_edge(
-                            node_id,
-                            name,
-                            edge_type=Edge.Topics,
-                            common_ratio=common_ratio,
-                        )
+                        if common_ratio > 0:
+                            curr_w = len(common_topics) / len(curr_topics)
+                            node_w = len(common_topics) / len(node_topics)
+
+                            curr_relevance = [curr_topics[k] for k in common_topics]
+                            node_relevance = [node_topics[k] for k in common_topics]
+
+                            cross_relevance = curr_w * np.mean(
+                                curr_relevance
+                            ) + node_w * np.mean(node_relevance)
+
+                            self.G.add_edge(
+                                node_id,
+                                name,
+                                edge_type=Edge.Topics,
+                                common_ratio=common_ratio,
+                                cross_relevance=cross_relevance,
+                            )
 
                     # Checks if the two nodes have common tickers
                     if curr_tickers:
-                        common_tickers = node_tickers & curr_tickers
-                        unique_tickers = node_tickers.union(curr_tickers)
+                        common_tickers = set(node_tickers) & set(curr_tickers)
+                        unique_tickers = set(node_tickers).union(set(curr_tickers))
                         common_ratio = len(common_tickers) / len(unique_tickers)
-                        self.G.add_edge(
-                            node_id,
-                            name,
-                            edge_type=Edge.Tickers,
-                            common_ratio=common_ratio,
-                        )
+                        if common_ratio > 0:
+                            curr_w = len(common_tickers) / len(curr_tickers)
+                            node_w = len(common_tickers) / len(node_tickers)
+
+                            curr_relevance = [curr_tickers[k] for k in common_tickers]
+                            node_relevance = [curr_tickers[k] for k in common_tickers]
+
+                            cross_relevance = curr_w * np.mean(
+                                curr_relevance
+                            ) + node_w * np.mean(node_relevance)
+
+                            self.G.add_edge(
+                                node_id,
+                                name,
+                                edge_type=Edge.Tickers,
+                                common_ratio=common_ratio,
+                                cross_relevance=cross_relevance,
+                            )
 
                     # Checks if the two nodes have common authors
                     if curr_authors:
@@ -230,11 +262,12 @@ class Graph:
                             .corr(method="spearman")
                             .loc[node_ticker]  # row
                             .loc[:, curr_ticker]  # col
-                        )
-                        # TODO Need to add a way to filter edges between tickers
-                        self.G.add_edge(
-                            node_id,
-                            name,
-                            edge_type=Edge.Correlation,
-                            corr=corr.values,
-                        )
+                        ).values
+
+                        if np.linalg.norm(corr, ord=np.inf) > min_corr_norm:
+                            self.G.add_edge(
+                                node_id,
+                                name,
+                                edge_type=Edge.Correlation,
+                                corr=corr,
+                            )

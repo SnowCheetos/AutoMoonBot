@@ -62,15 +62,8 @@ def test_graph_basics(
 
     graph.update_ticker(
         "TEST",
-        {
-            "2024-07-05 18:29:00": {
-                "1. open": "553.9800",
-                "2. high": "554.0800",
-                "3. low": "553.9800",
-                "4. close": "553.9800",
-                "5. volume": "15",
-            }
-        },
+        prices["SPY"]
     )
     test_prices = graph.G.nodes.get("TEST")["prices"]
-    assert len(test_prices) == 1, "graph did not properly add data to ticker"
+    assert len(test_prices) == 10, "graph did not properly add data to ticker"
+    assert graph.num_edges > num_edges, "graph did not properly update edges"
