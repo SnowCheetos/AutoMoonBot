@@ -2,7 +2,7 @@ import json
 import pytest
 import networkx as nx
 from typing import Tuple, Dict, List
-from backend.data import Graph
+from backend.data import Graph, NodeType, EdgeType
 
 BUFFER_SIZE = 10
 
@@ -60,10 +60,39 @@ def test_graph_basics(
     ), "graph did not properly add new ticker"
     assert graph.num_edges == num_edges, "graph did not properly skip edge computation"
 
-    graph.update_ticker(
-        "TEST",
-        prices["SPY"]
-    )
+    graph.update_ticker("TEST", prices["SPY"])
     test_prices = graph.G.nodes.get("TEST")["prices"]
-    assert len(test_prices) == 10, "graph did not properly add data to ticker"
+    assert len(test_prices) == BUFFER_SIZE, "graph did not properly add data to ticker"
     assert graph.num_edges > num_edges, "graph did not properly update edges"
+
+    news_index = graph.node_index(NodeType.News)
+    assert len(news_index) == len(news) - 1, "graph did not return proper news nodes"
+
+    ticker_index = graph.node_index(NodeType.Ticker)
+    assert len(ticker_index) == len(prices), "graph did not return proper ticker nodes"
+
+    edges = graph.get_edges(EdgeType.Authors)
+    assert 0 < len(edges) < num_edges, "graph did not return proper edges"
+    assert all(edge.edge_type == EdgeType.Authors for edge in edges), "graph returned wrong edge type"
+    assert all(edge.src_type == NodeType.News for edge in edges), "graph returned wrong src type for edge"
+    assert all(edge.tgt_type == NodeType.News for edge in edges), "graph returned wrong tgt type for edge"
+
+    edges = graph.get_edges(EdgeType.Correlation)
+    assert 0 < len(edges) < num_edges, "graph did not return proper edges"
+    assert all(edge.edge_type == EdgeType.Correlation for edge in edges), "graph returned wrong edge type"
+    assert all(edge.src_type == NodeType.Ticker for edge in edges), "graph returned wrong src type for edge"
+    assert all(edge.tgt_type == NodeType.Ticker for edge in edges), "graph returned wrong tgt type for edge"
+
+    edges = graph.get_edges(EdgeType.Reference)
+    assert 0 < len(edges) < num_edges, "graph did not return proper edges"
+    assert all(edge.edge_type == EdgeType.Reference for edge in edges), "graph returned wrong edge type"
+    assert all(edge.src_type == NodeType.News for edge in edges), "graph returned wrong src type for edge"
+    assert all(edge.tgt_type == NodeType.Ticker for edge in edges), "graph returned wrong tgt type for edge"
+
+def test_graph_arithmetics(
+    data: Tuple[
+        List[Dict[str, str | List[str | Dict[str, str]]]],
+        Dict[str, Dict[str, str | float]],
+    ]
+):
+    pass
