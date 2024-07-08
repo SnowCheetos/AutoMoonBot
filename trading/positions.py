@@ -1,6 +1,7 @@
 import uuid
+from typing import Dict
 from collections import defaultdict
-from trading import Category, Condition, Action, Status
+from trading import Category, Condition, Status
 
 
 class Position:
@@ -12,9 +13,11 @@ class Position:
         self._size = size
         self._entry = None
         self._exit = None
-        self._value = None
 
     def value(self) -> float:
+        '''
+        Returns the position value in portfolio unit
+        '''
         if self._entry is None:
             return 0
         else:
@@ -59,11 +62,17 @@ class Positions:
     def value(self) -> float:
         return sum([position.value() for position in self._opened.values()])
 
-    def fetch_opened(self, pid: str) -> Position | None:
-        return self._opened.pop(pid, None)
+    def fetch_one_opened(self, pid: str) -> Position | None:
+        return self._opened.get(pid, None)
 
-    def fetch_closed(self, pid: str) -> Position | None:
-        return self._closed.pop(pid, None)
+    def fetch_opened(self) -> Dict[str, Position]:
+        return self._opened
+
+    def fetch_one_closed(self, pid: str) -> Position | None:
+        return self._closed.get(pid, None)
+
+    def fetch_closed(self) -> Dict[str, Position]:
+        return self._closed
 
     def open(self, category: Category, size: float) -> Status:
         pid = str(uuid.uuid4())
