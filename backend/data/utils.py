@@ -6,6 +6,7 @@ class Node(Enum):
     News = auto()
 
 class Edge(Enum):
+    Authors = auto()
     Publisher = auto()
     Topics = auto()
     Tickers = auto()
