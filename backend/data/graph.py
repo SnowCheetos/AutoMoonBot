@@ -1,4 +1,5 @@
 import hashlib
+import re
 import torch
 import numpy as np
 import pandas as pd
@@ -20,7 +21,7 @@ class Graph:
         news: List[Dict[str, str | List[str | Dict[str, str]]]],
         buffer_size: int,
     ) -> None:
-        self.G = nx.DiGraph()
+        self.G = nx.MultiDiGraph()
         self._buffer_size = buffer_size
 
         for ticker, price in prices.items():
@@ -112,8 +113,8 @@ class Graph:
     def to_pyg(self) -> HeteroData:
         data = HeteroData()
 
-        data["ticker"].x = ...
-        data["news"].x = ...
+        data["ticker"].x = self.node_features(NodeType.Ticker)
+        data["news"].x = self.node_features(NodeType.News)
 
         data["news", "references", "ticker"].edge_index = self.edge_index(
             EdgeType.Reference
@@ -215,6 +216,9 @@ class Graph:
         if compute_edges:
             self.compute_node_edges(idx)
 
+    def clear_edges(self) -> None:
+        self.G.remove_edges_from(list(self.G.edges()))
+
     def del_ticker(self, ticker: str) -> None:
         if not self.G.has_node(ticker):
             return
@@ -228,7 +232,7 @@ class Graph:
 
     def compute_edges(self, clear: bool = False) -> None:
         if clear:
-            self.G.remove_edges_from(list(self.G.edges()))
+            self.clear_edges()
         for node_id in self.G.nodes:
             self.compute_node_edges(node_id)
 
@@ -236,7 +240,6 @@ class Graph:
         self, node_id: str, min_corr_norm: float = 2.5, min_time_decay: float = 0.01
     ) -> None:
         curr = self.G.nodes.get(node_id)
-
         if curr["node_type"] == NodeType.News:
             curr_ticker = None
             curr_source = curr["source"]
@@ -425,7 +428,7 @@ class Graph:
                         ):
                             curr_df = (
                                 pd.DataFrame.from_dict(curr["prices"])
-                                .set_index("0. time")
+                                .set_index("0. time")  # For consistency
                                 .astype(float)
                             )
                             node_df = (
@@ -443,15 +446,22 @@ class Graph:
                                 pd.concat((curr_df, node_df), axis=1)
                                 .dropna()
                                 .corr(method="spearman")
-                                .loc[node_ticker]  # row
-                                .loc[:, curr_ticker]  # col
-                            ).values
+                                .loc[curr_ticker, node_ticker]  # row, col
+                            )
 
-                            if np.linalg.norm(corr, ord=np.inf) > min_corr_norm:
+                            clean = lambda s: re.sub(r"[^a-zA-Z]", "", s)
+                            if np.linalg.norm(corr.values, ord=np.inf) > min_corr_norm:
                                 self.G.add_edge(
                                     node_id,
                                     name,
                                     edge_type=EdgeType.Correlation,
-                                    corr=corr.flatten(),
                                     time_decay=time_decay,
+                                    **{
+                                        f"{clean(row)}_{clean(col)}_corr": corr.loc[
+                                            row, col
+                                        ]
+                                        for i, row in enumerate(corr.index)
+                                        for j, col in enumerate(corr.columns)
+                                        if j > i
+                                    },
                                 )

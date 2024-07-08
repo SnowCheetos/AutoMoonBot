@@ -83,6 +83,18 @@ def test_graph_basics(
         edge.tgt_type == NodeType.News for edge in edges
     ), "graph returned wrong tgt type for edge"
 
+    edges = graph.get_edges(EdgeType.Tickers)
+    assert 0 < len(edges) < num_edges, "graph did not return proper edges"
+    assert all(
+        edge.edge_type == EdgeType.Tickers for edge in edges
+    ), "graph returned wrong edge type"
+    assert all(
+        edge.src_type == NodeType.News for edge in edges
+    ), "graph returned wrong src type for edge"
+    assert all(
+        edge.tgt_type == NodeType.News for edge in edges
+    ), "graph returned wrong tgt type for edge"
+
     edges = graph.get_edges(EdgeType.Correlation)
     assert 0 < len(edges) < num_edges, "graph did not return proper edges"
     assert all(
@@ -146,3 +158,17 @@ def test_graph_arithmetics(
     assert node_features.shape[1] == graph.node_feature_size(
         NodeType.News
     ), "Node features have wrong col dimensions"
+
+
+def test_graph_exports(
+    data: Tuple[
+        List[Dict[str, str | List[str | Dict[str, str]]]],
+        Dict[str, Dict[str, str | float]],
+    ]
+) -> None:
+    prices, news = data
+    graph = Graph(prices, news, BUFFER_SIZE)
+
+    data_pyg = graph.to_pyg()
+    assert data_pyg["ticker"].x.shape[0] == len(prices), "graph exported the wrong number of ticker nodes to pyg"
+    assert data_pyg["news"].x.shape[0] == len(news), "graph exported the wrong number of news nodes to pyg"
