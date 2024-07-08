@@ -47,9 +47,34 @@ class Graph:
         ]
         return {node: index for index, node in enumerate(nodes)}
 
+    def node_feature_size(self, node_type: Type[NodeType]) -> int:
+        """
+        Placeholder for now
+        """
+        if node_type == NodeType.Ticker:
+            return 5
+        else:
+            return 3
+
     def node_features(self, node_type: Type[NodeType]) -> Tensor:
-        nodes = self.node_index
-        return torch.zeros((len(nodes), 100))
+        """
+        Placeholder for now
+        """
+        nodes = self.node_index(node_type)
+        features = np.empty((len(nodes), self.node_feature_size(node_type)))
+        for node_id, index in nodes.items():
+            node = self.G.nodes.get(node_id)
+            if node_type == NodeType.Ticker:
+                row = [[*n.values()][1:] for n in node["prices"]]
+                features[index, :] = np.mean(row, axis=0)
+            elif node_type == NodeType.News:
+                row = [
+                    float(node["overall_sentiment_score"]),
+                    len(node["topics"]),
+                    len(node["ticker_sentiment"]),
+                ]
+                features[index, :] = row
+        return features
 
     def edge_index(self, edge_type: Type[EdgeType]) -> Tensor:
         edges = self.get_edges(edge_type)
@@ -221,9 +246,13 @@ class Graph:
                 t["topic"]: float(t["relevance_score"]) for t in curr["topics"]
             }
             curr_tickers = {
-                t["ticker"]: float(t["relevance_score"])
+                t["ticker"]: (
+                    float(t["relevance_score"]),
+                    float(t["ticker_sentiment_score"]),
+                )
                 for t in curr["ticker_sentiment"]
             }
+            curr_sentiment = float(curr["overall_sentiment_score"])
         elif curr["node_type"] == NodeType.Ticker:
             if len(curr["prices"]) == 0:
                 return
@@ -233,6 +262,7 @@ class Graph:
             curr_authors = {}
             curr_topics = {}
             curr_tickers = {}
+            curr_sentiment = None
 
         for name, node in self.G.nodes.items():
             if name != node_id:
@@ -243,16 +273,25 @@ class Graph:
                     node_topics = {
                         t["topic"]: float(t["relevance_score"]) for t in node["topics"]
                     }
-                    node_tickers = {t["ticker"] for t in node["ticker_sentiment"]}
+                    node_tickers = {
+                        t["ticker"]: (
+                            float(t["relevance_score"]),
+                            float(t["ticker_sentiment_score"]),
+                        )
+                        for t in node["ticker_sentiment"]
+                    }
+                    node_sentiment = float(node["overall_sentiment_score"])
 
                     time_decay = compute_time_decay(node_datetime, curr_datetime)
                     # Checks if the two nodes have the same publisher
                     if curr_source == node_source and time_decay > min_time_decay:
+                        avg_sentiment = 0.5 * (node_sentiment + curr_sentiment)
                         self.G.add_edge(
                             node_id,
                             name,
                             edge_type=EdgeType.Publisher,
                             time_decay=time_decay,
+                            avg_sentiment=avg_sentiment,
                         )
 
                     # Checks if the two nodes have common topics
@@ -270,6 +309,9 @@ class Graph:
                             cross_relevance = curr_w * np.mean(
                                 curr_relevance
                             ) + node_w * np.mean(node_relevance)
+                            cross_sentiment = (
+                                curr_w * curr_sentiment + node_w * node_sentiment
+                            )
 
                             self.G.add_edge(
                                 node_id,
@@ -277,6 +319,7 @@ class Graph:
                                 edge_type=EdgeType.Topics,
                                 common_ratio=common_ratio,
                                 cross_relevance=cross_relevance,
+                                cross_sentiment=cross_sentiment,
                                 time_decay=time_decay,
                             )
 
@@ -289,12 +332,22 @@ class Graph:
                             curr_w = len(common_tickers) / len(curr_tickers)
                             node_w = len(common_tickers) / len(node_tickers)
 
-                            curr_relevance = [curr_tickers[k] for k in common_tickers]
-                            node_relevance = [curr_tickers[k] for k in common_tickers]
+                            curr_relevance = [
+                                curr_tickers[k][0] for k in common_tickers
+                            ]
+                            node_relevance = [
+                                node_tickers[k][0] for k in common_tickers
+                            ]
+
+                            curr_senti = [curr_tickers[k][1] for k in common_tickers]
+                            node_senti = [node_tickers[k][1] for k in common_tickers]
 
                             cross_relevance = curr_w * np.mean(
                                 curr_relevance
                             ) + node_w * np.mean(node_relevance)
+                            cross_sentiment = curr_w * np.mean(
+                                curr_senti
+                            ) + node_w * np.mean(node_senti)
 
                             self.G.add_edge(
                                 node_id,
@@ -302,6 +355,7 @@ class Graph:
                                 edge_type=EdgeType.Tickers,
                                 common_ratio=common_ratio,
                                 cross_relevance=cross_relevance,
+                                cross_sentiment=cross_sentiment,
                                 time_decay=time_decay,
                             )
 
@@ -310,18 +364,27 @@ class Graph:
                         common_authors = node_authors & curr_authors
                         unique_authors = node_authors.union(curr_authors)
                         common_ratio = len(common_authors) / len(unique_authors)
-                        self.G.add_edge(
-                            node_id,
-                            name,
-                            edge_type=EdgeType.Authors,
-                            common_ratio=common_ratio,
-                            time_decay=time_decay,
-                        )
+                        if common_ratio > 0:
+                            curr_w = len(common_authors) / len(curr_authors)
+                            node_w = len(common_authors) / len(node_authors)
+
+                            cross_sentiment = (
+                                curr_w * curr_sentiment + node_w * node_sentiment
+                            )
+
+                            self.G.add_edge(
+                                node_id,
+                                name,
+                                edge_type=EdgeType.Authors,
+                                common_ratio=common_ratio,
+                                cross_sentiment=cross_sentiment,
+                                time_decay=time_decay,
+                            )
 
                     # Checks if the current ticker is in the node tickers
                     if curr_ticker in node_tickers:
-                        relevance = [
-                            t["relevance_score"]
+                        relevance, sentiment = [
+                            (t["relevance_score"], t["ticker_sentiment_score"])
                             for t in node["ticker_sentiment"]
                             if t["ticker"] == curr_ticker
                         ][0]
@@ -330,6 +393,7 @@ class Graph:
                             name,
                             edge_type=EdgeType.Influence,
                             relevance=float(relevance),
+                            sentiment=float(sentiment),
                             time_decay=time_decay,
                         )
 
@@ -341,8 +405,8 @@ class Graph:
                         time_decay = compute_time_decay(curr_datetime, node_datetime)
                         # Checks if the node ticker is in current tickers
                         if node_ticker in curr_tickers and time_decay > min_time_decay:
-                            relevance = [
-                                t["relevance_score"]
+                            relevance, sentiment = [
+                                (t["relevance_score"], t["ticker_sentiment_score"])
                                 for t in curr["ticker_sentiment"]
                                 if t["ticker"] == node_ticker
                             ][0]
@@ -351,6 +415,7 @@ class Graph:
                                 name,
                                 edge_type=EdgeType.Reference,
                                 relevance=float(relevance),
+                                sentiment=float(sentiment),
                                 time_decay=time_decay,
                             )
 

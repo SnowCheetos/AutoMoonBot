@@ -1,5 +1,6 @@
 import json
 import pytest
+import networkx as nx
 from typing import Tuple, Dict, List
 from backend.data import Graph, NodeType, EdgeType
 
@@ -126,5 +127,22 @@ def test_graph_arithmetics(
     ]
 ) -> None:
     prices, news = data
-    num_init_nodes = len(prices) + len(news)
     graph = Graph(prices, news, BUFFER_SIZE)
+
+    node_index = graph.node_index(NodeType.Ticker)
+    node_features = graph.node_features(NodeType.Ticker)
+    assert node_features.shape[0] == len(
+        node_index
+    ), "Node features have wrong row dimensions"
+    assert node_features.shape[1] == graph.node_feature_size(
+        NodeType.Ticker
+    ), "Node features have wrong col dimensions"
+
+    node_index = graph.node_index(NodeType.News)
+    node_features = graph.node_features(NodeType.News)
+    assert node_features.shape[0] == len(
+        node_index
+    ), "Node features have wrong row dimensions"
+    assert node_features.shape[1] == graph.node_feature_size(
+        NodeType.News
+    ), "Node features have wrong col dimensions"
