@@ -1,6 +1,6 @@
 # Automated Trading with Policy Gradient
 
-*Please review the disclaimers [`here`](../../README.md) before proceeding. By continue visiting the rest of the content, you agree to all the terms and conditions of the disclaimers.*
+*Please review the disclaimers [`here`](../../DISCLAIMER.MD) before proceeding. By continue visiting the rest of the content, you agree to all the terms and conditions of the disclaimers.*
 
 ## Introduction
 
