@@ -61,7 +61,7 @@ Most configurations can be done by modifying fields in [`config.json`](config.js
 
     $$L(\theta)=\sum_{t=0}^{T}-\log\pi_{\theta}(a_t|s_t) \cdot R_t$$
 
-    $$R_t = \beta \cdot \bar{r}_t+(1-\beta)\log {P_{t=T} \over P_{t=0}}$$
+    $$R_t = \beta \cdot \bar{r}_t + (1-\beta) \log {P_{t=T} \over P_{t=0}}$$
 
     $t$ is the time step, interpreted as each `OHLCV` candle
 
