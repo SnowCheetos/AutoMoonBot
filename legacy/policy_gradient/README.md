@@ -6,6 +6,10 @@
 
 *Please note that this is a documentation for legacy code, which is no longer maintained or supported. Modules are not guaranteed to function properly, use for insights and educational purposes only. For more up-to-date developments, check out the current version.*
 
+### Demonstration
+
+*Note that the .gif might take some time to load.*
+
 ![](../../media/demo.gif)
 
 Demonstration of system back-testing. Data used for this test was *SPDR S&P 500 ETF Trust (SPY)* with *1 hour* interval, with a start date in *June 2022*
@@ -55,9 +59,7 @@ Most configurations can be done by modifying fields in [`config.json`](config.js
 - `alpha` is the take-profit to stop-loss ratio, adjust base on your risk tolerance.
 - `beta`, `gamma` and `zeta` are parameters used when computing the loss as follows 
 
-    $
-    L(\theta) = \sum_{t=0}^{T} -\log \pi_{\theta}(a_t|s_t) \left[ \beta \cdot \bar{r}_t + (1 - \beta) \log {P_{t=T} \over P_{t=0}} \right]
-    $
+    $$L(\theta) = \sum_{t=0}^{T} -\log \pi_{\theta}(a_t|s_t) \left[ \beta \cdot \bar{r}_t + (1 - \beta) \log {P_{t=T} \over P_{t=0}} \right]$$
 
     $t$ is the time step, interpreted as each OHLCV candle
 
@@ -67,9 +69,7 @@ Most configurations can be done by modifying fields in [`config.json`](config.js
 
     $\bar{r}_t$ is the normalized discounted reward received at step $t$, which when $a_t = 2$ (*sell*) is computed as
 
-    $
-    r_t = (1 - \zeta) S_t + \zeta ({P_{t} \over P_{\arg\max_{t} \{ t \mid a_t = 0 \}}} - 1) \cdot W_d
-    $
+    $$r_t = (1 - \zeta) S_t + \zeta ({P_{t} \over P_{\arg\max_{t} \{ t \mid a_t = 0 \}}} - 1) \cdot W_d$$
 
     $W_d$ here represents the reward multiplier for doubling, more on that [later](./README.md#L125)
     
@@ -77,19 +77,13 @@ Most configurations can be done by modifying fields in [`config.json`](config.js
     
     $S_t$ represents the sharpe ratio of the all the trades up until time step $t$, whose importance is described by parameter $\zeta$ (`zeta`). The sharpe ratio $S_t$ is computed as follows
 
-    $
-    S_t = { {R_{p, t} - R_f} \over \sigma_{p, t} }
-    $
+    $$S_t = { {R_{p, t} - R_f} \over \sigma_{p, t} }$$
 
     where $R_{p, t}$ represents the total portfolio return from $t=0$ up to step $t$, $\sigma_{p, t}$ represents the standard deviation of the portfolio up until $t$, and $R_f$ represents the concept of [*risk free return*](https://www.investopedia.com/terms/r/risk-freerate.asp) for the same time period, in this case it uses the buy-and-hold return value
 
-    $
-    g_t = \sum_{k=t}^{T} \gamma^{k-t} r_k
-    $
+    $$g_t = \sum_{k=t}^{T} \gamma^{k-t} r_k$$
 
-    $
-    \bar{r}_t = { { g_t - \mu_r } \over \sigma_r }
-    $
+    $$\bar{r}_t = { { g_t - \mu_r } \over \sigma_r }$$
 
     $\gamma$ is the discount rate, exponentially drops off as it approaches infinite future
 
