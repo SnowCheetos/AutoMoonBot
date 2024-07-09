@@ -61,9 +61,9 @@ Most configurations can be done by modifying fields in [`config.json`](config.js
 
     $$L(\theta)=\sum_{t=0}^{T}-\log\pi_{\theta}(a_t|s_t) \cdot R_t$$
 
-    $$R_t = \beta\cdot\bar{r}_t+(1-\beta)\log\frac{P_{t=T}}{P_{t=0}}$$
+    $$R_t = \beta \cdot \bar{r}_t+(1-\beta)\log {P_{t=T} \over P_{t=0}}$$
 
-    $t$ is the time step, interpreted as each OHLCV candle
+    $t$ is the time step, interpreted as each `OHLCV` candle
 
     $T$ is the step at which the episode ended
 
@@ -71,7 +71,7 @@ Most configurations can be done by modifying fields in [`config.json`](config.js
 
     $\bar{r}_t$ is the normalized discounted reward received at step $t$, which when $a_t = 2$ (*sell*) is computed as
 
-    $$r_t = (1 - \zeta) S_t + \zeta ({P_{t} \over P_{\arg\max_{t} \{ t \mid a_t = 0 \}}} - 1) \cdot W_d$$
+    $$r_t = (1 - \zeta) S_t + \zeta \left({P_{t} \over P_{\arg\max_{t} ( t \mid a_t = 0 )}} - 1\right) \cdot W_d$$
 
     $W_d$ here represents the reward multiplier for doubling, more on that [later](./README.md#L125)
     
