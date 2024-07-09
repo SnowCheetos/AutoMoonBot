@@ -49,53 +49,70 @@ For more details, see [`reinforce/README.MD`](reinforce/README.MD)
 Most configurations can be done by modifying fields in [`config.json`](config.json), a few fields are worth pointing out:
 
 - `backtest_interval` is the rate of which data is read from the database and displayed on the UI, `1s` means it'll fetch one row of data per second and perform inference, regardless of the actual price interval present in the dataset.
-- `queue_size` is the maximum number of rows to keep in memory at any given point, it is required for technical indicator and statistical descriptor computations. Make sure the value is more than the maximum value present in `feature_params`.
-- `action_cost` and `inaction_cost` represent the reward or punishment of taking any action, they have a significant impact on the model performance. In general, a larger `action_cost` will result in more conservative sequence of actions (*more hold, less buy/sell*), opposite of `inaction_cost`.
-- `sharpe_cutoff` [*sharpe ratio*](https://www.investopedia.com/terms/s/sharperatio.asp) is used in reward computation, this field determines how many previous positions to use when computing the sharpe ratio.
-- `record_frames` when set to `true` will save every frame of the backtest.
-- `feature_params` feature computation parameters. For more details, see [`descriptors.py`](utils/descriptors.py)
-- `retrain_freq` determines how often the model retrains itself to adjust for new environments, in unit of `backtest_interval`.
-- `inference_method` one of `prob | argmax`. When set to `prob`, actions will be sampled from the model output distribution, when set to `argmax`, the action with the highest probability will always be chosen. In general, `prob` produces better results but are less consistent and reproducible.
-- `alpha` is the take-profit to stop-loss ratio, adjust base on your risk tolerance.
-- `beta`, `gamma` and `zeta` are parameters used when computing the loss as follows 
 
-    $$L(\theta)=\sum_{t=0}^{T}-\log\pi_{\theta}(a_t|s_t) \cdot R_t$$
+- `queue_size` is the maximum number of rows to keep in memory at any given point, it is required for technical indicator and statistical descriptor computations. Make sure the value is more than the maximum value present in `feature_params`.
+
+- `action_cost` and `inaction_cost` represent the reward or punishment of taking any action, they have a significant impact on the model performance. In general, a larger `action_cost` will result in more conservative sequence of actions (*more hold, less buy/sell*), opposite of `inaction_cost`.
+
+- `sharpe_cutoff` [*sharpe ratio*](https://www.investopedia.com/terms/s/sharperatio.asp) is used in reward computation, this field determines how many previous positions to use when computing the sharpe ratio.
+
+- `alpha` is the take-profit to stop-loss ratio, adjust base on your risk tolerance.
+
+- `beta`, `gamma` and `zeta` are parameters used when computing the loss as follows, these parameters have been observed to have very significant impact on the model performance
+
+    $$L(\theta)=-\sum_{t=0}^{T}\log\pi_{\theta}(a_t|s_t) \cdot R_t$$
 
     $$R_t = \beta \cdot \bar{r}_t + (1-\beta) \cdot G_T$$
 
     $$G_T = \log {P_{t=T} \over P_{t=0}}$$
 
-    $t$ is the time step, interpreted as each `OHLCV` candle
+    - $t$ is the time step, interpreted as each [`OHLCV`](https://en.wikipedia.org/wiki/Open-high-low-close_chart) candle
 
-    $T$ is the step at which the episode ended
+    - $T$ is the step at which the episode ended
 
-    $P_t$ represents the portfolio value at time $t$, and ${P_{t=T} \over P_{t=0}}$ represents the total portfolio return for the episode. 
+    - $\log \pi_{\theta}(a_t|s_t)$ is the log probability of action $a_t$ at state $s_t$ under policy $\pi$ parameterized by $\theta$
+
+    - $P_t$ represents the portfolio value at time $t$
     
-    - Although intuitively it makes more sense to add it after the summation, but it was determined empirically that this expression produced better results
+    - $G_T$ represents the total portfolio log return for the entire episode.
+    
+        - *Although intuitively it makes more sense to add it after the summation, but it was determined empirically that this expression produced better results*
 
-    $\beta$ here is the parameter of interest, it represents the importance of log return when computing loss, which is ignored when set to `null` or $0$
+    - $\beta$ is the parameter of interest, it represents the importance of log return when computing loss, which is ignored when set to `null`.
 
-    $\log \pi_{\theta}(a_t|s_t)$ is the log probability of action $a_t$ under policy $\pi$ parameterized by $\theta$ given state $s_t$
-
-    $\bar{r}_t$ is the normalized discounted reward received at step $t$, which when $a_t = 2$ (*sell*) is computed as
+    - $\bar{r}_t$ is the normalized discounted reward received at step $t$, which when $a_t = 2$ (*e.g. sell*) is computed as
 
     $$r_t = (1 - \zeta) S_t + \zeta \left({P_{t} \over P_{\arg\max_{t} ( t \mid a_t = 0 )}} - 1\right) \cdot W_d$$
 
-    $W_d$ here represents the reward multiplier for doubling, more on that [later](./README.md#L125)
+    - $W_d$ represents the reward multiplier for doubling, more on that later when discussing `full_port`
     
-    $\arg\max_{t} \{ t \mid a_t = 0 \}$ represents the last time $t$ where $a_t=0$ (*buy*), or when the trade was first opened
+    - $\arg\max_{t} ( t \mid a_t = 0 )$ represents the last time $t$ where $a_t=0$ (*e.g. buy*), or when the trade was first opened
     
-    $S_t$ represents the sharpe ratio of the all the trades up until time step $t$, whose importance is described by parameter $\zeta$ (`zeta`). The sharpe ratio $S_t$ is computed as follows
+    - $S_t$ represents the sharpe ratio of the all the trades up until time step $t$, whose importance is described by parameter $\zeta$ (`zeta`). The sharpe ratio $S_t$ is computed as follows
 
     $$S_t = { {R_{p, t} - R_f} \over \sigma_{p, t} }$$
 
-    where $R_{p, t}$ represents the total portfolio return from $t=0$ up to step $t$, $\sigma_{p, t}$ represents the standard deviation of the portfolio up until $t$, and $R_f$ represents the concept of [*risk free return*](https://www.investopedia.com/terms/r/risk-freerate.asp) for the same time period, in this case it uses the buy-and-hold return value
+    - $R_{p, t}$ represents the total portfolio return from $t=0$ up to step $t$
+    
+    - $\sigma_{p, t}$ represents the standard deviation of the portfolio up until $t$
 
-    $$g_t = \sum_{k=t}^{T} \gamma^{k-t} r_k$$
+    - $R_f$ represents the concept of [*risk free return*](https://www.investopedia.com/terms/r/risk-freerate.asp) for the same time period, in this case it uses the *buy-and-hold* return value on the same asset
+
+    $$g_t = \sum_{t=k}^{T} \gamma^{t-k} r_t$$
 
     $$\bar{r}_t = { { g_t - \mu_r } \over \sigma_r }$$
 
-    $\gamma$ is the discount rate, exponentially drops off as it approaches infinite future
+    - $\gamma$ is the discount rate, exponentially drops off as it approaches infinite future
+
+    - For more details regarding the reward and loss computations, see [`reinforce/environment.py`](reinforce/environment.py#L156) and [`reinforce/model.py`](reinforce/model.py#L112)
+
+- `record_frames` when set to `true` will save every frame of the backtest.
+
+- `feature_params` feature computation parameters. For more details, see [`descriptors.py`](utils/descriptors.py)
+
+- `retrain_freq` determines how often the model retrains itself to adjust for new environments, in unit of `backtest_interval`.
+
+- `inference_method` one of `prob | argmax`. When set to `prob`, actions will be sampled from the model output distribution, when set to `argmax`, the action with the highest probability will always be chosen. In general, `prob` produces better results but are less consistent and reproducible.
 
 - `full_port` describes whether or the model should go full ape mode, if `true`, it will use $100 \%$ of the portfolio for each trade, otherwise the amount of portfolio to use is determined by the action probability.
 
@@ -106,8 +123,6 @@ Most configurations can be done by modifying fields in [`config.json`](config.js
     - To account for the increased risk/reward, the reward multiplier $W_d$ is set to $2$ when doubling is in effect, so the model would receive $2\times $ the reward / punishment for the action.
     - Experiments showed that when `full_port` is enabled, it generally out-performs the doubling model, and often times manages to beat the market, even in relatively long timeframes. However, when `full_port` is disabled, the model generally produces more stable portfolios, and very consistently stays positive during bear markets.
     - For more details, see [`utils/trading.py`](utils/trading.py#L114)
-
-For more details regarding the reward and loss computations, see [`reinforce/environment.py`](reinforce/environment.py#L156) and [`reinforce/model.py`](reinforce/model.py#L112)
 
 
 ## Usage
