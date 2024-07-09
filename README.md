@@ -4,7 +4,7 @@
 
 ## Legacy
 
-*This project has gone through many iterations ever since its creation in 2021, the current version is still super alpha. If you would like to view the legacy code and implementations for more insights, go to the [`legacy`](legacy/README.MD) directory, or use the quick links below*
+*This project has gone through many iterations ever since its creation in 2021, the current version is still super alpha. If you would like to view the legacy code and implementations for more insights, go to the [`legacy`](legacy/README.MD) directory, or use the quick links below.*
 
 - [`Automated Trading with Policy Gradient`](legacy/policy_gradient/README.md)
 - [`An Ensemble of Models Trading Together`](legacy/classical_ensemble/README.md)
