@@ -1,10 +1,12 @@
-# Automated Trading with Reinforcement Learning and Graph Neural Networks
+![](media/logo.png)
+
+---------------
 
 *This repository contains code and resources for automated trading using reinforcement learning methods. The content provided here is for educational and informational purposes only. It is not intended to be a financial product or investment advice.*
 
 ## Legacy
 
-*This project has gone through many iterations ever since its creation in 2021, the current version is still super alpha. If you would like to view the legacy code and implementations for more insights, go to the [`legacy`](legacy/README.MD) directory, or use the quick links below*
+*This project has gone through many iterations ever since its creation in 2021, the current version is still super alpha. If you would like to view the legacy code and implementations for more insights, go to the [`legacy`](legacy/README.MD) directory, or use the quick links below.*
 
 - [`Automated Trading with Policy Gradient`](legacy/policy_gradient/README.md)
 - [`An Ensemble of Models Trading Together`](legacy/classical_ensemble/README.md)

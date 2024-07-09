@@ -8,6 +8,7 @@ __pycache__/
 */frames
 *.ipynb
 *.pth
+*.webp
 
 _test.py
 test.ipynb
