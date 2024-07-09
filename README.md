@@ -1,11 +1,13 @@
-# Automated Trading With Reinforcement Learning
+# Automated Trading with Reinforcement Learning and Graph Neural Networks
 
 *This repository contains code and resources for automated trading using reinforcement learning methods. The content provided here is for educational and informational purposes only. It is not intended to be a financial product or investment advice.*
 
-## Example Demonstration
-![](media/demo.gif)
+## Legacy
 
-Shown above is a demonstration of system back test. Data used for this test was *SPDR S&P 500 ETF Trust (SPY)* with *1 hour* interval, starting *June 2022*. This was a good case study because this period represented a recent bear market.
+*This project has gone through many iterations ever since its creation in 2021, the current version is still super alpha. If you would like to view the legacy code and implementations for more insights, go to the [`legacy`](legacy/README.MD) directory, or use the quick links below*
+
+- [`Automated Trading with Policy Gradient`](legacy/policy_gradient/README.md)
+- []
 
 ## Disclaimer
 
@@ -19,36 +21,11 @@ By using the code and resources provided in this repository, you acknowledge and
 
 ## Introduction
 
-### Motivation and Approach
-
-In the domain of stock price prediction and trading algorithm implementation, there are numerous examples available on platforms such as GitHub. However, the majority of these implementations fail to deliver consistent performance. Many machine learning-based approaches rely on non-linear regression methods, such as Long Short-Term Memory (LSTM) networks or transformers, to directly forecast future prices. This approach is inherently flawed, as stock prices are highly dynamic and cannot be effectively modeled as a simple function of time.
-
-Moreover, direct price forecasting does not offer actionable insights for determining optimal entry and exit points in trading. While more sophisticated methods attempt to predict price trends, these still provide limited utility for making precise trade decisions.
-
-To create real value for trading, a predictive model must generate clear signals indicating favorable conditions for entering or exiting trades. Additionally, given the constantly evolving nature of financial markets, any predictive model must be capable of adapting to changing market conditions in real-time. This project addresses these challenges using reinforcement learning, specifically policy gradient methods.
-
-### Intuition
-
-Reinforcement learning is particularly well-suited for the task of developing a robust trading strategy. For those unfamiliar, the fundamentals of reinforcement learning are as follows:
-
-* **Optimal Action Discovery** 
-
-    Unlike traditional supervised learning methods, where the optimal action for each state is known, reinforcement learning excels in scenarios where the optimal action is unknown. Instead, the effect of taking an action in a given state can be estimated by a value or reward.
-
-* **Training Dynamics** 
-
-    Reinforcement learning typically involves training in episodes rather than epochs, as actions taken by the agent influence subsequent states. The primary objective is to maximize the cumulative reward achieved during each training episode.
-
-* **Application to Financial Markets** 
-
-    In the context of stock or asset prices, the state represents the current market conditions (and potentially the condition of the trading portfolio). For each state, the actions could be decisions such as buy, sell, or hold (or their variations). The reward is defined by the total gain (or loss) resulting from the actions taken.
-
-This approach allows the model to continuously learn from market interactions, improving its decision-making process over time to maximize returns. This is in contrast to traditional models that may struggle with the dynamic and uncertain nature of financial markets.
-
-For more details, see [here](reinforce/README.MD)
+*This section is in the works... Watch the project for active updates!*
 
 ## Usage
-...
+
+*This project utilizes [`torch_geometric`](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) for Graph Neural Networks, I recommend visiting their site and install all dependencies according to their instructions.*
 
 ## Testing
 ...

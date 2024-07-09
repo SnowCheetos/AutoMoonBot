@@ -1,0 +1,407 @@
+html, body {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    font-family: Roboto, monospace;
+    background-color: #f3f3f3b4;
+    /* overflow: hidden; */
+}
+
+#main-holder {
+    height: 95%;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    justify-content: center;
+}
+
+#top-holder {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    flex-direction: row;
+    gap: 5px;
+    align-items: center;
+    justify-content: center;
+}
+
+#left-holder {
+    height: 100%;
+    width: 30%;
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    gap: 5px; 
+}
+
+#status-outer-holder {
+    height: 25%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 12px;
+    background-color: white;
+    flex-direction: column;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+}
+
+#status-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    margin-bottom: 10px;
+    background-color: beige;
+}
+
+#logs-outer-holder {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 12px;
+    background-color: white;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#logs-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    margin-bottom: 10px;
+    background-color: beige;
+}
+
+#chart-outer-holder {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid black;
+    border-radius: 12px;
+    flex-direction: column;
+}
+
+#chart-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    background-color: beige;
+}
+
+#chart-holder {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 10px;
+    box-sizing: border-box;
+    background-color: white;
+}
+
+#chart-container {
+    width: 100%;
+    height: 100%;
+}
+
+#right-holder {
+    height: 100%;
+    width: 30%;
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    gap: 5px; 
+}
+
+#performance-outer-holder {
+    height: 25%;
+    width: 100%;
+    display: flex;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 12px;
+    background-color: white;
+    flex-direction: column;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+}
+
+#performance-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    margin-bottom: 10px;
+    background-color: beige;
+}
+
+#actions-outer-holder {
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    position: relative;
+    border: 1px solid black;
+    border-radius: 12px;
+    background-color: white;
+    flex-direction: column;
+    overflow: hidden;
+    align-items: center;
+}
+
+#actions-top-holder {
+    width: 100%;
+    text-align: center;
+    padding: 5px;
+    margin-bottom: 10px;
+    background-color: beige;
+}
+
+#logs-holder,
+#actions-holder 
+{
+    width: 100%;
+    overflow: auto;
+}
+
+#logs,
+#actions-buffer 
+{
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center the list items horizontally */
+    padding: 0;
+    margin: 0;
+    gap: 5px;
+    list-style-type: none;
+}
+
+#logs li,
+#actions-buffer li
+{
+    width: 95%;
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    justify-content: center;
+}
+
+.holder-with-ts {
+    display: flex;
+    width: 95%;
+    flex-direction: column;
+    align-items: center;
+} 
+
+.ts {
+    font-size: xx-small;
+    justify-content: start;
+    color: gray;
+}
+
+.trade-info,
+.action-info 
+{
+    font-size: x-small;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    flex-direction: column;
+}
+
+.trade-card,
+.action-card 
+{
+    width: 100%;
+    display: flex;
+    gap: 5px;
+    padding: 5px;
+    flex-direction: row;
+    align-items: center;
+    border-radius: 3px;
+    background-color: rgb(250, 242, 232);
+}
+
+.win-tag,
+.buy-tag,
+.double-tag
+{
+    height: 100%;
+    width: 30%;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: greenyellow;
+    border-radius: 3px;
+}
+
+.double-tag {
+    background-color: rgb(246, 174, 253);
+}
+
+.loss-tag,
+.sell-tag 
+{
+    height: 100%;
+    width: 30%;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(255, 135, 155);
+    border-radius: 3px;
+}
+
+.buy-tag,
+.sell-tag,
+.double-tag,
+.win-tag,
+.loss-tag
+{
+    font-size: small;
+    color: rgb(54, 54, 54);
+}
+
+.win-tag,
+.loss-tag
+{
+    width: 40%;
+}
+
+.close-price,
+.certainty 
+{
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+}
+
+#performance-holder {
+    height: 100%;
+    width: 90%;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+#total-gain-holder,
+#buy-and-hold-holder
+{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+}
+
+#buy-and-hold,
+#total-gain 
+{
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.total-gain-tag,
+.buy-and-hold-tag
+{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: small;
+    height: 100%;
+    width: 100%;
+    border-radius: 3px;
+}
+
+.total-gain-tag {
+    background-color: rgb(255, 191, 249);
+}
+
+.buy-and-hold-tag {
+    background-color: #fce957;
+}
+
+.model-ready,
+.model-not-ready,
+.model-training,
+.model-not-training
+{
+    height: 100%;
+    width: 80%;
+    padding: 1px;
+    text-align: center;
+    border-radius: 3px;
+    font-size: small;
+    color: rgb(54, 54, 54);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.model-ready {
+    background-color: rgb(167, 255, 135);
+}
+
+.model-not-ready {
+    background-color: rgb(255, 135, 143);
+}
+
+.model-training {
+    background-color: rgb(255, 203, 135);
+}
+
+.model-not-training {
+    background-color: rgb(255, 255, 135);
+}
+
+#status-holder {
+    height: 100%;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+#model-status,
+#training-status
+{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.fade-in {
+    opacity: 0;
+    transition: opacity 0.5s ease-in;
+}
+
+.fade-in-visible {
+    opacity: 1;
+}
