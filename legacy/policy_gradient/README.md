@@ -1,10 +1,10 @@
 # Automated Trading with Policy Gradient
 
-*Please review the disclaimers [`here`](../../README.md) before proceeding. By continue visiting the rest of the content, you agree to all the terms and conditions of the disclaimers*
+*Please review the disclaimers [`here`](../../README.md) before proceeding. By continue visiting the rest of the content, you agree to all the terms and conditions of the disclaimers.*
 
 ## Introduction
 
-*Please note that this is a documentation for legacy code, which is no longer maintained or supported. Modules are not guaranteed to function properly, use for insights and educational purposes only. For more up-to-date developments, check out the current version*
+*Please note that this is a documentation for legacy code, which as of July 2024 is no longer being actively maintained or supported. Features are not guaranteed to function properly, use for insights and educational purposes only. For more up-to-date developments, check out the current version*
 
 ### Demonstration
 
@@ -40,7 +40,7 @@ Reinforcement learning is particularly well-suited for the task of developing a 
 
 * **Application to Financial Markets** 
 
-    In the context of stock or asset prices, the state represents the current market conditions (*and potentially the condition of the trading portfolio*). For each state, the actions could be decisions such as buy, sell, or hold (*or their variations*). The reward is defined by the total gain (*or loss*) resulting from the actions taken.
+    In the context of stock or asset prices, the state represents the current market conditions (*and potentially the condition of the trading portfolio*), the actions could be decisions such as buy, sell, or hold (*or something similar*), which would affect any future states. The reward could be defined by the total gain (*or loss*) resulting from the actions taken.
 
 This approach allows the model to continuously learn from market interactions, improving its decision-making process over time to maximize returns. This is in contrast to traditional models that may struggle with the dynamic and uncertain nature of financial markets. For more details, see [`reinforce/README.MD`](reinforce/README.MD)
 
