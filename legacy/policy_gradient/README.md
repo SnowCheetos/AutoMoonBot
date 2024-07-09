@@ -59,7 +59,7 @@ Most configurations can be done by modifying fields in [`config.json`](config.js
 - `alpha` is the take-profit to stop-loss ratio, adjust base on your risk tolerance.
 - `beta`, `gamma` and `zeta` are parameters used when computing the loss as follows 
 
-    $L(\theta)=\sum_{t=0}^{T}-\log\pi_{\theta}(a_t|s_t)\left[\beta\cdot\bar{r}_t+(1-\beta)\log{P_{t=T}\over P_{t=0}}\right]$
+    $$L(\theta)=\sum_{t=0}^{T}-\log\pi_{\theta}(a_t|s_t)\left[\beta\cdot\bar{r}_t+(1-\beta)\log\left(\frac{P_{t=T}}{P_{t=0}}\right)\right]$$
 
     $t$ is the time step, interpreted as each OHLCV candle
 
