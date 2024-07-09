@@ -1,43 +1,42 @@
 import torch
-import logging
-import numpy as np
 import torch.nn.functional as F
 from torch_geometric.data import Data
 from typing import List, Tuple
 from reinforce.model import PolicyNet
 
 def select_action(
-        model:      PolicyNet, 
-        state:      Data, 
-        index:      int,
-        inp_types:  List[int],
-        log_return: List[float], 
-        device:     str,
-        argmax:     bool = False) -> Tuple[List[int], torch.Tensor]:
+        model:       PolicyNet, 
+        state:       Data, 
+        index:       int,
+        inp_types:   List[int],
+        log_return:  List[float], 
+        device:      str,
+        temperature: float = 2.0,
+        argmax:      bool = False) -> Tuple[List[int], torch.Tensor]:
 
-    probs = model(
+    pred = model(
         data       = state.to(device),
         index      = index,
         inp_types  = inp_types,
         log_return = log_return)
+    probs = F.softmax(pred / temperature, dim=-1)
+
+    if argmax:
+        print(probs)
 
     actions   = []
     log_probs = []
     if argmax:
-        for i in range(probs.size(0)):
-            prob_np = probs[i].detach().cpu().numpy()
-            action = prob_np.argmax(-1)
-            actions.append(action)
-            log_probs.append(torch.log(probs[i, action]))
+        actions = torch.argmax(probs, dim=-1)
+        log_probs = torch.log(probs[range(probs.size(0)), actions])
     else:
-        for i in range(probs.size(0)):
-            prob_np = probs[i].detach().cpu().numpy()
-            action = np.random.choice(probs.size(-1), p=prob_np)
-            actions.append(action)
-            log_probs.append(torch.log(probs[i, action]))
+        action_dist = torch.distributions.Categorical(probs)
+        actions = action_dist.sample()
+        log_probs = action_dist.log_prob(actions)
 
-    log_probs = torch.stack(log_probs)
-    return actions, log_probs
+    entropy = (-torch.log(probs).exp() * probs).sum(dim=-1).view(-1, 1)
+    actions = actions.detach().tolist()
+    return actions, log_probs, entropy
 
 def compute_discounted_rewards(
         rewards: List[float], 
@@ -51,27 +50,28 @@ def compute_discounted_rewards(
     return discounted_rewards
 
 def compute_policy_loss(
-        log_probs: List[torch.Tensor], 
         rewards:   List[float],
+        log_probs: List[torch.Tensor], 
+        entropy:   List[torch.Tensor],
         values:    List[torch.Tensor] | None = None,
         sharpe:    float | None = None,
+        beta:      float = 0.5,
         gamma:     float = 0.99,
         device:    str   = "cpu") -> torch.Tensor:
 
     log_probs          = torch.vstack(log_probs)
     discounted_rewards = compute_discounted_rewards(rewards, gamma)
     discounted_rewards = torch.tensor(discounted_rewards, device=device).float()
+    normalized_rewards = (discounted_rewards - discounted_rewards.mean()) / (discounted_rewards.std() + 1e-6)
 
     if values is not None:
         values     = torch.vstack(values).detach()
-        advantages = discounted_rewards - values
+        advantages = normalized_rewards - values
     else:
-        advantages = discounted_rewards
+        advantages = normalized_rewards
 
-    policy_gradient = -log_probs * advantages
-    loss = policy_gradient.sum()
-
-    return loss
+    policy_gradient = (-log_probs * advantages).sum()
+    return policy_gradient + beta * torch.vstack(entropy).mean()
 
 def compute_critic_loss(
         rewards:   List[float],
@@ -82,6 +82,7 @@ def compute_critic_loss(
     values             = torch.vstack(values)
     discounted_rewards = compute_discounted_rewards(rewards, gamma)
     discounted_rewards = torch.tensor(discounted_rewards, device=device).float()
+    normalized_rewards = (discounted_rewards - discounted_rewards.mean()) / (discounted_rewards.std() + 1e-6)
 
-    loss = F.mse_loss(values.view(-1,), discounted_rewards)
+    loss = F.mse_loss(values.view(-1,), normalized_rewards, reduction='sum')
     return loss

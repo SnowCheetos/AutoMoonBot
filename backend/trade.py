@@ -97,7 +97,6 @@ class Trade:
             self._status  = TradeStatus.Closed
             self._closed  = time.time()
             self._exit    = price
-            # self._holding = 0
             return (self._exit / self._entry - self._cost) * self._holding
         else:
             return None

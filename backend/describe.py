@@ -20,7 +20,7 @@ class Descriptor:
 
     @property
     def feature_dim(self) -> int:
-        return len(self._windows) * 27
+        return len(self._windows) * 24
 
     def compute(self, data: pd.DataFrame) -> pd.DataFrame:
         df = data.copy()
@@ -85,9 +85,9 @@ class Descriptor:
     @staticmethod
     def compute_skews(df: pd.DataFrame) -> pd.DataFrame:
         idx         = [df.index[-1]]
-        c1          = df.columns.get_level_values('Price') != 'Volume'
+        # c1          = df.columns.get_level_values('Price') != 'Volume'
         c2          = df.columns.get_level_values('Type') == 'Price'
-        dt          = df.loc[:, (c1) & (c2)]
+        dt          = df.loc[:, c2]
         dt          = dt.apply(skew, nan_policy='omit', keepdims=True)
         dt.index    = idx
         cols        = [(ticker, 'Skews', price, window) for ticker, _, price, window in dt.columns]
@@ -129,6 +129,7 @@ class Descriptor:
         detrended = detrended.dropna()
         if detrended.empty:
             return None
+        
         dt          = detrended.apply(differential_entropy, nan_policy='omit', keepdims=True)
         dt.index    = idx
         cols        = [(ticker, 'DetrendDiffEntropy', price, window) for ticker, price, window in dt.columns]

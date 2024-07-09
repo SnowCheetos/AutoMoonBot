@@ -70,7 +70,7 @@ class DataLoader:
     def init_db(self) -> None:
         history = self._tickers.history(
             interval = self._interval, 
-            period   = '2y', 
+            period   = '1mo', 
             threads  = True, 
             actions  = False)
         for ticker in self._tickers.symbols:
