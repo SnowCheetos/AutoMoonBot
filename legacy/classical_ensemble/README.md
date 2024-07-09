@@ -33,14 +33,7 @@ Theoretically, any number of any models can be used for this task, and models su
 
 - **Classification vs Regression**
 
-    At first it might be tempting to treat this as a regression problem and try to predict the price directly using non-linear regression such as *Gaussian Regression* and *Kernel methods*, or even *autoregressive* methods such as *RNNs* 🤢
-    
-    Although there are some merits in them, financial markets, albeit sequential and continuous, does not necessarily mean that the stock market is strictly, or even remotely a *function of time*. Rather, it can be much better described as a *stochastic process*, where the current step carries a probability distribution that describes the potential next future step, and each step only depends on the previous step.
-
-    Therefore, rather than predicting the prices, one should aim to predict the probability distribution that can be used to gain insight on whether or not it's a good time to buy or sell, *a.k.a.* classification.
-    
-    Don't just take my word for it 🙃 [*Louis Bachelier*](https://en.wikipedia.org/wiki/Louis_Bachelier) was credited as the first person to model the stock market as a stochastic process back in 1900. He then went on to create the [*Bachelier model*](https://en.wikipedia.org/wiki/Bachelier_model), which was one of the first models that can be used to determine the fair price of options, and went on to inspire the creation of the famous [*Black-Scholes model*](https://en.wikipedia.org/wiki/Black%E2%80%93Scholes_model), which for better or worse, was essential to the trillion dollar n̶a̶t̶i̶o̶n̶a̶l̶ d̶e̶b̶t̶ derivatives market today.
-
+    Please see [`HERE`](../../README.md#the-case-against-only-regression) for the argument against using (*only*) regression models.
 
 - **Output Probability Distribution**
 
@@ -48,33 +41,33 @@ Theoretically, any number of any models can be used for this task, and models su
 
     $$P(A \mid B) = { {P(B \mid A) \cdot P(A)} \over P(B)}$$
 
-    or, *the probability of event A occuring that B occured is the product of probability of event B occuring given even A and the probability of event A, divided by the probability of event B*
+    - *The probability of event $A$ given that $B$ occured is the product of the probability of event $B$ occuring given even $A$ occured and the probability of event $A$ itself, divided by the probability of event $B$ itself.*
     
-    Intuitively, this makes sense, *e.g.* let's say that we have a dataset that includes the price of an asset over one year, and records of a series of winning trades. If we can somehow quantize the prices into events, we will be able to use Bayes Theorem to compute the probability of buy, sell, and hold distribution for each given moment. For simplicity's sake, we'll use *RSI-14* as that descriptior, and let's quantize the market into three events
+    Intuitively, this makes sense. Let's say that we have a dataset that includes the price of an asset over one year, and records of a series of winning trades. If we can somehow quantize the prices into events, we will be able to use *Bayes Theorem* to compute the probability of *buy*, *sell*, and *hold* distribution for each given moment. For simplicity's sake, we'll use $RSI$ with window size $14$ (*denoted by* $RSI_{14}(p_t)$ *where* $p_t$ *is the price of the asset at time* $t$) as that descriptior, and let's quantize the market into three discrete categories as an example
     
-    - **A:** *RSI-14 < 20*
-    - **B:** *RSI-14 > 80*
-    - **C:** *20 < RSI-14 < 80*
+    - 📈 $RSI_{14}(p_t) < 20$
+    - 📉 $RSI_{14}(p_t) > 80$
+    - 🤞🏽 $RSI_{14}(p_t) \in [20, \, 80]$
 
     similarily we can quantize the actions into three categories
 
-    - 🦧 Buy
-    - 🧻 Sell
-    - 💎 HODL
+    - 🦧 **Buy**
+    - 🧻 **Sell**
+    - 💎 **HODL**
 
-    then at any given time $t$, if the *RSI-14* falls within the **C** category, then the probability that $t$ presents a good buying opportunity can be computed as
+    then at any given time $t$, if the $RSI_{14}(p_t)$ falls within the 🤞🏽 category, then the probability that the time $t$ presents a good buying opportunity can be computed as
 
-    $$P(🦧 \mid C) = {P(C \mid 🦧) \cdot P(🦧) \over P(C)}$$
+    $$P(🦧 \mid 🤞🏽) = {P(🤞🏽 \mid 🦧) \cdot P(🦧) \over P(🤞🏽)}$$
 
     the probability that $t$ presents a good selling opportunity can be computed as
 
-    $$P(🧻 \mid C) = {P(C \mid 🧻) \cdot P(🧻) \over P(C)}$$
+    $$P(🧻 \mid 🤞🏽) = {P(🤞🏽 \mid 🧻) \cdot P(🧻) \over P(🤞🏽)}$$
 
     these expressions can be generalized to as follows
 
     $$P(a_i \mid RSI_{14}(p_t)) = {P(RSI_{14}(p_t) \mid a_i) \cdot P(a_i) \over P(RSI_{14}(p_t))}$$
 
-    where $a_i$ represents a specific action, and $p_t$ represents the price of the asset at time $t$
+    where $a_i$ represents a specific discrete action, which in this example, can either be *buying h̶i̶g̶h̶*, *selling l̶o̶w̶*, or *b̶a̶g̶ holding*. You may have noticed, all of the parameters required to compute a probability distribution can be *directly observed* from the data, which is very beneficial.
 
 
 - **Light Weight**
