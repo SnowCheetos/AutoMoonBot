@@ -41,7 +41,7 @@ Like software and finance? Have ideas on how to improve this project? Consider c
 
 # Citation
 
-If enjoyed the contents found in this repository and found it helpful, please drop a star s̶o̶ ̶I̶ ̶c̶a̶n̶ ̶f̶e̶e̶l̶ ̶b̶e̶t̶t̶e̶r̶ ̶a̶b̶o̶u̶t̶ ̶m̶y̶s̶e̶l̶f̶. If you plan on using the contents in another project, please consider cite this repository. You can use the following `BibTeX` entry:
+If enjoyed the contents found in this repository and found it helpful, please consider starring ⭐ s̶o̶ ̶I̶ ̶c̶a̶n̶ ̶f̶e̶e̶l̶ ̶b̶e̶t̶t̶e̶r̶ ̶a̶b̶o̶u̶t̶ ̶m̶y̶s̶e̶l̶f̶ to show your support. If you plan on using the contents in another project, please cite this repository. You can use the following `BibTeX` entry:
 
 ```bibtex
 @misc{SnowCheetos2024,
