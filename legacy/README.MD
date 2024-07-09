@@ -1,0 +1,5 @@
+
+
+- As an example illustrating the market as a markov process, let's imagine the prices for NVDA is a markov process, where each time step $t$, holds a transition probability distribution. For simplicity, say $30\%$ going up, $30\%$ going down, $40\%$ staying flat. If d̶a̶d̶d̶y̶ Jerome Powell said "AI" four times during a news conference at 3PM, this event may cause the probability of going up to increase, say to $50\%$, while decreasing the probability for the other two.
+
+- To provide a counter example, if Jimmy estimates that J̶i̶m̶m̶y̶'̶s̶ ̶0̶-̶D̶T̶E̶ ̶F̶D̶ ̶p̶u̶t̶ NVDA will close i̶n̶ ̶t̶h̶e̶ ̶m̶o̶n̶e̶y̶ at $\$150$ simply based on the fact that J̶i̶m̶m̶y̶ ̶h̶a̶s̶ ̶a̶ ̶s̶m̶o̶o̶t̶h̶ ̶b̶r̶a̶i̶n̶ it was $\$140$ at 3PM, we wouldn't consider Jimmy's argument to be very valid, no offense to all the innocent r̶e̶g̶r̶e̶s̶s̶i̶o̶n̶ ̶m̶o̶d̶e̶l̶s̶ Jimmys in the world. 
