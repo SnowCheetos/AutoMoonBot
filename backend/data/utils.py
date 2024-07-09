@@ -100,6 +100,10 @@ class EdgeType(Enum):
     @property
     def tgt_type(self) -> NodeType:
         return self.value.tgt_type
+    
+    @classmethod
+    def names(cls) -> Set[str]:
+        return {m.value.edge_name for m in cls._member_map_.values()}
 
 
 @dataclass

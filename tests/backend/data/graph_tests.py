@@ -173,5 +173,29 @@ def test_graph_exports(
 
     data_pyg = graph.to_pyg()
 
-    assert data_pyg[N.Ticker.S].x.size(0) == len(prices), "graph exported the wrong number of ticker nodes to pyg"
-    assert data_pyg[N.News.S].x.size(0) == len(news), "graph exported the wrong number of news nodes to pyg"
+    assert data_pyg[N.Ticker.S].x.size(0) == len(
+        prices
+    ), "graph exported the wrong number of ticker nodes to pyg"
+    assert data_pyg[N.News.S].x.size(0) == len(
+        news
+    ), "graph exported the wrong number of news nodes to pyg"
+
+    for edge_type in E.names():
+        assert (
+            data_pyg[edge_type].edge_index.size(0) == 2
+        ), f"graph exported the wrong dimension of {edge_type} edges indices to pyg"
+        assert data_pyg[
+            edge_type
+        ].edge_index.is_contiguous(), (
+            f"graph exported non-contiguous {edge_type} edges indices to pyg"
+        )
+        assert data_pyg[
+            edge_type
+        ].edge_attr.is_contiguous(), (
+            f"graph exported non-contiguous {edge_type} edges indices to pyg"
+        )
+        attrs_rows = data_pyg[edge_type].edge_attr.size(0)
+        index_cols = data_pyg[edge_type].edge_index.size(1)
+        assert (
+            attrs_rows == index_cols
+        ), f"graph exported inconsistent dimensions for {edge_type} index and attributes to pyg"

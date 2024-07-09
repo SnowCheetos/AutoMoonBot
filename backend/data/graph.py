@@ -96,7 +96,7 @@ class Graph:
     def edge_index(self, edge_type: Type[E]) -> Tensor:
         edges = self.get_edges(edge_type)
         indices = [[edge.src_index, edge.tgt_index] for edge in edges]
-        return torch.tensor(indices).long().contiguous().t()
+        return torch.tensor(indices).long().t().contiguous()
 
     def edge_attr(self, edge_type: Type[E]) -> Tensor:
         edges = self.get_edges(edge_type)
@@ -104,7 +104,7 @@ class Graph:
             [edge.edge_attr[k] for k in edge.edge_attr if k not in {"edge_type", ""}]
             for edge in edges
         ]
-        return torch.tensor(attrs).float()
+        return torch.tensor(attrs).float().contiguous()
 
     def get_edges(self, edge_type: Type[E]) -> List[Edge]:
         src_index = self.node_index(edge_type.src_type)
@@ -133,9 +133,10 @@ class Graph:
         data[N.News.S].x = self.node_features(N.News)
 
         data[N.News.S, E.Authors.S, N.News.S].edge_index = self.edge_index(E.Authors)
+        data[N.News.S, E.Publisher.S, N.News.S].edge_index = self.edge_index(E.Publisher)
         data[N.News.S, E.Tickers.S, N.News.S].edge_index = self.edge_index(E.Tickers)
-        data[N.News.S, E.Tickers.S, N.News.S].edge_index = self.edge_index(E.Topics)
-        data[N.News.S, E.Reference.S, N.News.S].edge_index = self.edge_index(
+        data[N.News.S, E.Topics.S, N.News.S].edge_index = self.edge_index(E.Topics)
+        data[N.News.S, E.Reference.S, N.Ticker.S].edge_index = self.edge_index(
             E.Reference
         )
         data[N.Ticker.S, E.Influence.S, N.News.S].edge_index = self.edge_index(
@@ -146,6 +147,7 @@ class Graph:
         )
 
         data[N.News.S, E.Authors.S, N.News.S].edge_attr = self.edge_attr(E.Authors)
+        data[N.News.S, E.Publisher.S, N.News.S].edge_attr = self.edge_attr(E.Publisher)
         data[N.News.S, E.Tickers.S, N.News.S].edge_attr = self.edge_attr(E.Tickers)
         data[N.News.S, E.Topics.S, N.News.S].edge_attr = self.edge_attr(E.Topics)
         data[N.News.S, E.Reference.S, N.Ticker.S].edge_attr = self.edge_attr(
