@@ -36,7 +36,7 @@ class Trainer:
         self.col_idx = np.random.permutation(np.arange(5 * self.periods.shape[0]))
         self.confs = np.ones(3) / 3
 
-        self.redis_conn = redis.Redis(decode_responses=True)
+        self.redis_conn = redis.Redis(decode_responses=True) # I honestly forgot why I did it using redis...
 
         self.pred_map = {
             0: "sell",

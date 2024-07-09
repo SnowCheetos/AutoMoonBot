@@ -4,15 +4,15 @@
 
 ## Introduction
 
-*Please note that this is a documentation for legacy code, which as of July 2024 is no longer being actively maintained or supported. Features are not guaranteed to function properly, use for insights and educational purposes only. For more up-to-date developments, check out the current version*
+*Please note that this is a documentation for legacy code, which as of July 2024 is no longer being actively maintained or supported. Features are not guaranteed to function properly, use for insights and educational purposes only. For more up-to-date developments, check out the current version.*
 
 ### Demonstration
 
 ![](../../media/demo.gif)
 
-- *Note that the .gif might take some time to load*
+- *Note that the .gif might take some time to load.*
 
-- Demonstration of system back-testing. Data used for this test was *SPDR S&P 500 ETF Trust (SPY)* with *1 hour* interval, with a start date in *June 2022*
+- Demonstration of system back-testing. Data used for this test was *SPDR S&P 500 ETF Trust (SPY)* with *1 hour* interval, with a start date in *June 2022.*
 
 ### Motivation and Approach
 
@@ -26,7 +26,7 @@ To create real value for trading, a predictive model must generate clear signals
 
 ### Intuition
 
-Reinforcement learning is particularly well-suited for the task of developing a robust trading strategy. For those unfamiliar, `tensorflow` provides a comprehensive [`tutorial`](https://www.tensorflow.org/agents/tutorials/0_intro_rl) with examples, but the basics of reinforcement learning are as follows:
+Reinforcement learning is particularly well-suited for the task of developing a robust trading strategy. For those unfamiliar, `tensorflow` provides a comprehensive [`tutorial`](https://www.tensorflow.org/agents/tutorials/0_intro_rl) with examples. Here are some reasons why reinforcement learning suits financial markets particularily well.
 
 * **Optimal Action Discovery** 
 
