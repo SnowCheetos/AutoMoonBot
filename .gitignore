@@ -1,13 +1,13 @@
 __pycache__/
 .pytest_cache/
 .vscode/
+
 *.pyc
 *.log
 *.txt
 */frames
 *.ipynb
 *.pth
-test/
-ui/
-test.py
+
+_test.py
 test.ipynb

@@ -1,9 +1,10 @@
 # A Data Driven Cryptocurrency Trading Bot
-![](media/demo.gif)
-
-## [**DISCLAIMER**] Beating the market is very difficult. It's likely that you will not make money with this, you are at your own risk if you choose to put in real money!
+*Please review the disclaimers [`here`](../../README.md) before proceeding. By continue visiting the rest of the content, you agree to all the terms and conditions of the disclaimers.*
 
 ## Introduction
+
+### Demonstration
+![](media/demo.gif)
 
 Who haven't though about using ML for stock market predictions! This repository offers educational content for how a trade bot can be built in python using relatively simple components. 
 
