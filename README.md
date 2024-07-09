@@ -1,4 +1,6 @@
-# Automated Trading with Reinforcement Learning and Graph Neural Networks
+![](media/logo.png)
+
+---------------
 
 *This repository contains code and resources for automated trading using reinforcement learning methods. The content provided here is for educational and informational purposes only. It is not intended to be a financial product or investment advice.*
 
