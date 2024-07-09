@@ -33,7 +33,7 @@ Theoretically, any number of any models can be used for this task, and models su
 
 - **Classification vs Regression**
 
-    Please see [`HERE`](../../README.md#the-case-against-only-regression) for the argument against using (*only*) regression models.
+    Please see [`HERE`](../../README.md#arguments-against-regression-methods) for the argument against using (*only*) regression models.
 
 - **Output Probability Distribution**
 
