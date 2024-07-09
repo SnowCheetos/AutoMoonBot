@@ -2,7 +2,7 @@ import json
 import pytest
 import networkx as nx
 from typing import Tuple, Dict, List
-from backend.data import Graph, NodeType, EdgeType
+from backend.data import Graph, N, E
 
 BUFFER_SIZE = 10
 
@@ -33,7 +33,7 @@ def test_graph_basics(
 ) -> None:
     prices, news = data
     num_init_nodes = len(prices) + len(news)
-    graph = Graph(prices, news, BUFFER_SIZE)
+    graph = Graph(BUFFER_SIZE, tickers=prices, news=news)
 
     assert graph.num_nodes == len(prices) + len(
         news
@@ -65,70 +65,70 @@ def test_graph_basics(
     assert len(test_prices) == BUFFER_SIZE, "graph did not properly add data to ticker"
     assert graph.num_edges > num_edges, "graph did not properly update edges"
 
-    news_index = graph.node_index(NodeType.News)
+    news_index = graph.node_index(N.News)
     assert len(news_index) == len(news) - 1, "graph did not return proper news nodes"
 
-    ticker_index = graph.node_index(NodeType.Ticker)
+    ticker_index = graph.node_index(N.Ticker)
     assert len(ticker_index) == len(prices), "graph did not return proper ticker nodes"
 
-    edges = graph.get_edges(EdgeType.Authors)
+    edges = graph.get_edges(E.Authors)
     assert 0 < len(edges) < num_edges, "graph did not return proper edges"
     assert all(
-        edge.edge_type == EdgeType.Authors for edge in edges
+        edge.edge_type == E.Authors for edge in edges
     ), "graph returned wrong edge type"
     assert all(
-        edge.src_type == NodeType.News for edge in edges
+        edge.src_type == N.News for edge in edges
     ), "graph returned wrong src type for edge"
     assert all(
-        edge.tgt_type == NodeType.News for edge in edges
+        edge.tgt_type == N.News for edge in edges
     ), "graph returned wrong tgt type for edge"
 
-    edges = graph.get_edges(EdgeType.Tickers)
+    edges = graph.get_edges(E.Tickers)
     assert 0 < len(edges) < num_edges, "graph did not return proper edges"
     assert all(
-        edge.edge_type == EdgeType.Tickers for edge in edges
+        edge.edge_type == E.Tickers for edge in edges
     ), "graph returned wrong edge type"
     assert all(
-        edge.src_type == NodeType.News for edge in edges
+        edge.src_type == N.News for edge in edges
     ), "graph returned wrong src type for edge"
     assert all(
-        edge.tgt_type == NodeType.News for edge in edges
+        edge.tgt_type == N.News for edge in edges
     ), "graph returned wrong tgt type for edge"
 
-    edges = graph.get_edges(EdgeType.Correlation)
+    edges = graph.get_edges(E.Correlation)
     assert 0 < len(edges) < num_edges, "graph did not return proper edges"
     assert all(
-        edge.edge_type == EdgeType.Correlation for edge in edges
+        edge.edge_type == E.Correlation for edge in edges
     ), "graph returned wrong edge type"
     assert all(
-        edge.src_type == NodeType.Ticker for edge in edges
+        edge.src_type == N.Ticker for edge in edges
     ), "graph returned wrong src type for edge"
     assert all(
-        edge.tgt_type == NodeType.Ticker for edge in edges
+        edge.tgt_type == N.Ticker for edge in edges
     ), "graph returned wrong tgt type for edge"
 
-    edges = graph.get_edges(EdgeType.Reference)
+    edges = graph.get_edges(E.Reference)
     assert 0 < len(edges) < num_edges, "graph did not return proper edges"
     assert all(
-        edge.edge_type == EdgeType.Reference for edge in edges
+        edge.edge_type == E.Reference for edge in edges
     ), "graph returned wrong edge type"
     assert all(
-        edge.src_type == NodeType.News for edge in edges
+        edge.src_type == N.News for edge in edges
     ), "graph returned wrong src type for edge"
     assert all(
-        edge.tgt_type == NodeType.Ticker for edge in edges
+        edge.tgt_type == N.Ticker for edge in edges
     ), "graph returned wrong tgt type for edge"
 
-    edges = graph.get_edges(EdgeType.Influence)
+    edges = graph.get_edges(E.Influence)
     assert 0 < len(edges) < num_edges, "graph did not return proper edges"
     assert all(
-        edge.edge_type == EdgeType.Influence for edge in edges
+        edge.edge_type == E.Influence for edge in edges
     ), "graph returned wrong edge type"
     assert all(
-        edge.src_type == NodeType.Ticker for edge in edges
+        edge.src_type == N.Ticker for edge in edges
     ), "graph returned wrong src type for edge"
     assert all(
-        edge.tgt_type == NodeType.News for edge in edges
+        edge.tgt_type == N.News for edge in edges
     ), "graph returned wrong tgt type for edge"
 
 
@@ -139,25 +139,27 @@ def test_graph_arithmetics(
     ]
 ) -> None:
     prices, news = data
-    graph = Graph(prices, news, BUFFER_SIZE)
+    graph = Graph(BUFFER_SIZE, tickers=prices, news=news)
 
-    node_index = graph.node_index(NodeType.Ticker)
-    node_features = graph.node_features(NodeType.Ticker)
+    node_index = graph.node_index(N.Ticker)
+    node_features = graph.node_features(N.Ticker)
     assert node_features.shape[0] == len(
         node_index
     ), "Node features have wrong row dimensions"
     assert node_features.shape[1] == graph.node_feature_size(
-        NodeType.Ticker
+        N.Ticker
     ), "Node features have wrong col dimensions"
 
-    node_index = graph.node_index(NodeType.News)
-    node_features = graph.node_features(NodeType.News)
+    node_index = graph.node_index(N.News)
+    node_features = graph.node_features(N.News)
     assert node_features.shape[0] == len(
         node_index
     ), "Node features have wrong row dimensions"
     assert node_features.shape[1] == graph.node_feature_size(
-        NodeType.News
+        N.News
     ), "Node features have wrong col dimensions"
+
+    # TODO actually implement the features
 
 
 def test_graph_exports(
@@ -167,8 +169,9 @@ def test_graph_exports(
     ]
 ) -> None:
     prices, news = data
-    graph = Graph(prices, news, BUFFER_SIZE)
+    graph = Graph(BUFFER_SIZE, tickers=prices, news=news)
 
     data_pyg = graph.to_pyg()
-    assert data_pyg["ticker"].x.shape[0] == len(prices), "graph exported the wrong number of ticker nodes to pyg"
-    assert data_pyg["news"].x.shape[0] == len(news), "graph exported the wrong number of news nodes to pyg"
+
+    assert data_pyg[N.Ticker.S].x.size(0) == len(prices), "graph exported the wrong number of ticker nodes to pyg"
+    assert data_pyg[N.News.S].x.size(0) == len(news), "graph exported the wrong number of news nodes to pyg"

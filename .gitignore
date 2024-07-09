@@ -9,3 +9,5 @@ __pycache__/
 *.pth
 test/
 ui/
+test.py
+test.ipynb
