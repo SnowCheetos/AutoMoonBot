@@ -13,12 +13,13 @@
 *This project utilizes [`torch_geometric`](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) for Graph Neural Networks, I recommend visiting their site and install all dependencies according to their instructions.*
 
 ## Testing
-...
+Test scripts are available in the `tests` directory.
 
 ## Upcoming
 
-* Options support
-* QuantConnect integration
+<input type="checkbox" readonly tabindex=-1> Options support
+
+<input type="checkbox" readonly tabindex=-1> QuantConnect integration
 
 ## Legacy
 
@@ -27,5 +28,6 @@
 - [`Automated Trading with Policy Gradient`](legacy/policy_gradient/README.md)
 - [`An Ensemble of Models Trading Together`](legacy/classical_ensemble/README.md)
 
-## Contribution
-...
+## Contribute
+
+Like software and finance? Have ideas on how to improve this project? Consider contributing! Visit [`CONTRIBUTE.MD`](docs/CONTRIBUTE.MD) for more information.

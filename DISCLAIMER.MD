@@ -4,6 +4,10 @@ By viewing, citing, using, or contributing to the code and resources provided in
 
 -------
 
+### License
+
+This project is distributed under the **MIT License** found [`HERE`](LICENSE). By viewing, citing, using, or contributing to the code and resources provided in this repository, you acknowledge and agree to all terms and conditions in the license, present and future, unless explicitly stated otherwise.
+
 ### Not Financial Advice
 
 The information and tools provided in this repository are not intended as, and should not be interpreted as, financial advice or recommendations. The strategies, models, and code are provided for educational purposes only and should not be used as a basis for making any financial decisions.
