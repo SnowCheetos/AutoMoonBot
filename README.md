@@ -66,17 +66,19 @@ As a side note, [*Louis Bachelier*](https://en.wikipedia.org/wiki/Louis_Bachelie
 *This project utilizes [`torch_geometric`](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) for Graph Neural Networks, I recommend visiting their site and install all dependencies according to their instructions.*
 
 ## Installation
-...
+
+*Gimme a sec...*
 
 ## Quick Start
-...
+
+*Yeah no not yet...*
 
 ## Testing
 Test scripts are available in the `tests` directory.
 
 # Legacy
 
-*This project has gone through many iterations ever since its creation in 2021, the current version is still super alpha. If you would like to view the legacy code and implementations for more insights, go to the* [`legacy`](legacy/README.MD) *directory, or use the quick links below.*
+Developments for this project is made possible by stepping on the shoulders of... its past versions? Oh and giants too. Jokes aside, it went through some pretty significant iterations over time, methods used were very different. If you would like to view the legacy code and implementations for more insights, go to the `legacy` directory, or use the quick links below.
 
 - [`Automated Trading with Policy Gradient`](legacy/policy_gradient/README.md)
 - [`An Ensemble of Models Trading Together`](legacy/classical_ensemble/README.md)
