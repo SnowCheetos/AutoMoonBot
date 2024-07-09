@@ -61,11 +61,19 @@ Most configurations can be done by modifying fields in [`config.json`](config.js
 
     $$L(\theta)=\sum_{t=0}^{T}-\log\pi_{\theta}(a_t|s_t) \cdot R_t$$
 
-    $$R_t = \beta \cdot \bar{r}_t + (1-\beta) \log {P_{t=T} \over P_{t=0}}$$
+    $$R_t = \beta \cdot \bar{r}_t + (1-\beta) \cdot G_T$$
+
+    $$G_T = \log {P_{t=T} \over P_{t=0}}$$
 
     $t$ is the time step, interpreted as each `OHLCV` candle
 
     $T$ is the step at which the episode ended
+
+    $P_t$ represents the portfolio value at time $t$, and ${P_{t=T} \over P_{t=0}}$ represents the total portfolio return for the episode. 
+    
+    - Although intuitively it makes more sense to add it after the summation, but it was determined empirically that this expression produced better results
+
+    $\beta$ here is the parameter of interest, it represents the importance of log return when computing loss, which is ignored when set to `null` or $0$
 
     $\log \pi_{\theta}(a_t|s_t)$ is the log probability of action $a_t$ under policy $\pi$ parameterized by $\theta$ given state $s_t$
 
@@ -88,10 +96,6 @@ Most configurations can be done by modifying fields in [`config.json`](config.js
     $$\bar{r}_t = { { g_t - \mu_r } \over \sigma_r }$$
 
     $\gamma$ is the discount rate, exponentially drops off as it approaches infinite future
-
-    $P_t$ represents the portfolio value at time $t$, and ${P_{t=T} \over P_{t=0}}$ represents the total portfolio log return. Although intuitively it makes more sense to add it after the summation, but it was determined empirically that this expression produced better results
-
-    $\beta$ here is the parameter of interest, it represents the importance of log return when computing loss, which is ignored when set to `null` or $0$
 
 - `full_port` describes whether or the model should go full ape mode, if `true`, it will use $100 \%$ of the portfolio for each trade, otherwise the amount of portfolio to use is determined by the action probability.
 
