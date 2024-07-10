@@ -1,109 +1,273 @@
 import numpy as np
-from enum import Enum
+from enum import Enum, auto
 from dataclasses import dataclass
 from typing import Dict, Set, Any
 from collections import namedtuple
 
-_node = namedtuple(typename="node", field_names=["value", "node_name"])
-_edge = namedtuple(
-    typename="edge", field_names=["value", "edge_name", "src_type", "tgt_type"]
-)
+
+_node = namedtuple(typename="node", field_names=["value", "n", "attr"])
+
+_edge = namedtuple(typename="edge", field_names=["value", "n", "s", "t", "q", "attr"])
 
 
-class NodeType(Enum):
-    Ticker = _node(value=0, node_name="tickers")
-    News = _node(value=1, node_name="news")
-    Event = _node(
-        value=2, node_name="event"
-    )  # e.g. Earnings, SEC filings, Dividends, Splits ...
+class Node(Enum):
+    Index = _node(
+        value=auto(),
+        n="index",  # For now this represents both index and ETF
+        attr={
+            "symbol": str,
+            "sector": str,
+            "timestamp": float,  # current environment time
+            "prices": list,
+            "interval": str,
+        },
+    )
+
+    Equity = _node(
+        value=auto(),
+        n="equity",
+        attr={
+            "symbol": str,
+            "company": str,
+            "timestamp": float,
+            "prices": list,
+            "interval": str,
+        },
+    )
+
+    Company = _node(
+        value=auto(),
+        n="company",
+        attr={
+            "name": str,
+            "symbol": str,
+            "sector": str,
+            "industry": str,
+            "country": str,
+            "currency": str,
+            "founded": float,
+            "balance_sht": dict,
+            "income_stmt": dict,
+            "cash_flow": dict,
+            "earnings": dict,
+            "dividends": list,
+            "splits": list,
+            "calendar": list,
+        },
+    )
+
+    News = _node(
+        value=auto(),
+        n="news",
+        attr={
+            "title": str,
+            "summary": str,
+            "source": str,
+            "category": str,
+            "timestamp": float,
+            "sentiment": float,
+            "authors": list,
+            "topics": list,
+        },
+    )
+
+    Author = _node(
+        value=auto(),
+        n="author",
+        attr={
+            "name": str,
+            "avg_sentiment": float,
+        },
+    )
+
+    Exchange = _node(
+        value=auto(),
+        n="exchange",
+        attr={
+            "open": bool,
+            "country": str,
+            "region": str,
+            "currency": str,
+        },
+    )
+
+    Topic = _node(value=auto(), n="topic", attr={})
+
+    Publisher = _node(value=auto(), n="publisher", attr={})
+
+    Event = _node(value=auto(), n="event", attr={})  # e.g. Earnings, SEC filings ...
     Economy = _node(
-        value=3, node_name="economy"
+        value=auto(), n="economy", attr={}
     )  # e.g. GDP, CPI, Unemployment, Inflation ...
-    Currency = _node(value=4, node_name="currency")  # e.g. CNY, JPY, EUR, GBP ...
-    Crypto = _node(value=5, node_name="crypto")  # e.g. BTC, ETH ...
+    Currency = _node(value=auto(), n="currency", attr={})  # e.g. CNY, JPY, EUR, GBP ...
+    Crypto = _node(value=auto(), n="crypto", attr={})  # e.g. BTC, ETH ...
     Commodity = _node(
-        value=6, node_name="commodity"
+        value=auto(), n="commodity", attr={}
     )  # e.g. Oil, Gold, Copper, Wheat, Corn ...
-    Options = _node(value=7, node_name="options")
+    Options = _node(value=auto(), n="options", attr={})
 
     @property
-    def S(self) -> str:
-        """
-        Short name to save time typing
-        """
-        return self.value.node_name
+    def n(self) -> str:
+        return self.value.n
+
+    @property
+    def attr(self) -> Dict[str, Any]:
+        return self.value.attr
 
     @classmethod
     def names(cls) -> Set[str]:
-        return {m.value.node_name for m in cls._member_map_.values()}
+        return {m.value.n for m in cls._member_map_.values()}
 
 
-@dataclass
-class EdgeNodeType:
-    value: int
-    src: NodeType
-    tgt: NodeType
+class Edges(Enum):
+    # I'm actually not so sure...
+    Owns = _edge(
+        value=auto(),
+        n="owns",
+        s=Node.Company,
+        t=Node.Equity,
+        q=None,
+        attr={
+            "amount": float,
+        },
+    )
 
+    Correlates = _edge(
+        value=auto(),
+        n="correlates",
+        s=Node.Equity,
+        t=Node.Equity,
+        q=None,
+        attr={
+            "corr": float,
+        },
+    )
 
-class EdgeType(Enum):
-    Authors = _edge(
-        value=0,
-        edge_name="shared_authors",
-        src_type=NodeType.News,
-        tgt_type=NodeType.News,
+    Represents = _edge(
+        value=auto(),
+        n="represents",
+        s=Node.Equity,
+        t=Node.Company,
+        q=None,
+        attr={
+            "corr": float,
+        },
     )
-    Publisher = _edge(
-        value=1,
-        edge_name="shared_publisher",
-        src_type=NodeType.News,
-        tgt_type=NodeType.News,
+
+    Includes = _edge(
+        value=auto(),
+        n="includes",
+        s=Node.Topic,
+        t=Node.Company,
+        q=None,
+        attr={
+            "corr": float,
+        },
     )
-    Topics = _edge(
-        value=2,
-        edge_name="shared_topics",
-        src_type=NodeType.News,
-        tgt_type=NodeType.News,
+
+    Hosts = _edge(
+        value=auto(),
+        n="hosts",
+        s=Node.Exchange,
+        t=Node.Equity,
+        q=None,
+        attr={
+            "amount": float,
+        },
     )
-    Tickers = _edge(
-        value=3,
-        edge_name="shared_tickers",
-        src_type=NodeType.News,
-        tgt_type=NodeType.News,
+
+    Serves = _edge(
+        value=auto(),
+        n="serves",
+        s=Node.Author,
+        t=Node.Publisher,
+        q=None,
+        attr={...},
     )
-    Reference = _edge(
-        value=4,
-        edge_name="references",
-        src_type=NodeType.News,
-        tgt_type=NodeType.Ticker,
+
+    Drafted = _edge(
+        value=auto(),
+        n="drafted",
+        s=Node.Author,
+        t=Node.News,
+        q=lambda t: float(t["overall_sentiment_score"]),
+        attr={
+            "time_decay": "t2c",  # From target to current
+            "sentiment": "t->q",
+        },
     )
-    Influence = _edge(
-        value=5,
-        edge_name="influences",
-        src_type=NodeType.Ticker,
-        tgt_type=NodeType.News,
+
+    Published = _edge(
+        value=auto(),
+        n="published",
+        s=Node.Publisher,
+        t=Node.News,
+        q=lambda t: t["category_within_source"],
+        attr={
+            "time_decay": "t2c",  # From target to current
+            "category": "t->q",  # Publisher internal category
+        },
     )
-    Correlation = _edge(
-        value=6,
-        edge_name="correlations",
-        src_type=NodeType.Ticker,
-        tgt_type=NodeType.Ticker,
+
+    Covered = _edge(
+        value=auto(),
+        n="covered",
+        s=Node.News,
+        t=Node.Topic,
+        q=lambda s, t: (float(i["relevance_score"]) for i in t["topics"] if i["topic"] == s),
+        attr={
+            "time_decay": "s2c",  # From source to current
+            "relevance": "s,t->q",
+        },
     )
+
+    Referenced = _edge(
+        value=auto(),
+        n="referenced",
+        s=Node.News,
+        t=Node.Equity,
+        q=lambda s, t: (float(i["relevance_score"]) for i in t["ticker_sentiment"] if i["ticker"] == s),
+        attr={
+            "time_decay": "s2t",  # From source to target
+            "relevance": "s,t->q",
+            "sentiment": "s,t->q",
+        },
+    )
+
+    Mentioned = _edge(
+        value=auto(),
+        n="mentioned",
+        s=Node.News,
+        t=Node.Company,
+        q=lambda s, t: (float(i["relevance_score"]) for i in t["ticker_sentiment"] if i["ticker"] == s),
+        attr={
+            "time_decay": "s2c",  # From source to current
+            "relevance": "s,t->q",
+            "sentiment": "s,t->q",
+        },
+    )
+
+    # TODO More...
 
     @property
-    def S(self) -> str:
-        return self.value.edge_name
+    def n(self) -> str:
+        return self.value.n
 
     @property
-    def src_type(self) -> NodeType:
-        return self.value.src_type
+    def s(self) -> Node:
+        return self.value.s
 
     @property
-    def tgt_type(self) -> NodeType:
-        return self.value.tgt_type
-    
+    def t(self) -> Node:
+        return self.value.t
+
+    @property
+    def attr(self) -> Dict[str, Any]:
+        return self.value.attr
+
     @classmethod
     def names(cls) -> Set[str]:
-        return {m.value.edge_name for m in cls._member_map_.values()}
+        return {m.value.n for m in cls._member_map_.values()}
 
 
 @dataclass
@@ -112,9 +276,9 @@ class Edge:
     tgt_id: str
     src_index: int
     tgt_index: int
-    src_type: NodeType
-    tgt_type: NodeType
-    edge_type: EdgeType
+    s: Node
+    t: Node
+    edge_type: Edges
     edge_attr: Dict[str, Any]
 
 
