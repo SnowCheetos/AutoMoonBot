@@ -8,10 +8,10 @@ import networkx as nx
 from torch import Tensor
 from dateutil import parser
 from collections import deque
-from typing import Dict, List, Type
+from typing import Any, Dict, List, Type
 from torch_geometric.data import HeteroData
 
-from backend.data import Edge, compute_time_decay, EdgeType as E, NodeType as N
+from backend.data import Edge, compute_time_decay, Edges as E, Node as N
 
 
 class Graph:
@@ -46,6 +46,7 @@ class Graph:
         self.G = nx.MultiDiGraph()
         self._buffer_size = buffer_size
         self._memo = {}
+        self._timestamp = 0
 
         for key, value in kwargs.items():
             if key in self.__class__._allowed:
@@ -260,34 +261,91 @@ class Graph:
             return
         self.G.remove_node(idx)
 
+    def add_node(self, t: N, name: str, **kwargs) -> None:
+        if self.G.has_node(name):
+            return
+
+        missing = kwargs.keys() ^ t.attr.keys()
+        if len(missing) > 0:
+            raise ValueError(
+                f"cannot add node type {t.n}: missing params [{', '.join(missing)}]"
+            )
+
+        mismatch = {k for k, v in t.attr.items() if not isinstance(kwargs[k], v)}
+        if len(mismatch) > 0:
+            raise ValueError(
+                f"cannot add node type {t.n}: type mismatch [{', '.join(mismatch)}]"
+            )
+
+        self.G.add_node(name, t=t, **kwargs)
+
+    def del_node(self, name: str) -> None:
+        if not self.G.has_node(name):
+            return
+
+        self.G.remove_node(name)
+
     def compute_edges(self, clear: bool = False) -> None:
         if clear:
             self.clear_edges()
         for node_id in self.G.nodes:
             self.compute_node_edges(node_id)
 
-    def compute_edge_type(self, src: N, tgt: N) -> E | None:
-        key = (src, tgt)
+    def compute_edge_type(self, s: N, t: N) -> E | None:
+        key = (s, t)
         mem = self._memo.get(key, None)
         if mem is not None:
             return mem
 
         for e in E:
-            if e.s == src and e.t == tgt:
+            if e.s == s and e.t == t:
                 self._memo.update({key: e})
                 return e
-        
+
         return None
 
-    def compute_edge(self, src_id: str, tgt_id: str, **kwargs) -> None:
-        src_node = self.G.nodes.get(src_id)
-        tgt_node = self.G.nodes.get(tgt_id)
+    def compute_edge_attr(
+        self, s: Dict[str, Any], t: Dict[str, Any], e: E, **kwargs
+    ) -> Dict[str, float]:
+        attrs = {}
+        for attr, param in e.attr.items():
+            if attr == "time_decay":
+                start, end = None, None
+                if param == "s2t":
+                    start = s.timestamp
+                    end = t.timestamp
+                elif param == "s2c":
+                    start = s.timestamp
+                    end = self._timestamp
+                elif param == "t2c":
+                    start = t.timestamp
+                    end = self._timestamp
+                else:
+                    raise NotImplementedError(
+                        f"{param} is not a valid time decay direction"
+                    )
+                attrs.update({attr: compute_time_decay(start, end, **kwargs)})
 
-        e = self.compute_edge_type(src_node["t"], tgt_node["t"])
+            elif attr == "":
+                pass
+
+            else:
+                raise NotImplementedError(f"{attr} is not a valid edge attribute")
+        return attrs
+
+    def compute_edge(self, s: str, t: str, **kwargs) -> None:
+        src = self.G.nodes.get(s)
+        tgt = self.G.nodes.get(t)
+
+        e = self.compute_edge_type(src.t, tgt.t)
         if e is None:
             return
-        
-        
+
+        self.G.add_edge(
+            s,
+            t,
+            t=e,
+        )
 
     def compute_node_edges(
         self, node_id: str, min_corr_norm: float = 2.5, min_time_decay: float = 0.01
