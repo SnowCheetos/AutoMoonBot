@@ -15,6 +15,27 @@ from backend.data import Edge, compute_time_decay, EdgeType as E, NodeType as N
 
 
 class Graph:
+    """
+    The primary data structure that the model interact with.
+    Essentially a big wrapper for a heterogeneous graph `nx.MultiDiGraph`,
+    which is used to represent the state at time `t` in the RL environment.
+
+    Attributes
+    ----------
+    `G` : nx.MultiDiGraph
+
+        The base graph datastructure. Since the different types of nodes
+        need to interact, the graph is inheriently heterogeneous, thus
+        the need to use `MultiDiGraph`.
+
+    `_buffer_size` : int
+
+        Some node types are intended to store snapshots of timeseries.
+        For instance, a `ticker` node stores historical prices up to the
+        current time step `t`, and their storage capacity would be capped
+        at a maximum of `_buffer_size` rows.
+    """
+
     _allowed = N.names()
 
     def __init__(
@@ -24,19 +45,20 @@ class Graph:
     ) -> None:
         self.G = nx.MultiDiGraph()
         self._buffer_size = buffer_size
+        self._memo = {}
 
         for key, value in kwargs.items():
             if key in self.__class__._allowed:
-                if key == N.Ticker.S:
+                if key == N.Ticker.n:
                     assert isinstance(
                         value, dict
-                    ), f"{N.Ticker.S} requires format of Dict[str, Dict[str, str | float]]"
+                    ), f"{key} requires format of Dict[str, Dict[str, str | float]]"
                     for ticker, price in value.items():
                         self.add_ticker(ticker, price, compute_edges=False)
-                elif key == N.News.S:
+                elif key == N.News.n:
                     assert isinstance(
                         value, list
-                    ), f"{N.Ticker.S} requires format of List[Dict[str, str | List[str | Dict[str, str]]]]"
+                    ), f"{key} requires format of List[Dict[str, str | List[str | Dict[str, str]]]]"
                     for content in value:
                         self.add_news(content, False)
                 else:
@@ -107,8 +129,8 @@ class Graph:
         return torch.tensor(attrs).float().contiguous()
 
     def get_edges(self, edge_type: Type[E]) -> List[Edge]:
-        src_index = self.node_index(edge_type.src_type)
-        tgt_index = self.node_index(edge_type.tgt_type)
+        src_index = self.node_index(edge_type.s)
+        tgt_index = self.node_index(edge_type.t)
 
         edges = [
             Edge(
@@ -116,8 +138,8 @@ class Graph:
                 tgt_id=tgt,
                 src_index=src_index[src],
                 tgt_index=tgt_index[tgt],
-                src_type=edge_type.src_type,
-                tgt_type=edge_type.tgt_type,
+                src_type=edge_type.s,
+                tgt_type=edge_type.t,
                 edge_type=edge_type,
                 edge_attr=attr,
             )
@@ -129,34 +151,36 @@ class Graph:
     def to_pyg(self) -> HeteroData:
         data = HeteroData()
 
-        data[N.Ticker.S].x = self.node_features(N.Ticker)
-        data[N.News.S].x = self.node_features(N.News)
+        data[N.Ticker.n].x = self.node_features(N.Ticker)
+        data[N.News.n].x = self.node_features(N.News)
 
-        data[N.News.S, E.Authors.S, N.News.S].edge_index = self.edge_index(E.Authors)
-        data[N.News.S, E.Publisher.S, N.News.S].edge_index = self.edge_index(E.Publisher)
-        data[N.News.S, E.Tickers.S, N.News.S].edge_index = self.edge_index(E.Tickers)
-        data[N.News.S, E.Topics.S, N.News.S].edge_index = self.edge_index(E.Topics)
-        data[N.News.S, E.Reference.S, N.Ticker.S].edge_index = self.edge_index(
+        data[N.News.n, E.Authors.n, N.News.n].edge_index = self.edge_index(E.Authors)
+        data[N.News.n, E.Publisher.n, N.News.n].edge_index = self.edge_index(
+            E.Publisher
+        )
+        data[N.News.n, E.Tickers.n, N.News.n].edge_index = self.edge_index(E.Tickers)
+        data[N.News.n, E.Topics.n, N.News.n].edge_index = self.edge_index(E.Topics)
+        data[N.News.n, E.Reference.n, N.Ticker.n].edge_index = self.edge_index(
             E.Reference
         )
-        data[N.Ticker.S, E.Influence.S, N.News.S].edge_index = self.edge_index(
+        data[N.Ticker.n, E.Influence.n, N.News.n].edge_index = self.edge_index(
             E.Influence
         )
-        data[N.Ticker.S, E.Correlation.S, N.Ticker.S].edge_index = self.edge_index(
+        data[N.Ticker.n, E.Correlation.n, N.Ticker.n].edge_index = self.edge_index(
             E.Correlation
         )
 
-        data[N.News.S, E.Authors.S, N.News.S].edge_attr = self.edge_attr(E.Authors)
-        data[N.News.S, E.Publisher.S, N.News.S].edge_attr = self.edge_attr(E.Publisher)
-        data[N.News.S, E.Tickers.S, N.News.S].edge_attr = self.edge_attr(E.Tickers)
-        data[N.News.S, E.Topics.S, N.News.S].edge_attr = self.edge_attr(E.Topics)
-        data[N.News.S, E.Reference.S, N.Ticker.S].edge_attr = self.edge_attr(
+        data[N.News.n, E.Authors.n, N.News.n].edge_attr = self.edge_attr(E.Authors)
+        data[N.News.n, E.Publisher.n, N.News.n].edge_attr = self.edge_attr(E.Publisher)
+        data[N.News.n, E.Tickers.n, N.News.n].edge_attr = self.edge_attr(E.Tickers)
+        data[N.News.n, E.Topics.n, N.News.n].edge_attr = self.edge_attr(E.Topics)
+        data[N.News.n, E.Reference.n, N.Ticker.n].edge_attr = self.edge_attr(
             E.Reference
         )
-        data[N.Ticker.S, E.Influence.S, N.News.S].edge_attr = self.edge_attr(
+        data[N.Ticker.n, E.Influence.n, N.News.n].edge_attr = self.edge_attr(
             E.Influence
         )
-        data[N.Ticker.S, E.Correlation.S, N.Ticker.S].edge_attr = self.edge_attr(
+        data[N.Ticker.n, E.Correlation.n, N.Ticker.n].edge_attr = self.edge_attr(
             E.Correlation
         )
 
@@ -241,6 +265,29 @@ class Graph:
             self.clear_edges()
         for node_id in self.G.nodes:
             self.compute_node_edges(node_id)
+
+    def compute_edge_type(self, src: N, tgt: N) -> E | None:
+        key = (src, tgt)
+        mem = self._memo.get(key, None)
+        if mem is not None:
+            return mem
+
+        for e in E:
+            if e.s == src and e.t == tgt:
+                self._memo.update({key: e})
+                return e
+        
+        return None
+
+    def compute_edge(self, src_id: str, tgt_id: str, **kwargs) -> None:
+        src_node = self.G.nodes.get(src_id)
+        tgt_node = self.G.nodes.get(tgt_id)
+
+        e = self.compute_edge_type(src_node["t"], tgt_node["t"])
+        if e is None:
+            return
+        
+        
 
     def compute_node_edges(
         self, node_id: str, min_corr_norm: float = 2.5, min_time_decay: float = 0.01
