@@ -1,5 +1,5 @@
 from torch import Tensor
-from typing import Dict, Any
+from typing import Any
 
 
 class Element:
@@ -18,6 +18,15 @@ class Element:
 
         self._on_error = on_error
         self.__dict__.update(kwargs)
+
+    # Might not be necessary
+    def __eq__(self, value: object) -> bool:
+        return self.name == value.name
+    
+    # Might not be necessary
+    @property
+    def name(self):
+        return self.__class__.__name__
 
     @property
     def _attr(self) -> str | None:
@@ -69,7 +78,7 @@ class Element:
 
         elif method == self.__class__._attr_script_:
             raise NotImplementedError("Lambda script compiler is not implemented yet")
-    
+
     def tensor(self, **kwargs) -> Tensor | None:
         method = self._tensor
         if not method:
@@ -90,7 +99,7 @@ class Element:
 
         elif method == self.__class__._tensor_script_:
             raise NotImplementedError("Lambda script compiler is not implemented yet")
-    
+
     def update(self, **kwargs) -> bool:
         method = self._update
         if not method:
