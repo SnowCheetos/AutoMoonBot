@@ -39,6 +39,15 @@ class Company(Node):
             **kwargs,
         )
 
+    def get_attr(self):
+        pass
+
+    def get_tensor(self):
+        pass
+
+    def get_update(self):
+        pass
+
 
 class Equity(Node):
     def __init__(
@@ -53,6 +62,15 @@ class Equity(Node):
             on_error=on_error,
             **kwargs,
         )
+
+    def get_attr(self):
+        pass
+
+    def get_tensor(self):
+        pass
+
+    def get_update(self):
+        pass
 
 
 class News(Node):
@@ -69,6 +87,12 @@ class News(Node):
             **kwargs,
         )
 
+    def get_attr(self):
+        pass
+
+    def get_tensor(self):
+        pass
+
 
 class Author(Node):
     def __init__(
@@ -83,6 +107,15 @@ class Author(Node):
             on_error=on_error,
             **kwargs,
         )
+
+    def get_attr(self):
+        pass
+
+    def get_tensor(self):
+        pass
+
+    def get_update(self):
+        pass
 
 
 class Publisher(Node):
@@ -99,6 +132,15 @@ class Publisher(Node):
             **kwargs,
         )
 
+    def get_attr(self):
+        pass
+
+    def get_tensor(self):
+        pass
+
+    def get_update(self):
+        pass
+
 
 class Topic(Node):
     def __init__(
@@ -113,3 +155,9 @@ class Topic(Node):
             on_error=on_error,
             **kwargs,
         )
+
+    def get_attr(self):
+        pass
+
+    def get_tensor(self):
+        pass

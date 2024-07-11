@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Hashable
+from typing import Hashable, Set
 
 from backend.data import Element, nodes as n
 
@@ -96,9 +96,6 @@ class Issues(Edge):
     def get_tensor(self):
         pass
 
-    def get_update(self):
-        pass
-
 
 class Drafted(Edge):
     """
@@ -131,9 +128,6 @@ class Drafted(Edge):
     def get_tensor(self):
         pass
 
-    def get_update(self):
-        pass
-
 
 class Published(Edge):
     """
@@ -164,9 +158,6 @@ class Published(Edge):
         pass
 
     def get_tensor(self):
-        pass
-
-    def get_update(self):
         pass
 
 
@@ -271,9 +262,6 @@ class Referenced(Edge):
     def get_tensor(self):
         pass
 
-    def get_update(self):
-        pass
-
 
 class Moves(Edge):
     """
@@ -308,3 +296,14 @@ class Moves(Edge):
 
     def get_update(self):
         pass
+
+
+Edges: Set[Edge] = {
+    Issues,
+    Drafted,
+    Published,
+    Serves,
+    Employes,
+    Referenced,
+    Moves
+}
