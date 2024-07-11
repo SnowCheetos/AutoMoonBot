@@ -11,11 +11,12 @@ class Element:
     _update_method_ = "get_update"
     _update_script_ = "update_script"
 
-    def __init__(self, on_error: str = "omit", **kwargs) -> None:
+    def __init__(self, mutable: bool = True, on_error: str = "omit", **kwargs) -> None:
         assert (
             on_error in self.__class__._on_errors_
         ), f"Invalid on-error policy, must be one of {self.__class__._on_errors_}"
 
+        self.mutable = mutable
         self._on_error = on_error
         self.__dict__.update(kwargs)
 
@@ -102,11 +103,15 @@ class Element:
 
     def update(self, **kwargs) -> bool:
         method = self._update
-        if not method:
+        if not method or not self.mutable:
             if self._on_error == "omit":
                 # TODO log error
                 return False
             elif self._on_error == "raise":
+                if not self.mutable:
+                    raise AttributeError(
+                    "Immutable elements cannot be updated"
+                )
                 raise AttributeError(
                     f"Either `{self.__class__._update_method_}` or `{self.__class__._update_script_}` must be provided when computing updates"
                 )
