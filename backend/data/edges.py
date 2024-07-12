@@ -1,3 +1,4 @@
+import torch
 from enum import Enum, auto
 from typing import Hashable, Set
 
@@ -22,6 +23,7 @@ class Edge(Element):
     aspect = None
     source_type = None
     target_type = None
+    tensor_dim = None
 
     def __init__(
         self,
@@ -64,6 +66,10 @@ class Edge(Element):
     def target_type(self):
         return self.__class__.target_type
 
+    @property
+    def tensor_dim(self) -> int:
+        return self.__class__.tensor_dim
+
 
 class Issues(Edge):
     """
@@ -75,6 +81,7 @@ class Issues(Edge):
     aspect = Aspect.Simple
     source_type = n.Company
     target_type = n.Equity
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -103,7 +110,7 @@ class Issues(Edge):
             return {0: 1}
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
 
 
 class Drafted(Edge):
@@ -116,6 +123,7 @@ class Drafted(Edge):
     aspect = Aspect.Simple
     source_type = n.Author
     target_type = n.News
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -136,7 +144,7 @@ class Drafted(Edge):
         pass
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
 
 
 class Published(Edge):
@@ -149,6 +157,7 @@ class Published(Edge):
     aspect = Aspect.Simple
     source_type = n.Publisher
     target_type = n.News
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -169,7 +178,7 @@ class Published(Edge):
         pass
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
 
 
 class Serves(Edge):
@@ -182,6 +191,7 @@ class Serves(Edge):
     aspect = Aspect.Perfect
     source_type = n.Author
     target_type = n.Publisher
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -202,7 +212,7 @@ class Serves(Edge):
         pass
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
 
     def get_update(self):
         pass
@@ -218,6 +228,7 @@ class Employs(Edge):
     aspect = Aspect.Simple
     source_type = n.Publisher
     target_type = n.Author
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -238,7 +249,7 @@ class Employs(Edge):
         pass
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
 
     def get_update(self):
         pass
@@ -254,6 +265,7 @@ class Referenced(Edge):
     aspect = Aspect.Simple
     source_type = n.News
     target_type = n.Equity
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -274,7 +286,7 @@ class Referenced(Edge):
         pass
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
 
 
 class Moves(Edge):
@@ -287,6 +299,7 @@ class Moves(Edge):
     aspect = Aspect.Perfect
     source_type = n.News
     target_type = n.Equity
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -307,7 +320,7 @@ class Moves(Edge):
         pass
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
 
     def get_update(self):
         pass

@@ -1,6 +1,4 @@
-import json
 import pytest
-import networkx as nx
 from typing import Tuple, Dict, List
 from backend.data import graph as g, nodes as n, edges as e
 
@@ -62,7 +60,7 @@ def test_basics(data):
     graph.compute_edges()
     assert graph.number_of_edges() == 1, "graph has wrong number of edges"
 
-    edges = graph.get_edges_element(e.Issues)
+    edges = graph.get_edge_elements(e.Issues)
     assert len(edges) == 1, "graph edge memo stored wrong number of edges"
 
     edge = graph.get_edge_data("c1", "e1", e.Issues.name)
@@ -73,6 +71,24 @@ def test_basics(data):
 
     element = edge.get("element")
     assert element == e.Issues, "graph added wrong edge type"
+    assert element.source == "c2", "edge src element wrong value"
+    assert element.target == "e1", "edge tgt element wrong value"
+
+    pyg = graph.pyg
+    assert pyg[n.Company.name].x.size(0) == 2, "wrong rows of company nodes"
+    assert (
+        pyg[n.Company.name].x.size(1) == n.Company.tensor_dim
+    ), "wrong cols of company nodes"
+    assert pyg[n.Equity.name].x.size(0) == 1, "wrong rows of equity nodes"
+    assert (
+        pyg[n.Equity.name].x.size(1) == n.Equity.tensor_dim
+    ), "wrong cols of equity nodes"
+    assert pyg[e.Issues.name].edge_index.size(0) == 2, "wrong rows of edge index"
+    assert pyg[e.Issues.name].edge_index.size(1) == 1, "wrong cols of edge index"
+    assert pyg[e.Issues.name].edge_attr.size(0) == 1, "wrong rows of edge attr"
+    assert (
+        pyg[e.Issues.name].edge_attr.size(1) == e.Issues.tensor_dim
+    ), "wrong cols of edge attr"
 
     graph.clear()
     assert graph.number_of_nodes() == 0, "graph did not proper clear nodes"
