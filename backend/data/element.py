@@ -19,15 +19,16 @@ class Element:
         self.mutable = mutable
         self._on_error = on_error
         self.__dict__.update(kwargs)
-
-    # Might not be necessary
-    def __eq__(self, value: object) -> bool:
-        return self.name == value.name
     
-    # Might not be necessary
     @property
     def name(self):
-        return self.__class__.__name__
+        return self.__class__.name
+    
+    def __eq__(self, value: object) -> bool:
+        return self.name == value.name
+
+    def __hash__(self) -> int:
+        return self.name.__hash__()
 
     @property
     def _attr(self) -> str | None:
@@ -59,6 +60,7 @@ class Element:
             return self.__class__._update_script_
         return None
 
+    @property
     def attr(self, **kwargs) -> Any:
         method = self._attr
         if not method:
@@ -80,6 +82,7 @@ class Element:
         elif method == self.__class__._attr_script_:
             raise NotImplementedError("Lambda script compiler is not implemented yet")
 
+    @property
     def tensor(self, **kwargs) -> Tensor | None:
         method = self._tensor
         if not method:
@@ -103,7 +106,7 @@ class Element:
 
     def update(self, **kwargs) -> bool:
         method = self._update
-        if not method or not self.mutable:
+        if not (method or self.mutable):
             if self._on_error == "omit":
                 # TODO log error
                 return False

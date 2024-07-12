@@ -70,6 +70,7 @@ class Issues(Edge):
     e.g. Company A issues stock A
     """
 
+    name = "issues"
     tense = Tense.Present
     aspect = Aspect.Simple
     source_type = n.Company
@@ -90,8 +91,16 @@ class Issues(Edge):
             **kwargs,
         )
 
+    # TODO This ugly mess made me realized I wasn't crazy over the need for a custom script
     def get_attr(self):
-        pass
+        if not (self.src_element or self.tgt_element):
+            return None
+        elif not (self.src_element.symbol or self.tgt_element.symbol):
+            return None
+        elif self.src_element.symbol != self.tgt_element.symbol:
+            return None
+        else:
+            return {0: 1}
 
     def get_tensor(self):
         pass
@@ -102,6 +111,7 @@ class Drafted(Edge):
     e.g. Author drafted news at 4pm on June 16th
     """
 
+    name = "drafted"
     tense = Tense.Past
     aspect = Aspect.Simple
     source_type = n.Author
@@ -134,6 +144,7 @@ class Published(Edge):
     e.g. Publisher published news at 9:45am
     """
 
+    name = "published"
     tense = Tense.Past
     aspect = Aspect.Simple
     source_type = n.Publisher
@@ -166,10 +177,11 @@ class Serves(Edge):
     e.g. Author have been working at publisher since 2012
     """
 
+    name = "serves"
     tense = Tense.Present
     aspect = Aspect.Perfect
     source_type = n.Author
-    target_type = n.Publisher()
+    target_type = n.Publisher
 
     def __init__(
         self,
@@ -196,11 +208,12 @@ class Serves(Edge):
         pass
 
 
-class Employes(Edge):
+class Employs(Edge):
     """
     e.g. Publisher pays author $80,000 per year
     """
 
+    name = "employs"
     tense = Tense.Past
     aspect = Aspect.Simple
     source_type = n.Publisher
@@ -236,6 +249,7 @@ class Referenced(Edge):
     e.g. News referenced stock yesterday
     """
 
+    name = "referenced"
     tense = Tense.Past
     aspect = Aspect.Simple
     source_type = n.News
@@ -268,6 +282,7 @@ class Moves(Edge):
     e.g. Stock has been volatile since news published
     """
 
+    name = "moves"
     tense = Tense.Present
     aspect = Aspect.Perfect
     source_type = n.News
@@ -303,7 +318,7 @@ Edges: Set[Edge] = {
     Drafted,
     Published,
     Serves,
-    Employes,
+    Employs,
     Referenced,
-    Moves
+    Moves,
 }

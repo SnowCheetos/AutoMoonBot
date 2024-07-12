@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import Hashable
 
 from backend.data import Element
@@ -26,6 +25,8 @@ class Node(Element):
 
 
 class Company(Node):
+    name = "company"
+
     def __init__(
         self,
         index: Hashable,
@@ -50,6 +51,8 @@ class Company(Node):
 
 
 class Equity(Node):
+    name = "equity"
+
     def __init__(
         self,
         index: Hashable,
@@ -74,6 +77,8 @@ class Equity(Node):
 
 
 class News(Node):
+    name = "news"
+
     def __init__(
         self,
         index: Hashable,
@@ -95,6 +100,8 @@ class News(Node):
 
 
 class Author(Node):
+    name = "author"
+
     def __init__(
         self,
         index: Hashable,
@@ -119,6 +126,8 @@ class Author(Node):
 
 
 class Publisher(Node):
+    name = "publisher"
+
     def __init__(
         self,
         index: Hashable,
@@ -143,6 +152,8 @@ class Publisher(Node):
 
 
 class Topic(Node):
+    name = "topic"
+
     def __init__(
         self,
         index: Hashable,
