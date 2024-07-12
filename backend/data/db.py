@@ -9,12 +9,13 @@ from typing import List
 class DBStreamer(Streamer):
     def __init__(
         self,
+        queue_size: int,
         db_path: str,
         tables: List[str],
         index: str,
         datetime: dt.datetime,
         timestep: dt.timedelta,
-        queue_size: int,
+        stop: dt.datetime | None = None,
         **kwargs,
     ) -> None:
         super().__init__(queue_size, **kwargs)
@@ -32,10 +33,14 @@ class DBStreamer(Streamer):
         self._datetime = datetime
         self._timestep = timestep
         self._index = index
+        self._stop = stop
 
     def get_data(self) -> DataFrame | None:
         start = self._datetime
         end = self._datetime + self._timestep
+        if end >= self._stop:
+            self._running = False
+            return None
         data = self.load_between(self._index, start.timestamp(), end.timestamp())
         if data:
             self._datetime = end
@@ -65,8 +70,8 @@ class DBStreamer(Streamer):
     def load_between(
         self,
         key: str,
-        start: str,
-        end: str,
+        start: float,
+        end: float,
         table: str | None = None,
     ) -> DataFrame | None:
         if table:
