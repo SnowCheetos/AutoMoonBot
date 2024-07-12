@@ -2,7 +2,7 @@ import sqlite3
 from backend.data import HeteroGraph
 
 
-class DataLoader(HeteroGraph):
+class DataInterface(HeteroGraph):
     def __init__(self) -> None:
         super().__init__()
         self._db = None
