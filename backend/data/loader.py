@@ -1,11 +1,10 @@
 import sqlite3
 from backend.data import HeteroGraph
 
-class DataLoader:
+class DataLoader(HeteroGraph):
     def __init__(self) -> None:
-        
+        super().__init__()
         self._db = None
-        self._graph = HeteroGraph()
 
     def reset(self):
         pass

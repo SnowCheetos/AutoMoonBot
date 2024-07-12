@@ -8,9 +8,7 @@ from backend.data import nodes as n, edges as e
 
 
 class HeteroGraph(nx.MultiDiGraph):
-    def __init__(
-        self,
-    ):
+    def __init__(self):
         super().__init__()
 
         self._node_memo = dict()
@@ -48,6 +46,8 @@ class HeteroGraph(nx.MultiDiGraph):
             return
         element = self.get_node(index)
         self._node_memo[element].pop(index)
+        if not self._node_memo[element]:
+            self._node_memo.pop(element)
         super().remove_node(index)
 
     def add_edge(self, element: e.Edge, src: str, tgt: str, **kwargs) -> None:
@@ -76,7 +76,10 @@ class HeteroGraph(nx.MultiDiGraph):
     def remove_edge(self, src: str, tgt: str, edge: e.Edge) -> None:
         if not self.has_edge(src, tgt, key=edge.name):
             return
-        return super().remove_edge(src, tgt, key=edge.name)
+        super().remove_edge(src, tgt, key=edge.name)
+        self._edge_memo[edge].pop((src, tgt))
+        if not self._edge_memo[edge]:
+            self._edge_memo.pop(edge)
 
     def compute_edges(self, clear: bool = False) -> None:
         if len(self.nodes) <= 1:

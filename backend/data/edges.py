@@ -51,19 +51,19 @@ class Edge(Element):
         self.target = target
 
     @property
-    def tense(self):
+    def tense(self) -> Tense:
         return self.__class__.tense
 
     @property
-    def aspect(self):
+    def aspect(self) -> Aspect:
         return self.__class__.aspect
 
     @property
-    def source_type(self):
+    def source_type(self) -> n.Node:
         return self.__class__.source_type
 
     @property
-    def target_type(self):
+    def target_type(self) -> n.Node:
         return self.__class__.target_type
 
     @property

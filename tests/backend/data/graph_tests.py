@@ -85,10 +85,14 @@ def test_basics(data):
     ), "wrong cols of equity nodes"
     assert pyg[e.Issues.name].edge_index.size(0) == 2, "wrong rows of edge index"
     assert pyg[e.Issues.name].edge_index.size(1) == 1, "wrong cols of edge index"
+    assert pyg[e.Issues.name].edge_index.is_contiguous(), "edge index not contiguous"
     assert pyg[e.Issues.name].edge_attr.size(0) == 1, "wrong rows of edge attr"
     assert (
         pyg[e.Issues.name].edge_attr.size(1) == e.Issues.tensor_dim
     ), "wrong cols of edge attr"
+    assert pyg[e.Issues.name].edge_attr.is_contiguous(), "edge attr not contiguous"
+    assert pyg.is_directed(), "pyg outputted undirected graph"
+    assert pyg.has_isolated_nodes(), "pyg did not pick up isolated node"
 
     graph.clear()
     assert graph.number_of_nodes() == 0, "graph did not proper clear nodes"
