@@ -56,8 +56,14 @@ def test_basics(data):
     assert element.symbol == "bar", "graph did not properly add element attrs"
     assert graph.number_of_edges() == 0, "graph has wrong number of edges"
 
+    companies = graph.get_nodes(n.Company)
+    assert len(companies) == 2, "graph memo stored the wrong number of nodes"
+
     graph.compute_edges()
     assert graph.number_of_edges() == 1, "graph has wrong number of edges"
+
+    edges = graph.get_edges_element(e.Issues)
+    assert len(edges) == 1, "graph edge memo stored wrong number of edges"
 
     edge = graph.get_edge_data("c1", "e1", e.Issues.name)
     assert not edge, "graph added wrong edge"
