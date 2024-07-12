@@ -1,6 +1,5 @@
 import torch
 import networkx as nx
-
 from torch import Tensor
 from torch_geometric.data import HeteroData
 from typing import Dict, List, Set, Tuple

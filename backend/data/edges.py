@@ -1,21 +1,7 @@
 import torch
 from enum import Enum, auto
 from typing import Hashable, Set
-
-from backend.data import Element, nodes as n
-
-
-class Tense(Enum):
-    Past = auto()
-    Present = auto()
-    Future = auto()
-
-
-class Aspect(Enum):
-    Simple = auto()
-    Perfect = auto()
-    Continuous = auto()
-    PerfectContinuous = auto()
+from backend.data import Element, nodes as n, Tense, Aspect
 
 
 class Edges(type):

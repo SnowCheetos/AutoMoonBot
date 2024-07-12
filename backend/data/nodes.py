@@ -1,6 +1,5 @@
 import torch
 from typing import Hashable, Set
-
 from backend.data import Element
 
 
@@ -210,7 +209,7 @@ class Position(Node):
     ) -> None:
         super().__init__(
             index=index,
-            mutable=False,
+            mutable=True,
             on_error=on_error,
             **kwargs,
         )
@@ -220,14 +219,6 @@ class Position(Node):
 
     def get_tensor(self):
         return torch.rand(self.tensor_dim, dtype=torch.float)
-
-
-# Nodes: Set[Node] = {
-#     Company,
-#     Equity,
-#     News,
-#     Author,
-#     Publisher,
-#     Topic,
-#     Position,
-# }
+    
+    def get_update(self):
+        pass
