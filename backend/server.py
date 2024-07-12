@@ -13,6 +13,23 @@ from reinforce.model import PolicyNet
 from backend.session import Session
 from backend.manager import Manager
 
+class Position:
+    pass # Placeholder
+
+class TradeEnv:
+    pass # Placeholder
+
+class TradeManager:
+    pass # Placeholder
+
+class Action:
+    pass # Placeholder
+
+def train():
+    pass
+
+def inference():
+    pass
 
 class Server:
     def __init__(

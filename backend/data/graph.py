@@ -1,6 +1,5 @@
 import torch
 import networkx as nx
-
 from torch import Tensor
 from torch_geometric.data import HeteroData
 from typing import Dict, List, Set, Tuple
@@ -102,7 +101,7 @@ class HeteroGraph(nx.MultiDiGraph):
         if memo:
             return memo
         self._edge_element_memo[key] = set()
-        for edge in e.Edges:
+        for edge in e.Edges.get():
             if edge.source_type == src and edge.target_type == tgt:
                 self._edge_element_memo[key].add(edge)
         return self._edge_element_memo[key]
@@ -155,13 +154,13 @@ class HeteroGraph(nx.MultiDiGraph):
         data = HeteroData()
 
         node_index = dict()
-        for node in n.Nodes & self._node_memo.keys():
+        for node in n.Nodes.get() & self._node_memo.keys():
             node_index.update({node: self.get_node_index(node)})
 
         for node, index in node_index.items():
             data[node.name].x = self.get_node_tensors(node, index)
 
-        for edge in e.Edges & self._edge_memo.keys():
+        for edge in e.Edges.get() & self._edge_memo.keys():
             src_index = node_index[edge.source_type]
             tgt_index = node_index[edge.target_type]
             data[edge.source_type.name, edge.name, edge.target_type.name].edge_index = (

@@ -1,10 +1,23 @@
 import torch
 from typing import Hashable, Set
-
 from backend.data import Element
 
 
-class Node(Element):
+class Nodes(type):
+    subclasses = set()
+
+    def __new__(cls, name, bases, attrs):
+        new_class = super().__new__(cls, name, bases, attrs)
+        if bases != (Element,):
+            cls.subclasses.add(new_class)
+        return new_class
+
+    @classmethod
+    def get(cls) -> Set[Element]:
+        return cls.subclasses
+
+
+class Node(Element, metaclass=Nodes):
     tensor_dim = None
 
     def __init__(
@@ -26,13 +39,16 @@ class Node(Element):
 
         self.index = index
 
+    def __init_subclass__(cls, *args, **kwargs):
+        super().__init_subclass__(*args, **kwargs)
+        cls.name = cls.__name__.lower()
+
     @property
     def tensor_dim(self) -> int:
         return self.__class__.tensor_dim
 
 
 class Company(Node):
-    name = "company"
     tensor_dim = 10  # Placeholder
 
     def __init__(
@@ -59,7 +75,6 @@ class Company(Node):
 
 
 class Equity(Node):
-    name = "equity"
     tensor_dim = 10  # Placeholder
 
     def __init__(
@@ -86,7 +101,6 @@ class Equity(Node):
 
 
 class News(Node):
-    name = "news"
     tensor_dim = 10  # Placeholder
 
     def __init__(
@@ -110,7 +124,6 @@ class News(Node):
 
 
 class Author(Node):
-    name = "author"
     tensor_dim = 10  # Placeholder
 
     def __init__(
@@ -137,7 +150,6 @@ class Author(Node):
 
 
 class Publisher(Node):
-    name = "publisher"
     tensor_dim = 10  # Placeholder
 
     def __init__(
@@ -164,7 +176,6 @@ class Publisher(Node):
 
 
 class Topic(Node):
-    name = "topic"
     tensor_dim = 10  # Placeholder
 
     def __init__(
@@ -187,11 +198,27 @@ class Topic(Node):
         return torch.rand(self.tensor_dim, dtype=torch.float)
 
 
-Nodes: Set[Node] = {
-    Company,
-    Equity,
-    News,
-    Author,
-    Publisher,
-    Topic,
-}
+class Position(Node):
+    tensor_dim = 10  # Placeholder
+
+    def __init__(
+        self,
+        index: Hashable,
+        on_error: str = "omit",
+        **kwargs,
+    ) -> None:
+        super().__init__(
+            index=index,
+            mutable=True,
+            on_error=on_error,
+            **kwargs,
+        )
+
+    def get_attr(self):
+        pass
+
+    def get_tensor(self):
+        return torch.rand(self.tensor_dim, dtype=torch.float)
+    
+    def get_update(self):
+        pass

@@ -1,24 +1,24 @@
 import torch
 from enum import Enum, auto
 from typing import Hashable, Set
-
-from backend.data import Element, nodes as n
-
-
-class Tense(Enum):
-    Past = auto()
-    Present = auto()
-    Future = auto()
+from backend.data import Element, nodes as n, Tense, Aspect
 
 
-class Aspect(Enum):
-    Simple = auto()
-    Perfect = auto()
-    Continuous = auto()
-    PerfectContinuous = auto()
+class Edges(type):
+    subclasses = set()
+
+    def __new__(cls, name, bases, attrs):
+        new_class = super().__new__(cls, name, bases, attrs)
+        if bases != (Element,):
+            cls.subclasses.add(new_class)
+        return new_class
+
+    @classmethod
+    def get(cls) -> Set[Element]:
+        return cls.subclasses
 
 
-class Edge(Element):
+class Edge(Element, metaclass=Edges):
     tense = None
     aspect = None
     source_type = None
@@ -50,6 +50,10 @@ class Edge(Element):
         self.source = source
         self.target = target
 
+    def __init_subclass__(cls, *args, **kwargs):
+        super().__init_subclass__(*args, **kwargs)
+        cls.name = cls.__name__.lower()
+
     @property
     def tense(self) -> Tense:
         return self.__class__.tense
@@ -76,7 +80,6 @@ class Issues(Edge):
     e.g. Company A issues stock A
     """
 
-    name = "issues"
     tense = Tense.Present
     aspect = Aspect.Simple
     source_type = n.Company
@@ -118,7 +121,6 @@ class Drafted(Edge):
     e.g. Author drafted news at 4pm on June 16th
     """
 
-    name = "drafted"
     tense = Tense.Past
     aspect = Aspect.Simple
     source_type = n.Author
@@ -152,7 +154,6 @@ class Published(Edge):
     e.g. Publisher published news at 9:45am
     """
 
-    name = "published"
     tense = Tense.Past
     aspect = Aspect.Simple
     source_type = n.Publisher
@@ -186,7 +187,6 @@ class Serves(Edge):
     e.g. Author have been working at publisher since 2012
     """
 
-    name = "serves"
     tense = Tense.Present
     aspect = Aspect.Perfect
     source_type = n.Author
@@ -223,7 +223,6 @@ class Employs(Edge):
     e.g. Publisher pays author $80,000 per year
     """
 
-    name = "employs"
     tense = Tense.Past
     aspect = Aspect.Simple
     source_type = n.Publisher
@@ -260,7 +259,6 @@ class Referenced(Edge):
     e.g. News referenced stock yesterday
     """
 
-    name = "referenced"
     tense = Tense.Past
     aspect = Aspect.Simple
     source_type = n.News
@@ -289,12 +287,11 @@ class Referenced(Edge):
         return torch.rand(self.tensor_dim, dtype=torch.float)
 
 
-class Moves(Edge):
+class Influences(Edge):
     """
     e.g. Stock has been volatile since news published
     """
 
-    name = "moves"
     tense = Tense.Present
     aspect = Aspect.Perfect
     source_type = n.News
@@ -326,12 +323,37 @@ class Moves(Edge):
         pass
 
 
-Edges: Set[Edge] = {
-    Issues,
-    Drafted,
-    Published,
-    Serves,
-    Employs,
-    Referenced,
-    Moves,
-}
+class Holds(Edge):
+    """
+    e.g. Position A holds 100 shares of B
+    """
+
+    tense = Tense.Present
+    aspect = Aspect.Simple
+    source_type = n.Position
+    target_type = n.Equity
+    tensor_dim = 10  # Placeholder
+
+    def __init__(
+        self,
+        source: Hashable,
+        target: Hashable,
+        on_error: str = "omit",
+        **kwargs,
+    ) -> None:
+        super().__init__(
+            source=source,
+            target=target,
+            mutable=True,
+            on_error=on_error,
+            **kwargs,
+        )
+
+    def get_attr(self):
+        pass
+
+    def get_tensor(self):
+        return torch.rand(self.tensor_dim, dtype=torch.float)
+
+    def get_update(self):
+        pass
