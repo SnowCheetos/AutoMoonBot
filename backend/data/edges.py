@@ -289,15 +289,51 @@ class Referenced(Edge):
         return torch.rand(self.tensor_dim, dtype=torch.float)
 
 
-class Moves(Edge):
+class Influences(Edge):
     """
     e.g. Stock has been volatile since news published
     """
 
-    name = "moves"
+    name = "influences"
     tense = Tense.Present
     aspect = Aspect.Perfect
     source_type = n.News
+    target_type = n.Equity
+    tensor_dim = 10  # Placeholder
+
+    def __init__(
+        self,
+        source: Hashable,
+        target: Hashable,
+        on_error: str = "omit",
+        **kwargs,
+    ) -> None:
+        super().__init__(
+            source=source,
+            target=target,
+            mutable=True,
+            on_error=on_error,
+            **kwargs,
+        )
+
+    def get_attr(self):
+        pass
+
+    def get_tensor(self):
+        return torch.rand(self.tensor_dim, dtype=torch.float)
+
+    def get_update(self):
+        pass
+
+
+class Holds(Edge):
+    """
+    e.g. Position A holds 100 shares of B
+    """
+    name = "holds"
+    tense = Tense.Present
+    aspect = Aspect.Simple
+    source_type = n.Position
     target_type = n.Equity
     tensor_dim = 10  # Placeholder
 
@@ -333,5 +369,6 @@ Edges: Set[Edge] = {
     Serves,
     Employs,
     Referenced,
-    Moves,
+    Influences,
+    Holds,
 }

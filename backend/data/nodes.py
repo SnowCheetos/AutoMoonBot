@@ -187,6 +187,30 @@ class Topic(Node):
         return torch.rand(self.tensor_dim, dtype=torch.float)
 
 
+class Position(Node):
+    name = "position"
+    tensor_dim = 10  # Placeholder
+
+    def __init__(
+        self,
+        index: Hashable,
+        on_error: str = "omit",
+        **kwargs,
+    ) -> None:
+        super().__init__(
+            index=index,
+            mutable=False,
+            on_error=on_error,
+            **kwargs,
+        )
+
+    def get_attr(self):
+        pass
+
+    def get_tensor(self):
+        return torch.rand(self.tensor_dim, dtype=torch.float)
+
+
 Nodes: Set[Node] = {
     Company,
     Equity,
@@ -194,4 +218,5 @@ Nodes: Set[Node] = {
     Author,
     Publisher,
     Topic,
+    Position,
 }
