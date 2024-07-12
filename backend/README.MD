@@ -2,9 +2,9 @@
 
 ```plaintext
 backend/
-    ├── README.MD
-    ├── data/       # Implementations for data formatting, fetching, processing, storing, etc...
+    ├── data/
     │   ├── README.MD
+    │   ├── __init__.py
     │   ├── element.py
     │   ├── nodes.py
     │   ├── edges.py
@@ -12,14 +12,14 @@ backend/
     │   ├── feature.py
     │   ├── loader.py
     │   └── utils.py
-    │
-    ├── session/    # Implementations for sessions
+    ├── session/
     │   ├── README.MD
+    │   ├── __init__.py
     │   └── ...
-    │
-    ├── server/     # Implementations for the server
+    ├── server/
     │   ├── README.MD
+    │   ├── __init__.py
     │   └── ...
-    │
-    └── __init__.py
+    ├── __init__.py
+    └── README.MD
 ```
