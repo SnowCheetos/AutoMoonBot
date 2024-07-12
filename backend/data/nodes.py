@@ -1,9 +1,12 @@
-from typing import Hashable
+import torch
+from typing import Hashable, Set
 
 from backend.data import Element
 
 
 class Node(Element):
+    tensor_dim = None
+
     def __init__(
         self,
         index: Hashable,
@@ -23,9 +26,14 @@ class Node(Element):
 
         self.index = index
 
+    @property
+    def tensor_dim(self) -> int:
+        return self.__class__.tensor_dim
+
 
 class Company(Node):
     name = "company"
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -44,7 +52,7 @@ class Company(Node):
         pass
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
 
     def get_update(self):
         pass
@@ -52,6 +60,7 @@ class Company(Node):
 
 class Equity(Node):
     name = "equity"
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -70,7 +79,7 @@ class Equity(Node):
         pass
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
 
     def get_update(self):
         pass
@@ -78,6 +87,7 @@ class Equity(Node):
 
 class News(Node):
     name = "news"
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -96,11 +106,12 @@ class News(Node):
         pass
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
 
 
 class Author(Node):
     name = "author"
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -119,7 +130,7 @@ class Author(Node):
         pass
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
 
     def get_update(self):
         pass
@@ -127,6 +138,7 @@ class Author(Node):
 
 class Publisher(Node):
     name = "publisher"
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -145,7 +157,7 @@ class Publisher(Node):
         pass
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
 
     def get_update(self):
         pass
@@ -153,6 +165,7 @@ class Publisher(Node):
 
 class Topic(Node):
     name = "topic"
+    tensor_dim = 10  # Placeholder
 
     def __init__(
         self,
@@ -171,4 +184,14 @@ class Topic(Node):
         pass
 
     def get_tensor(self):
-        pass
+        return torch.rand(self.tensor_dim, dtype=torch.float)
+
+
+Nodes: Set[Node] = {
+    Company,
+    Equity,
+    News,
+    Author,
+    Publisher,
+    Topic,
+}
