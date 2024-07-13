@@ -1,8 +1,6 @@
-from reinforce import Cumulator
-
 class Environment:
     def __init__(self) -> None:
-        self._cumulator = Cumulator(0, 0.99)
+        pass
 
     def reset(self):
         pass

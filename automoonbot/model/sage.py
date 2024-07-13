@@ -1,6 +1,4 @@
-import torch
 import torch.nn as nn
-
 from torch import Tensor
 from torch_geometric.nn import SAGEConv, Linear, SoftmaxAggregation
 

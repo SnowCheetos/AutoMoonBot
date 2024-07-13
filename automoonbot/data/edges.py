@@ -2,7 +2,7 @@ import torch
 from functools import lru_cache
 from typing import Hashable, Set
 
-from utils import Tense, Aspect
+from automoonbot.utils import Tense, Aspect
 from automoonbot.data import Element, nodes as n
 
 

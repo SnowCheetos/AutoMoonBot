@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
-
 from torch import Tensor
-from reinforce.model import MultiHeadMemory
+
+from automoonbot.model import MultiHeadMemory
 
 
 class MemoryClassifier(nn.Module):

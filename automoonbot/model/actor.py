@@ -1,11 +1,9 @@
-import torch
 import torch.nn as nn
-
 from torch import Tensor
 from torch_geometric.nn import to_hetero
 from torch_geometric.data import HeteroData
 
-from reinforce.model import SAGENet, MemoryClassifier
+from automoonbot.model import SAGENet, MemoryClassifier
 
 
 class Actor(nn.Module):
