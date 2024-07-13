@@ -4,7 +4,7 @@ import numpy as np
 from collections import deque
 from typing import Tuple, Dict, List
 
-from utils.descriptors import Descriptors
+from utils import Descriptors
 
 
 class DataSampler:

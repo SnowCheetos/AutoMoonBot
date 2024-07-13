@@ -7,11 +7,9 @@ import torch.nn as nn
 from gymnasium import spaces
 from typing import Dict, List, Any, Optional
 
-from reinforce.sampler import DataSampler
-from reinforce.model import PolicyNet, select_action, compute_loss
-from utils.trading import Position, Action
-from utils.descriptors import compute_sharpe_ratio
-from backend.manager import TradeManager
+from backend import TradeManager
+from reinforce import DataSampler, PolicyNet, select_action, compute_loss
+from utils import Position, Action, compute_sharpe_ratio
 
 
 class TradeEnv(gym.Env):

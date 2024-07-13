@@ -2,7 +2,7 @@ import torch
 from functools import lru_cache
 from typing import Hashable, Set
 
-from backend.data import Element
+from automoonbot.data import Element
 
 
 class Nodes(type):

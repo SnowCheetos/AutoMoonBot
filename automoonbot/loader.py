@@ -1,3 +1,5 @@
+# DEPRECATED CONETNT
+
 import os
 import sqlite3
 import logging
@@ -5,7 +7,7 @@ import pandas as pd
 import yfinance as yf
 
 from typing import List, Dict, Tuple
-from backend.describe import Descriptor
+from automoonbot.describe import Descriptor
 
 
 class DataLoader:

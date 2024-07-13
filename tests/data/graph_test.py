@@ -1,6 +1,6 @@
 import pytest
 from typing import Tuple, Dict, List
-from backend.data import graph as g, nodes as n, edges as e
+from automoonbot.data import graph as g, nodes as n, edges as e
 
 
 @pytest.fixture

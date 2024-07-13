@@ -1,3 +1,5 @@
+# DEPRECATED CONETNT
+
 import time
 import torch
 import logging
@@ -9,9 +11,9 @@ from collections import deque
 from typing import Callable, Dict, List
 from torch.optim import SGD, Adam, AdamW, Rprop
 from torch_geometric.data import Data
-from backend.loader import DataLoader
-from backend.manager import Manager
-from backend.trade import Action, TradeType
+from automoonbot.loader import DataLoader
+from automoonbot.manager import Manager
+from automoonbot.trade import Action, TradeType
 from reinforce.model import PolicyNet, CriticNet
 from reinforce.environment import Environment
 from reinforce.utils import select_action

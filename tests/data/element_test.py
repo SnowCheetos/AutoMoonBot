@@ -1,6 +1,6 @@
 import pytest
 import torch
-from backend.data import Element
+from automoonbot.data import Element
 
 
 def test_basics():

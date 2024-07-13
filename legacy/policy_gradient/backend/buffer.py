@@ -3,10 +3,10 @@ import sqlite3
 import numpy as np
 import yfinance as yf
 
-from typing import Dict, List, Optional
 from collections import deque
+from typing import Dict, List, Optional
 
-from utils.descriptors import Descriptors
+from utils import Descriptors
 
 
 class DataBuffer:

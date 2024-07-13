@@ -1,4 +1,3 @@
-import random
 import time
 import torch
 import logging
@@ -8,11 +7,10 @@ from threading import Lock
 from collections import deque
 from typing import Dict, List, Optional
 
-from backend.buffer import DataBuffer
+from backend import TradeManager, DataBuffer
 from reinforce.model import PolicyNet, inference
 from reinforce.environment import TradeEnv, train
-from utils.trading import Position, Action, Status, Signal
-from backend.manager import TradeManager
+from utils.trading import Position, Action, Status
 
 
 class Server:

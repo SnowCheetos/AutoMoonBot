@@ -8,8 +8,8 @@ import torch.optim as optim
 from torch.nn.utils import clip_grad_norm_
 from torch_geometric.data import Data
 from typing import Dict, List, Tuple
-from backend.manager import Manager
-from backend.trade import TradeType, Action
+from automoonbot.manager import Manager
+from automoonbot.trade import TradeType, Action
 from reinforce.model import PolicyNet, CriticNet
 from reinforce.utils import select_action, compute_policy_loss, compute_critic_loss
 

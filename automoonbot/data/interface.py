@@ -1,5 +1,5 @@
 import sqlite3
-from backend.data import HeteroGraph
+from automoonbot.data import HeteroGraph
 
 
 class DataInterface(HeteroGraph):

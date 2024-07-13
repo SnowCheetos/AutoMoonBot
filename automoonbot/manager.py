@@ -1,8 +1,10 @@
+# DEPRECATED CONETNT
+
 import random
 from typing import Dict, List
 
 import numpy as np
-from backend.trade import Account, TradeType, Action
+from automoonbot.trade import Account, TradeType, Action
 
 
 class Manager:

@@ -4,7 +4,7 @@ import datetime as dt
 from pandas import DataFrame
 from queue import Queue, Empty, Full
 from typing import List, Any, Iterable
-from backend.data import DBInterface
+from automoonbot.data import DBInterface
 
 
 class Streamer:

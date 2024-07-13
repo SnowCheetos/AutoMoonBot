@@ -8,7 +8,7 @@ from collections import defaultdict
 from torch_geometric.data import HeteroData
 from typing import Dict, List, Set, Tuple
 
-from backend.data import nodes as n, edges as e
+from automoonbot.data import nodes as n, edges as e
 
 
 class HeteroGraph(nx.MultiDiGraph):

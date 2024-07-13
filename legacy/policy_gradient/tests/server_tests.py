@@ -2,7 +2,7 @@ import time
 import pytest
 import numpy as np
 
-from backend.server import Server
+from backend import Server
 
 
 @pytest.fixture

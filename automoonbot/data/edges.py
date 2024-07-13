@@ -3,7 +3,7 @@ from functools import lru_cache
 from typing import Hashable, Set
 
 from utils import Tense, Aspect
-from backend.data import Element, nodes as n
+from automoonbot.data import Element, nodes as n
 
 
 class Edges(type):
