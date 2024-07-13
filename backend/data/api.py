@@ -50,8 +50,9 @@ class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
         return response_json
 
 
-
-
+# TODO Oh boy did I open one big can of worms with this one... 
+# There are so so many data sources, not a single one covers all areas
+# It is essential to implement a client for each one to obtain the most comprehensive data coverage
 
 class AlphaVantage(CachedLimiterSession):
     def __init__(
@@ -67,7 +68,7 @@ class AlphaVantage(CachedLimiterSession):
             cache_backend=cache_backend,
         )
 
-    def _equity_intraday(
+    def _asset_intraday(
         self,
         symbol: str,
         interval: str,
@@ -86,7 +87,7 @@ class AlphaVantage(CachedLimiterSession):
         )
         return self.make_request(url)
 
-    def _equity_interday(
+    def _asset_interday(
         self,
         symbol: str,
         interval: str,
@@ -117,8 +118,8 @@ class AlphaVantage(CachedLimiterSession):
         )
         return self.make_request(url)
 
-
-
+    def _options_daily(self, symbol: str, date: str):
+        pass
 
 
 class YahooFinance(Tickers, CachedLimiterSession):
