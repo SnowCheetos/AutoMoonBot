@@ -2,18 +2,20 @@ import humanfriendly
 from yfinance import Tickers
 from requests import Session
 from typing import List, Dict, Any
-from requests_cache import CacheMixin, RedisCache
-from requests_ratelimiter import LimiterMixin, MemoryQueueBucket
 from pyrate_limiter import Duration, RequestRate, Limiter
+from requests_cache import CacheMixin, RedisCache, BaseCache
+from requests_ratelimiter import LimiterMixin, MemoryQueueBucket
+
+from backend.data import get_all_months
 
 
 class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
     def __init__(
         self,
-        base_url: str,
-        api_key: str,
-        rate_limit,
-        cache_backend=None,
+        base_url: str | None,
+        api_key: str | None,
+        rate_limit: str,
+        cache_backend: BaseCache | None = None,
     ) -> None:
         super().__init__(
             limiter=self._create_limiter(rate_limit),
@@ -41,12 +43,16 @@ class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
         try:
             response_json = response.json()
         except ValueError:
-            response_json = {"error": "Failed to parse JSON", "content": response.text}
-        
+            response_json = {
+                "ok": False,
+                "error_message": "Failed to parse JSON",
+                "content": response.text,
+            }
+        response_json["ok"] = True
         if not response.ok:
-            response_json['status_code'] = response.status_code
-            response_json['error_message'] = response.reason
-
+            response_json["ok"] = False
+            response_json["status_code"] = response.status_code
+            response_json["error_message"] = response.reason
         return response_json
 
 
@@ -69,8 +75,8 @@ class AlphaVantage(CachedLimiterSession):
         symbol: str,
         interval: str,
         month: str,
-        extended_hours: bool=True,
-        outputsize: str="full",
+        extended_hours: bool = True,
+        outputsize: str = "full",
     ) -> Dict[str, Any] | None:
         url = self._base_url + (
             f"function=TIME_SERIES_INTRADAY"
@@ -82,6 +88,27 @@ class AlphaVantage(CachedLimiterSession):
             f"&outputsize={outputsize}"
         )
         return self.make_request(url)
+
+    def get_prices(
+        self,
+        symbol: str,
+        interval: str,
+        start: str,
+        end: str,
+        extended_hours: bool = True,
+    ) -> Dict[str, Any]:
+        key = f"Time Series ({interval})"
+        data = {"Meta Data": None, key: dict(), "Errors": None}
+        months = get_all_months(start, end)
+        for i, month in enumerate(reversed(months)):
+            res = self.intraday(symbol, interval, month, extended_hours)
+            if not res["ok"]:
+                data["Errors"] = res["error_message"]
+                break
+            data[key].update({**res[key]})
+            if i == len(months) - 1:
+                data["Meta Data"] = res["Meta Data"]
+        return data
 
 
 class YahooFinance(Tickers, CachedLimiterSession):
