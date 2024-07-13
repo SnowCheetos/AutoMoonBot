@@ -2,9 +2,11 @@
 
 ---------------
 
-*This repository contains code and resources for automated algorithmic trading implementations. All content provided in this repository is for educational and informational purposes only. It is NOT intended to be a financial product or investment advice. Please carefully review the contents in* [`DISCLAIMERS`](DISCLAIMER.MD) *before proceeding further, by viewing, citing, using, or contributing to the code and resources provided in this repository, you acknowledge and agree to all terms, conditions, and disclaimers present and future, unless explicitly stated otherwise.*
+This repository contains code and resources for automated algorithmic trading implementations. All content provided in this repository is for educational and informational purposes only. It is **NOT** intended to be a financial product or investment advice. By viewing, citing, using, or contributing to the contents and resources provided in this repository, you automatically acknowledge and agree to all terms and conditions found in [`DISCLAIMERS`](DISCLAIMER.MD), both present and future, unless explicitly stated otherwise.
 
 # Table of Contents
+
+Please note that this project is still super-pre-alpha, so hold your bags for now...
 
 - [`Introduction`](#introduction)
 
@@ -18,11 +20,9 @@
 
 # Introduction
 
-*Please note that this project is still super-pre-alpha, so hold your bags for now...*
+[The Medallion Fund](https://www.cornell-capital.com/blog/2020/02/medallion-fund-the-ultimate-counterexample.html) is one of the core inspirations for this project. It showed that quantitative trading, when executed perfectly, has enormous potential for success and profit. The fund averaged an astonishing annualized return of **63.3%** for its duration, and it didn't have a single negative year, even during the **2000 dot-com bubble** and **2008 financial crisis**. This level of success caused many to question the highly controversial [Efficient Market Hypothesis](https://www.investopedia.com/terms/e/efficientmarkethypothesis.asp), whose definition will squash the hopes and dreams of any u̶n̶e̶m̶p̶l̶o̶y̶e̶d̶ ̶e̶c̶o̶n̶ ̶m̶a̶j̶o̶r̶ traders who aims to beat the market with technical analysis.
 
-[*The Medallion Fund*](https://www.cornell-capital.com/blog/2020/02/medallion-fund-the-ultimate-counterexample.html) is one of the core inspirations for this project. It showed that quantitative trading, when executed perfectly, has enormous potential for success and profit. For the duration of the fund's existence, it averaged an astonishing annualized return of **63.3%**, and it didn't have a single negative year, even during the **2000 dot-com bubble** and **2008 financial crisis**. This level of success caused many to question the highly controversial [*Efficient Market Hypothesis*](https://www.investopedia.com/terms/e/efficientmarkethypothesis.asp), whose definition will squash the hopes and dreams of any u̶n̶e̶m̶p̶l̶o̶y̶e̶d̶ ̶e̶c̶o̶n̶ ̶m̶a̶j̶o̶r̶ traders who aims to beat the market with technical analysis.
-
-Fortunately, t̶h̶e̶i̶r̶ ̶p̶a̶r̶e̶n̶t̶s̶ ̶s̶t̶i̶l̶l̶ ̶l̶o̶v̶e̶ ̶t̶h̶e̶m̶ the efficient market hypothesis has been proven wrong on many occasions (*although I question that every time I make a trade*). Still, a majority of the funds do not manage to beat the market consistently, not to mention retail investors. Point being, it's possible to beat the market, but possible doesn't remotely equate probable in this case. Now, I'm no [*Jim Simons*](https://en.wikipedia.org/wiki/Jim_Simons) d̶u̶h̶ (*peace be with him* 🙏🏼), and the Medallion Fund keeps most details of its methodologies confidential, but Jim Simons and others have provided some valuable information to the public, maybe just enough to make m̶e̶ ̶r̶i̶c̶h̶ a difference. I have summarized them into four points (*note that a lot of them are my personal interpretations*)
+Fortunately, t̶h̶e̶i̶r̶ ̶p̶a̶r̶e̶n̶t̶s̶ ̶s̶t̶i̶l̶l̶ ̶l̶o̶v̶e̶ ̶t̶h̶e̶m̶ the efficient market hypothesis has been proven wrong on many occasions (*although I question that every time I make a trade*). Still, a majority of the funds do not manage to beat the market consistently, not to mention retail investors. Point being, it's possible to beat the market, but possible doesn't remotely equate probable in this case. Now, I'm no [Jim Simons](https://en.wikipedia.org/wiki/Jim_Simons) d̶u̶h̶ (*peace be with him* 🙏🏼), and the Medallion Fund keeps most details of its methodologies confidential, but Jim Simons and others have provided some valuable information to the public, maybe just enough to make m̶e̶ ̶r̶i̶c̶h̶ a difference. I have summarized them into four points (*note that a lot of them are my personal interpretations*)
 
 ### It's Just Math
 
@@ -38,7 +38,7 @@ For the duration of the fund's existence, their model had an average win rate of
 
 ### Focus on The Right Thing
 
-Many people are willing to take on exceptional risks in pursue of, at least theoretically, higher possible returns, l̶i̶k̶e̶ ̶t̶h̶a̶t̶ ̶o̶n̶e̶ ̶w̶e̶e̶k̶l̶y̶ ̶F̶D̶ ̶y̶o̶u̶ ̶l̶o̶s̶t̶ ̶y̶o̶u̶r̶ ̶l̶u̶n̶c̶h̶ ̶m̶o̶n̶e̶y̶ ̶o̶n̶ ̶l̶a̶s̶t̶ ̶F̶r̶i̶d̶a̶y̶, and in some cases, risk taking is even being glorified (*not pointing any fingers* 👉🏻 [`_👀_`](https://www.reddit.com/r/wallstreetbets/)). Too often do m̶y̶s̶e̶l̶f̶ traders focus solely on potential (*not even real*) profits while completely ignoring the associated risk. The Medallion Fund, on the other hand, placed a tremendous emphasis on risk reduction. The fund consistently hedged the portfolio near perfectly, which enabled them to use margins that would be otherwise considered risky. 
+Many people are willing to take on exceptional risks in pursue of, at least theoretically, higher possible returns, l̶i̶k̶e̶ ̶t̶h̶a̶t̶ ̶o̶n̶e̶ ̶w̶e̶e̶k̶l̶y̶ ̶F̶D̶ ̶y̶o̶u̶ ̶l̶o̶s̶t̶ ̶y̶o̶u̶r̶ ̶l̶u̶n̶c̶h̶ ̶m̶o̶n̶e̶y̶ ̶o̶n̶ ̶l̶a̶s̶t̶ ̶F̶r̶i̶d̶a̶y̶, and in some cases, risk taking is even being glorified (*not pointing any fingers* 👉🏻 [`👀`](https://www.reddit.com/r/wallstreetbets/)). Too often do m̶y̶s̶e̶l̶f̶ traders focus solely on potential (*not even real*) profits while completely ignoring the associated risk. The Medallion Fund, on the other hand, placed a tremendous emphasis on risk reduction. The fund consistently hedged the portfolio near perfectly, which enabled them to use margins that would be otherwise considered risky. 
 
 
 ## Intuitions
@@ -49,21 +49,21 @@ It's unlikely that any individual could effectively replicate the Medallion Fund
 
 ## Arguments Against Regression Methods
 
-At first glence, it might be tempting to treat this as a *regression* problem and try to predict the price directly using non-linear methods such as *Gaussian Regression*, *MLP*, or *autoregressive* like *LSTM* or t̶h̶e̶ o̶v̶e̶r̶h̶y̶p̶e̶d̶ *Transformers*. 
+At first glence, it might be tempting to treat this as a *regression* problem and try to predict the price directly using non-linear methods such as Gaussian Regression, MLP, or autoregressive like LSTM or t̶h̶e̶ o̶v̶e̶r̶h̶y̶p̶e̶d̶ Transformers. 
 
-Although there are some merits justifying their uses, the price actions of any asset, albeit sequential and continuous in nature, can not be dsecribed as simply a function of time. Rather, I would argue that it aligns much better to the description of a [*Stochastic Process*](https://en.wikipedia.org/wiki/Stochastic_process), or more specifically, a [*Hidden Markov Model*](https://en.wikipedia.org/wiki/Hidden_Markov_model). 
+Although there are some merits justifying their uses, the price actions of any asset, albeit sequential and continuous in nature, can not be dsecribed as simply a function of time. Rather, I would argue that it aligns much better to the description of a [Stochastic Process](https://en.wikipedia.org/wiki/Stochastic_process), or more specifically, a [Hidden Markov Model](https://en.wikipedia.org/wiki/Hidden_Markov_model). 
 
 *A Markov chain or Markov process is a stochastic model describing a sequence of possible events in which the probability of each event depends only on the state attained in the previous event. Informally, this may be thought of as, "What happens next depends only on the state of affairs now"*.[[1]](https://en.wikipedia.org/wiki/Markov_chain#:~:text=A%20Markov%20chain%20or%20Markov%20process%20is%20a%20stochastic%20model%20describing%20a%20sequence%20of%20possible%20events%20in%20which%20the%20probability%20of%20each%20event%20depends%20only%20on%20the%20state%20attained%20in%20the%20previous%20event.%20Informally%2C%20this%20may%20be%20thought%20of%20as%2C%20%22What%20happens%20next%20depends%20only%20on%20the%20state%20of%20affairs%20now.%22) A hidden markov model is a markov process, where the underlying parameters describing the state transitions is not directly observable.
 
 Thus, at each time step $t$, rather than trying to predict the future price $p_{t+k}$, it's more ideal to try and predict the *transition probability distribution*. Or in other words, likely conditions of the near future, given observations of the present (*in practice, recent*) conditions. 
 
-And hey, don't just take my word for it, according to [wikipedia](https://en.wikipedia.org/wiki/Renaissance_Technologies#:~:text=In%201988%2C%20the%20firm%20established%20its%20most%20profitable%20portfolio%2C%20the%20Medallion%20Fund%2C%20which%20used%20an%20improved%20and%20expanded%20form%20of%20Leonard%20Baum%27s%20mathematical%20models%2C), the Medallion Fund's algorithm in 1988 used an improved and expanded form of [*Baum–Welch Algorithm*](https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm), a type of EM algorithm for computing parameters from *Hidden Markov Models*, it seems that the Medallion Fund also assumed, to some degree, that the market represents a hidden markov process.
+And hey, don't just take my word for it, according to [wikipedia](https://en.wikipedia.org/wiki/Renaissance_Technologies#:~:text=In%201988%2C%20the%20firm%20established%20its%20most%20profitable%20portfolio%2C%20the%20Medallion%20Fund%2C%20which%20used%20an%20improved%20and%20expanded%20form%20of%20Leonard%20Baum%27s%20mathematical%20models%2C), the Medallion Fund's algorithm in 1988 used an improved and expanded form of [Baum–Welch Algorithm](https://en.wikipedia.org/wiki/Baum%E2%80%93Welch_algorithm), a type of EM algorithm for computing parameters from hidden markov models, it seems that the Medallion Fund also assumed, to some degree, that the market represents a hidden markov process.
 
-As a side note, [*Louis Bachelier*](https://en.wikipedia.org/wiki/Louis_Bachelier), credited to be the first person to model market price actions as stochastic processes (*and also the accidental discovery of Brownian Motion*), presented his now (*somewhat*) famous [*Bachelier Model*](https://en.wikipedia.org/wiki/Bachelier_model) on his PhD thesis (*Théorie de la spéculation, published 1900*) at the age of 30 s̶o̶ ̶m̶a̶y̶b̶e̶ ̶i̶t̶'̶s̶ ̶t̶i̶m̶e̶ ̶f̶o̶r̶ ̶y̶o̶u̶ ̶t̶o̶ ̶g̶e̶t̶ ̶a̶ ̶r̶e̶a̶l̶ ̶j̶o̶b̶, it was one of the first models that can be used to effectively determine the fair prices of options, and it went on to inspire the creation of the infamous [*Black-Scholes Model*](https://en.wikipedia.org/wiki/Black%E2%80%93Scholes_model), which for better or worse, was essential to this trillion dollar n̶a̶t̶i̶o̶n̶a̶l̶ ̶d̶e̶b̶t̶ financial derivatives industry we have today.
+As a side note, [Louis Bachelier](https://en.wikipedia.org/wiki/Louis_Bachelier), credited to be the first person to model market price actions as stochastic processes (*and also the accidental discovery of Brownian Motion*), presented his now (*somewhat*) famous [Bachelier Model](https://en.wikipedia.org/wiki/Bachelier_model) on his PhD thesis (*Théorie de la spéculation, published 1900*) at the age of 30 s̶o̶ ̶m̶a̶y̶b̶e̶ ̶i̶t̶'̶s̶ ̶t̶i̶m̶e̶ ̶f̶o̶r̶ ̶y̶o̶u̶ ̶t̶o̶ ̶g̶e̶t̶ ̶a̶ ̶r̶e̶a̶l̶ ̶j̶o̶b̶, it was one of the first models that can be used to effectively determine the fair prices of options, and it went on to inspire the creation of the infamous [Black-Scholes Model](https://en.wikipedia.org/wiki/Black%E2%80%93Scholes_model), which for better or worse, was essential to this trillion dollar n̶a̶t̶i̶o̶n̶a̶l̶ ̶d̶e̶b̶t̶ financial derivatives industry we have today.
 
 # Usage
 
-*This project utilizes [`torch_geometric`](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) for Graph Neural Networks, I recommend visiting their site and install all dependencies according to their instructions.*
+This project utilizes [`torch_geometric`](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) for Graph Neural Networks, I recommend visiting their site and install all dependencies according to their instructions.
 
 ## Installation
 
@@ -77,7 +77,7 @@ As a side note, [*Louis Bachelier*](https://en.wikipedia.org/wiki/Louis_Bachelie
 
 Install `pytest` with `pip install -U pytest`.
 
-Test scripts are available in the `tests` directory. 
+Test scripts are available in the `tests` directory 
 
 Run all tests with `pytest -v tests/`
 
@@ -85,7 +85,7 @@ To run tests for a specific module, run `pytest -v tests/{module}/...{submodules
 
 # Legacy
 
-The current version of this project stands on the shoulders of... its past versions? Oh and giants too. Jokes aside, it went through a few significant iterations in the past, previous approaches used were very different. If you would like to view the legacy code and implementations for more insights, go to the `legacy` directory, or use the quick links below.
+The current version of this project stands on the shoulders of... its past versions? Oh and giants too. Jokes aside, it went through a few significant iterations in the past, previous approaches used were very different. If you would like to view the legacy code and implementations for more insights, go to the `legacy` directory, or use the links below.
 
 - [`Automated Trading with Policy Gradient`](legacy/policy_gradient/README.md)
 - [`An Ensemble of Models Trading Together`](legacy/classical_ensemble/README.md)
