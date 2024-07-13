@@ -1,6 +1,7 @@
 import torch
 import networkx as nx
 from torch import Tensor
+import concurrent.futures
 from functools import lru_cache
 from collections import defaultdict
 from torch_geometric.data import HeteroData
@@ -72,13 +73,25 @@ class HeteroGraph(nx.MultiDiGraph):
         if not self._edge_memo[edge]:
             del self._edge_memo[edge]
 
-    def compute_edges(self, clear: bool = False) -> None:
+    def compute_edges(
+        self,
+        clear: bool = False,
+        parallel: bool = True,
+    ) -> None:
         if len(self.nodes) <= 1:
             return
         if clear:
             self.clear_edges()
-        for node in self.nodes:
-            self.compute_node_edges(node)
+        if parallel:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                futures = [
+                    executor.submit(self.compute_node_edges, node)
+                    for node in self.nodes
+                ]
+                concurrent.futures.wait(futures)
+        else:
+            for node in self.nodes:
+                self.compute_node_edges(node)
 
     def compute_node_edges(self, index: str) -> None:
         if not self.has_node(index):
