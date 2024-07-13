@@ -106,7 +106,7 @@ class Element:
 
     def update(self, **kwargs) -> bool:
         method = self._update
-        if not (method or self.mutable):
+        if method is None or not self.mutable:
             if self._on_error == "omit":
                 # TODO log error
                 return False

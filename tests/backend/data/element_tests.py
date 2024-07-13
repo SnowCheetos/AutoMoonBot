@@ -10,23 +10,19 @@ def test_basics():
     element = Element(on_error="raise")
     assert element, "Failed to initialize element with raise on-error"
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(AssertionError):
         element = Element(on_error="invalid")
-    assert isinstance(e.value, AssertionError), "Failed to check for on-error type"
 
     element = Element(var=1)
     assert element.var == 1, "Incorrect instantiation of element attr var"
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(AttributeError):
         _ = element.x
-    assert isinstance(
-        e.value, AttributeError
-    ), "Failed to check for attribute existence"
 
 
 def test_attr():
     element = Element(on_error="omit")
-    assert element.attr() == None, "Element failed to omit None"
+    assert element.attr == None, "Element failed to omit None"
 
     class Example(Element):
         def __init__(self, on_error, **kwargs):
@@ -40,14 +36,14 @@ def test_attr():
             return {"var": self.var}
 
     element = Example(on_error="omit", var=1)
-    assert element.attr() == {"var": 1}, "Element failed to use `get_attr(...)`"
+    assert element.attr == {"var": 1}, "Element failed to use `get_attr(...)`"
 
     # TODO Lambda scripts
 
 
 def test_tensor():
     element = Element(on_error="omit")
-    assert element.tensor() == None, "Element failed to omit None"
+    assert element.tensor == None, "Element failed to omit None"
 
     class Example(Element):
         def __init__(self, on_error, **kwargs):
@@ -61,7 +57,7 @@ def test_tensor():
             return torch.tensor(self.var)
 
     element = Example(on_error="omit", var=1)
-    assert element.tensor().item() == 1, "Element failed to use `get_tensor(...)`"
+    assert element.tensor.item() == 1, "Element failed to use `get_tensor(...)`"
 
     # TODO Lambda scripts
 
@@ -97,10 +93,7 @@ def test_update():
             return kwargs
 
     element = Example(on_error="raise", var=1)
-    with pytest.raises(Exception) as e:
+    with pytest.raises(AttributeError):
         element.update(var=2)
-    assert isinstance(
-        e.value, AttributeError
-    ), "Failed to check for attribute existence"
 
     # TODO Lambda scripts

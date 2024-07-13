@@ -1,6 +1,8 @@
 import torch
 import networkx as nx
 from torch import Tensor
+from functools import lru_cache
+from collections import defaultdict
 from torch_geometric.data import HeteroData
 from typing import Dict, List, Set, Tuple
 from backend.data import nodes as n, edges as e
@@ -10,9 +12,9 @@ class HeteroGraph(nx.MultiDiGraph):
     def __init__(self):
         super().__init__()
 
-        self._node_memo = dict()
-        self._edge_memo = dict()
-        self._edge_element_memo = dict()
+        self._node_memo = defaultdict(set)
+        self._edge_memo = defaultdict(set)
+        self._edge_element_memo = defaultdict(set)
 
     def clear(self) -> None:
         self._node_memo.clear()
@@ -27,58 +29,48 @@ class HeteroGraph(nx.MultiDiGraph):
             return
         node = element(index=index, **kwargs)
         super().add_node(index, element=node)
-        if element not in self._node_memo.keys():
-            self._node_memo[element] = set({index})
-        else:
-            self._node_memo[element].add(index)
+        self._node_memo[element].add(index)
         if compute_edges:
             self.compute_node_edges(index)
 
     def get_node(self, index: str) -> n.Node | None:
-        return dict(self.nodes(data="element")).get(index, None)
+        return self.nodes[index].get("element", None)
 
     def get_nodes(self, element: n.Node) -> Set[str]:
-        return self._node_memo.get(element)
+        return self._node_memo.get(element, set())
 
     def remove_node(self, index: str) -> None:
         if not self.has_node(index):
             return
         element = self.get_node(index)
-        self._node_memo[element].pop(index)
+        self._node_memo[element].discard(index)
         if not self._node_memo[element]:
-            self._node_memo.pop(element)
+            del self._node_memo[element]
         super().remove_node(index)
 
     def add_edge(self, element: e.Edge, src: str, tgt: str, **kwargs) -> None:
         edge = element(src, tgt, **kwargs)
-        if edge.attr == None:
+        if edge.attr is None:
             return
         super().add_edge(src, tgt, key=edge.name, element=edge)
-        if element not in self._edge_memo.keys():
-            self._edge_memo[element] = set({(src, tgt)})
-        else:
-            self._edge_memo[element].add((src, tgt))
+        self._edge_memo[element].add((src, tgt))
 
-    def get_edges_uv(self, edge: e.Edge) -> Set[Tuple[str]] | None:
-        return self._edge_memo.get(edge, None)
+    def get_edges_uv(self, edge: e.Edge) -> Set[Tuple[str]]:
+        return self._edge_memo.get(edge, set())
 
     def get_edge_elements(self, edge: e.Edge) -> List[e.Edge] | None:
         uv = self.get_edges_uv(edge)
         if not uv:
             return None
-        edges = []
-        for u, v in uv:
-            element = self.get_edge_data(u, v, key=edge.name).get("element")
-            edges.append(element)
-        return edges
+        return [self.get_edge_data(u, v, key=edge.name)["element"] for u, v in uv]
 
     def remove_edge(self, src: str, tgt: str, edge: e.Edge) -> None:
         if not self.has_edge(src, tgt, key=edge.name):
             return
         super().remove_edge(src, tgt, key=edge.name)
-        self._edge_memo[edge].pop((src, tgt))
+        self._edge_memo[edge].discard((src, tgt))
         if not self._edge_memo[edge]:
-            self._edge_memo.pop(edge)
+            del self._edge_memo[edge]
 
     def compute_edges(self, clear: bool = False) -> None:
         if len(self.nodes) <= 1:
@@ -95,21 +87,19 @@ class HeteroGraph(nx.MultiDiGraph):
             if node != index:
                 self.add_edges(index, node)
 
+    @lru_cache(maxsize=128, typed=True)
     def compute_edge_elements(self, src: n.Node, tgt: n.Node) -> Set[e.Edge]:
         key = (src, tgt)
-        memo = self._edge_element_memo.get(key, None)
-        if memo:
-            return memo
-        self._edge_element_memo[key] = set()
-        for edge in e.Edges.get():
-            if edge.source_type == src and edge.target_type == tgt:
-                self._edge_element_memo[key].add(edge)
+        if key not in self._edge_element_memo:
+            for edge in e.Edges.get():
+                if edge.source_type == src and edge.target_type == tgt:
+                    self._edge_element_memo[key].add(edge)
         return self._edge_element_memo[key]
 
     def add_edges(self, src: str, tgt: str) -> None:
         source = self.get_node(src)
         target = self.get_node(tgt)
-        if not (source or target):
+        if not (source and target):
             return
         edges = self.compute_edge_elements(source, target)
         for edge in edges:
