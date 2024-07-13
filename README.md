@@ -1,4 +1,4 @@
-![](media/logo.png)
+![](media/logo_100.png)
 
 ---------------
 
