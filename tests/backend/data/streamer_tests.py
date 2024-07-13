@@ -12,21 +12,16 @@ def data():
 def test_basics(data):
     streamer = Streamer(QUEUE_SIZE, data=data, sleep=1)
     assert not streamer.running, "streamer shouldn't be running"
-
     streamer.start()
     assert streamer.running, "streamer should be running"
-
     val = next(streamer)
     assert val == 1, "queue should have data"
-
     time.sleep(0.5)
     val = next(streamer)
     assert val is None, "queue should not have data"
-
     time.sleep(0.6)
     val = next(streamer)
     assert val == 1, "queue should have data"
-
     streamer.stop()
     assert not streamer.running, "streamer shouldn't be running"
 
