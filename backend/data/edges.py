@@ -1,7 +1,8 @@
 import torch
-from enum import Enum, auto
 from typing import Hashable, Set
-from backend.data import Element, nodes as n, Tense, Aspect
+
+from utils import Tense, Aspect
+from backend.data import Element, nodes as n
 
 
 class Edges(type):

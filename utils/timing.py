@@ -5,6 +5,20 @@ from typing import List
 from dateutil.relativedelta import relativedelta
 
 
+def compute_time_decay(
+    start: float, end: float, shift: float = 7, alpha: float = 0.5
+) -> float:
+    if start > end:
+        return 0
+
+    sigmoid = lambda x, alpha: 1 / (1 + np.exp(-alpha * x))
+
+    time_delta = max(end - start, 1e-3)
+    log_time = np.log(time_delta)
+    shifted = log_time - shift
+    return 1 - sigmoid(shifted, alpha)
+
+
 class Timing:
     _units = {
         60: "1m",
