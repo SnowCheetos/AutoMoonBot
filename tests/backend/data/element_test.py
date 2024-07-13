@@ -10,7 +10,7 @@ def test_basics():
     element = Element(on_error="raise")
     assert element, "Failed to initialize element with raise on-error"
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         element = Element(on_error="invalid")
 
     element = Element(var=1)

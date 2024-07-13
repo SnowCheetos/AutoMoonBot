@@ -1,4 +1,5 @@
 import torch
+from functools import lru_cache
 from typing import Hashable, Set
 
 from utils import Tense, Aspect
@@ -20,11 +21,11 @@ class Edges(type):
 
 
 class Edge(Element, metaclass=Edges):
-    tense = None
-    aspect = None
-    source_type = None
-    target_type = None
-    tensor_dim = None
+    tense: Tense = None
+    aspect: Aspect = None
+    source_type: n.Node = None
+    target_type: n.Node = None
+    tensor_dim: int = None
 
     def __init__(
         self,
@@ -40,38 +41,35 @@ class Edge(Element, metaclass=Edges):
             **kwargs,
         )
 
-        assert isinstance(
-            source, Hashable
-        ), f"Invalid source type {type(source)}, must be a hashable type"
-
-        assert isinstance(
-            target, Hashable
-        ), f"Invalid target type {type(target)}, must be hashable type"
-
         self.source = source
         self.target = target
 
-    def __init_subclass__(cls, *args, **kwargs):
+    def __init_subclass__(cls, *args, **kwargs) -> None:
         super().__init_subclass__(*args, **kwargs)
         cls.name = cls.__name__.lower()
 
     @property
+    @lru_cache(maxsize=None)
     def tense(self) -> Tense:
         return self.__class__.tense
 
     @property
+    @lru_cache(maxsize=None)
     def aspect(self) -> Aspect:
         return self.__class__.aspect
 
     @property
+    @lru_cache(maxsize=None)
     def source_type(self) -> n.Node:
         return self.__class__.source_type
 
     @property
+    @lru_cache(maxsize=None)
     def target_type(self) -> n.Node:
         return self.__class__.target_type
 
     @property
+    @lru_cache(maxsize=None)
     def tensor_dim(self) -> int:
         return self.__class__.tensor_dim
 
