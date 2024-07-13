@@ -5,7 +5,7 @@ torch_geometric
 torch_scatter
 pandas
 yfinance
+redis[hiredis]
 fastapi[standard]
-aiofiles
 pillow
 networkx
