@@ -4,9 +4,9 @@ By viewing, citing, using, or contributing to the code and resources provided in
 
 -------
 
-### License
+### Intellectual Property and License
 
-This project is distributed under the **MIT License** found [`HERE`](LICENSE). By viewing, citing, using, or contributing to the code and resources provided in this repository, you acknowledge and agree to all terms and conditions in the license, present and future, unless explicitly stated otherwise.
+All content in this repository is made available under the terms of the **MIT License** found [`here`](LICENSE), unless otherwise stated. This means you are free to use, modify, and distribute the code and content, provided that you adhere to the terms of the license.
 
 ### Not Financial Advice
 
@@ -31,10 +31,6 @@ Always seek the advice of a qualified financial professional before making any i
 ### Compliance with Laws
 
 Users are responsible for ensuring that their use of the repository complies with all applicable local, national, and international laws and regulations. The creators and contributors are not responsible for any legal issues that may arise from the use of the content provided.
-
-### Intellectual Property
-
-All content in this repository, unless otherwise stated, is the intellectual property of the creators and contributors. Unauthorized use or distribution of the code or content is prohibited. Contributions made to the repository will be governed by the repository's contribution guidelines and licensing agreements.
 
 ### Updates and Changes
 

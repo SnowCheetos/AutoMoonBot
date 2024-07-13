@@ -26,13 +26,13 @@ class Timing:
         return cls._units[cls._seconds[np.abs(cls._seconds - seconds).argmin()]]
 
     @staticmethod
-    def interval_to_seconds(interval: str) -> int:
+    def parse_interval(interval: str) -> int:
         if interval.isalpha():
             interval = "1" + interval
         return int(humanfriendly.parse_timespan(interval))
 
     @staticmethod
-    def is_intraday(interval: str) -> bool:
+    def intraday(interval: str) -> bool:
         return humanfriendly.parse_timespan(interval) < 86400
 
     @staticmethod
