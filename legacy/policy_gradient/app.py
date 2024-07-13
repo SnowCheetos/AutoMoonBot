@@ -10,8 +10,8 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
-from backend.server import Server
-from utils.tools import interval_map
+from backend import Server
+from utils import interval_map
 
 
 with open("config.json", "r") as f:

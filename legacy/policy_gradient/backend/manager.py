@@ -1,6 +1,8 @@
-from collections import deque
 from typing import Dict
-from utils.trading import Position, Trade, Action, Signal
+from collections import deque
+
+from utils import Position, Trade, Action, Signal
+
 
 class TradeManager:
     def __init__(

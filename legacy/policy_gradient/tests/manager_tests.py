@@ -1,7 +1,6 @@
 import pytest
-import numpy as np
 
-from backend.manager import TradeManager
+from backend import TradeManager
 from utils.trading import Action, Signal
 
 @pytest.fixture
