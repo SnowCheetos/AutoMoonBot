@@ -6,7 +6,7 @@ from pyrate_limiter import Duration, RequestRate, Limiter
 from requests_cache import CacheMixin, RedisCache, BaseCache
 from requests_ratelimiter import LimiterMixin, MemoryQueueBucket
 
-from backend.data import get_all_months
+from utils import Timing
 
 
 class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
@@ -99,16 +99,22 @@ class AlphaVantage(CachedLimiterSession):
     ) -> Dict[str, Any]:
         key = f"Time Series ({interval})"
         data = {"Meta Data": None, key: dict(), "Errors": None}
-        months = get_all_months(start, end)
-        for i, month in enumerate(reversed(months)):
-            res = self.intraday(symbol, interval, month, extended_hours)
-            if not res["ok"]:
-                data["Errors"] = res["error_message"]
-                break
-            data[key].update({**res[key]})
-            if i == len(months) - 1:
-                data["Meta Data"] = res["Meta Data"]
-        return data
+
+        if Timing.is_intraday(interval):
+            
+            months = Timing.get_all_months(start, end)
+            for i, month in enumerate(reversed(months)):
+                res = self.intraday(symbol, interval, month, extended_hours)
+                if not res["ok"]:
+                    data["Errors"] = res["error_message"]
+                    break
+                data[key].update({**res[key]})
+                if i == len(months) - 1:
+                    data["Meta Data"] = res["Meta Data"]
+            return data
+        
+        else:
+            pass
 
 
 class YahooFinance(Tickers, CachedLimiterSession):
