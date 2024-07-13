@@ -1,4 +1,3 @@
-import humanfriendly
 from yfinance import Tickers
 from requests import Session
 from typing import List, Dict, Any
@@ -6,7 +5,7 @@ from pyrate_limiter import Duration, RequestRate, Limiter
 from requests_cache import CacheMixin, RedisCache, BaseCache
 from requests_ratelimiter import LimiterMixin, MemoryQueueBucket
 
-from backend.data import get_all_months
+from utils import Timing
 
 
 class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
@@ -30,13 +29,8 @@ class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
     def _create_limiter(self, rate_limit: str) -> Limiter:
         rate, interval = rate_limit.split("/")
         max_requests = int(rate)
-        interval_seconds = self._interval_to_seconds(interval)
+        interval_seconds = Timing.parse_interval(interval)
         return Limiter(RequestRate(max_requests, interval_seconds * Duration.SECOND))
-
-    def _interval_to_seconds(self, interval: str) -> int:
-        if interval.isalpha():
-            interval = "1" + interval
-        return int(humanfriendly.parse_timespan(interval))
 
     def make_request(self, url: str, **kwargs) -> Dict[str, Any]:
         response = self.get(url, **kwargs)
@@ -56,6 +50,10 @@ class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
         return response_json
 
 
+# TODO Oh boy did I open one big can of worms with this one... 
+# There are so so many data sources, not a single one covers all areas
+# It is essential to implement a client for each one to obtain the most comprehensive data coverage
+
 class AlphaVantage(CachedLimiterSession):
     def __init__(
         self,
@@ -70,7 +68,7 @@ class AlphaVantage(CachedLimiterSession):
             cache_backend=cache_backend,
         )
 
-    def intraday(
+    def _asset_intraday(
         self,
         symbol: str,
         interval: str,
@@ -89,26 +87,39 @@ class AlphaVantage(CachedLimiterSession):
         )
         return self.make_request(url)
 
-    def get_prices(
+    def _asset_interday(
         self,
         symbol: str,
         interval: str,
+        outputsize: str = "full",
+    ) -> Dict[str, Any]:
+        url = self._base_url + (
+            f"function=TIME_SERIES_{interval}_ADJUSTED"
+            f"&apikey={self._api_key}"
+            f"&symbol={symbol}"
+            f"&outputsize={outputsize}"
+        )
+        return self.make_request(url)
+
+    def _news_sentiment(
+        self,
+        symbol: str,
         start: str,
         end: str,
-        extended_hours: bool = True,
     ) -> Dict[str, Any]:
-        key = f"Time Series ({interval})"
-        data = {"Meta Data": None, key: dict(), "Errors": None}
-        months = get_all_months(start, end)
-        for i, month in enumerate(reversed(months)):
-            res = self.intraday(symbol, interval, month, extended_hours)
-            if not res["ok"]:
-                data["Errors"] = res["error_message"]
-                break
-            data[key].update({**res[key]})
-            if i == len(months) - 1:
-                data["Meta Data"] = res["Meta Data"]
-        return data
+        url = self._base_url + (
+            f"function=NEWS_SENTIMENT"
+            f"&apikey={self._api_key}"
+            f"&tickers={symbol}"
+            f"&time_from={start}"
+            f"&time_to={end}"
+            f"&sort=RELEVANCE"
+            f"&limit=1000"
+        )
+        return self.make_request(url)
+
+    def _options_daily(self, symbol: str, date: str):
+        pass
 
 
 class YahooFinance(Tickers, CachedLimiterSession):

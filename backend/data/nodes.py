@@ -1,5 +1,7 @@
 import torch
+from functools import lru_cache
 from typing import Hashable, Set
+
 from backend.data import Element
 
 
@@ -18,7 +20,7 @@ class Nodes(type):
 
 
 class Node(Element, metaclass=Nodes):
-    tensor_dim = None
+    tensor_dim: int = None
 
     def __init__(
         self,
@@ -33,17 +35,14 @@ class Node(Element, metaclass=Nodes):
             **kwargs,
         )
 
-        assert isinstance(
-            index, Hashable
-        ), f"Invalid index type {type(index)}, must be a hashable type"
-
         self.index = index
 
-    def __init_subclass__(cls, *args, **kwargs):
+    def __init_subclass__(cls, *args, **kwargs) -> None:
         super().__init_subclass__(*args, **kwargs)
         cls.name = cls.__name__.lower()
 
     @property
+    @lru_cache(maxsize=None)
     def tensor_dim(self) -> int:
         return self.__class__.tensor_dim
 
@@ -219,6 +218,6 @@ class Position(Node):
 
     def get_tensor(self):
         return torch.rand(self.tensor_dim, dtype=torch.float)
-    
+
     def get_update(self):
         pass
