@@ -74,7 +74,14 @@ As a side note, [*Louis Bachelier*](https://en.wikipedia.org/wiki/Louis_Bachelie
 *Yeah no not yet...*
 
 ## Testing
-Test scripts are available in the `tests` directory.
+
+Install `pytest` with `pip install -U pytest`.
+
+Test scripts are available in the `tests` directory. 
+
+Run all tests with `pytest -v tests/`
+
+To run tests for a specific module, run `pytest -v tests/{module}/...{submodules if necessary}/`
 
 # Legacy
 
