@@ -1,4 +1,7 @@
-class Session:
+from automoonbot.session import Portfolio
+
+
+class Session(Portfolio):
     """
     An object that abstracts the portfolio and market
     activies for a specific timespan
