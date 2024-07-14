@@ -1,6 +1,6 @@
 import numpy as np
 
-
+# TODO I need to spend some time thinking about how to do this...
 class Portfolio:
     """
     An object representing the portfolio of one session.
