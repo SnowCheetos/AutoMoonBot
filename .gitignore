@@ -6,6 +6,7 @@
 *.pth
 *.webp
 
+COMMITLOG.MD
 logo_50.png
 
 __pycache__/
