@@ -1,6 +1,6 @@
 # Automated Trading with Policy Gradient
 
-*Please review the disclaimers [`here`](../../DISCLAIMER.MD) before proceeding. By continue visiting the rest of the content, you agree to all the terms and conditions of the disclaimers.*
+Please review the disclaimers [`here`](../../docs/DISCLAIMER.md) before proceeding. By continue visiting the rest of the content, you agree to all the terms and conditions of the disclaimers.
 
 ## Introduction
 
@@ -10,7 +10,7 @@
 
 ![](../../media/demo.gif)
 
-- *Note that the .gif might take some time to load.*
+- The gif might take some time to load.
 
 - Demonstration of system back-testing. Data used for this test was *SPDR S&P 500 ETF Trust (SPY)* with *1 hour* interval, with a start date in *June 2022.*
 

@@ -16,7 +16,7 @@ As mentioned, AutoMoonBot is still super alpha and likely full of bugs. If you w
 
 ## Help Implement Incomplete Features
 
-At this stage, many features are either incomplete or sub-optimal. 
+At this stage, many features are either incomplete or sub-optimal. Contribution in this category is highly appreciated. Check out [`FEATURES`](docs/FEATURES.md) for more information.
 
 ## Brand New Features
 

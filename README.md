@@ -2,7 +2,7 @@
 
 ---------------
 
-This repository contains code and resources for automated algorithmic trading implementations. All content provided in this repository is for educational and informational purposes only. It is **NOT** intended to be a financial product or investment advice. By viewing, citing, using, or contributing to the contents and resources provided in this repository, you automatically acknowledge and agree to all terms and conditions found in [`DISCLAIMERS`](DISCLAIMER.MD), both present and future, unless explicitly stated otherwise.
+This repository contains code and resources for automated algorithmic trading implementations. All content provided in this repository is for educational and informational purposes only. It is **NOT** intended to be a financial product or investment advice. By viewing, citing, using, or contributing to the contents and resources provided in this repository, you automatically acknowledge and agree to all terms and conditions found in [`DISCLAIMERS`](docs/DISCLAIMER.md), both present and future, unless explicitly stated otherwise.
 
 # Table of Contents
 
@@ -92,7 +92,7 @@ The current version of this project stands on the shoulders of... its past versi
 
 # Contribution
 
-Like software and finance? Have ideas on how to improve this project? Consider contributing! Refer to [`CONTRIBUTING.MD`](.github/CONTRIBUTING.MD) for more information.
+Like software and finance? Have ideas on how to improve this project? Consider contributing! Refer to [`CONTRIBUTING`](docs/CONTRIBUTING.md) for more information.
 
 # Citation
 
