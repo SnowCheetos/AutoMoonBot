@@ -92,7 +92,7 @@ The current version of this project stands on the shoulders of... its past versi
 
 # Contribution
 
-Like software and finance? Have ideas on how to improve this project? Consider contributing! Refer to [`CONTRIBUTING.MD](CONTRIBUTING.MD) for more information.
+Like software and finance? Have ideas on how to improve this project? Consider contributing! Refer to [`CONTRIBUTING.MD`](.github/CONTRIBUTING.MD) for more information.
 
 # Citation
 
