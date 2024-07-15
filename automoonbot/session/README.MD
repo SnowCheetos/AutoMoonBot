@@ -48,7 +48,7 @@ For this purpose, we represent a portfolio as matrix $`\mathbf{P} \in \mathbb{R}
 
 - $m$ is the number of columns, each column represents an attribute for the asset
 
-As an example, say we want to follow assets $\textbf{USD}$, $\textbf{BTC}$, $\textbf{AMD}$, $\textbf{SPY}$, where $\textbf{USD}$ is the fiat currency. The row index for each asset follows the same order. We then define the following attributes for each asset
+As an example, say we want to follow assets $`\textbf{USD}`$, $`\textbf{BTC}`$, $`\textbf{AMD}`$, $`\textbf{SPY}`$, where $`\textbf{USD}`$ is the fiat currency. The row index for each asset follows the same order. We then define the following attributes for each asset
 
 1. $\textbf{value}$
     - Current value of the asset within the portfolio, in unit of fiat currency.
@@ -73,9 +73,9 @@ $$
 \end{array}
 $$
 
-The first thing we need to do is update the prices with some data, note since $\textbf{USD}$ is in unit of the fiat currency itself, its price value will always be $1$, and since $`\log(1)=0`$, the $\textbf{logQuote}$ and $\textbf{lagQuote}$ attributes for $\textbf{USD}$ will stay constant at $`0`$
+The first thing we need to do is update the prices with some data, note since $`\textbf{USD}`$ is in unit of the fiat currency itself, its price value will always be $1$, and since $`\log(1)=0`$, the $\textbf{logQuote}$ and $\textbf{lagQuote}$ attributes for $`\textbf{USD}`$ will stay constant at $`\textbf{0}`$
 
-Say $\textbf{BTC}$ last traded at $`\$50,000`$, $\textbf{AMD}$ at $`\$200`$, and $\textbf{SPY}$ at $`\$500`$, then
+Say $`\textbf{BTC}`$ last traded at $`\$50,000`$, $`\textbf{AMD}`$ at $`\$200`$, and $`\textbf{SPY}`$ at $`\$500`$, then
 
 $$
 \mathbf{P} = 
@@ -91,25 +91,17 @@ If we assume that we can fetch new data at each time step $t$, then we can write
 
 $$
 \begin{aligned}
-
 & \textbf{for} \, t \in \tau \, \textbf{do} \\
-
 & \quad \textbf{for} \, \text{asset} \in \text{assets} \, \textbf{do} \\
-
 & \qquad \text{quote}_{\text{asset}} \leftarrow \text{GET}(\text{asset}, t) \\
-
 & \qquad \mathbf{P}_{\text{asset}, \text{lagQuote}} \leftarrow \mathbf{P}_{\text{asset}, \text{logQuote}} \\
-
 & \qquad \mathbf{P}_{\text{asset}, \text{logQuote}}  \leftarrow \log(\text{quote}_{\text{asset}}) \\
-
 & \quad \textbf{end for} \\
-
 & \textbf{end for}
-
 \end{aligned}
 $$
 
-Or in other words, at each time step $t$, we get the prices for each asset, and we first set the $\textbf{lagQuote}$ to be the previous $\textbf{logQuote}$, then we set $\textbf{logQuote}$ to the current $`\log`$ price for each asset. Say after one time step, $\textbf{BTC}$ trades at $`\$45,000`$, $\textbf{AMD}$ at $`\$205`$, and $\textbf{SPY}$ at $`\$510`$, then
+Or in other words, at each time step $t$, we get the prices for each asset, and we first set the $\textbf{lagQuote}$ to be the previous $\textbf{logQuote}$, then we set $\textbf{logQuote}$ to the current $`\log`$ price for each asset. Say after one time step, $`\textbf{BTC}`$ trades at $`\$45,000`$, $`\textbf{AMD}`$ at $`\$205`$, and $`\textbf{SPY}`$ at $`\$510`$, then
 
 $$
 \mathbf{P} = 
@@ -124,7 +116,6 @@ $$
 After at least 1 time step from initialization, we can compute the update matrix as
 $$
 \begin{aligned}
-
 &\mathbf{U} = 
 \begin{bmatrix}
 1 & 0 & 0 & 0 \\
@@ -136,7 +127,6 @@ $$
 &\text{Such that for each asset} \\
 \\
 &\mathbf{U}_\text{asset} = \mathbf{P}_{\text{asset}, \text{logQuote}} - \mathbf{P}_{\text{asset}, \text{lagQuote}}
-
 \end{aligned}
 $$
 
@@ -152,7 +142,7 @@ P[:, log_quote_index] = np.log(quotes)
 U = np.diag(np.diff(P[:, [lag_quote_index, log_quote_index]]))
 ```
 
-Now comes the best part. Transactions such as buying or selling assets can also be expressed as a matrix $\mathbf{T} \in \mathbb{R}^{n \times n}$, where each row represents the source asset, and each column represents the target asset. Say we want to buy $`\$500`$ (*or* $50\%$ *of the cash balance*) worth of $\textbf{AMD}$, then the transaction matrix can be written as
+Now comes the best part. Transactions such as buying or selling assets can also be expressed as a matrix $\mathbf{T} \in \mathbb{R}^{n \times n}$, where each row represents the source asset, and each column represents the target asset. Say we want to buy $`\$500`$ (*or* $50\%$ *of the cash balance*) worth of $`\textbf{AMD}`$, then the transaction matrix can be written as
 
 $$
 \mathbf{T} = 
@@ -167,7 +157,7 @@ $$
 Once the transaction matrix is constructed, it can be executed by multiplying it to the value column of the portfolio matrix
 
 $$
-\mathbf{P_v} = 
+\mathbf{P}_\text{value} = 
 \begin{bmatrix}
 1000\\
 0\\
@@ -189,7 +179,7 @@ $$
 \end{bmatrix}
 $$
 
-Simplying by multiplying the portfolio by the transaction matrix, the portfolio updated the correct values for both $\textbf{USD}$ and $\textbf{AMD}$. Even better than that, we can hold multiple transactions in a single matrix for it to be executed at once. For example, if we then want to buy $`\$100`$ worth of $\textbf{BTC}$ and sell $`\$200`$ worth of $\textbf{AMD}$
+Simplying by multiplying the portfolio by the transaction matrix, the portfolio updated the correct values for both $`\textbf{USD}`$ and $`\textbf{AMD}`$. Even better than that, we can hold multiple transactions in a single matrix for it to be executed at once. For example, if we then want to buy $`\$100`$ worth of $`\textbf{BTC}`$ and sell $`\$200`$ worth of $`\textbf{AMD}`$
 
 $$
 \mathbf{T} = 
@@ -242,7 +232,6 @@ When working with the transaction matrix, it's better to think of it as a '*tran
 
 $$
 \begin{aligned}
-
 &\mathbf{P} = 
 \begin{bmatrix}
 1 & 0 & 0 \\
@@ -260,10 +249,9 @@ $$
 0 & 0 & 1 & 0 \\
 0 & 0 & 0 & 1 \\
 \end{bmatrix}
-
 \end{aligned}
 $$
 
-Now it can be thought of as $\textbf{0.5}$ units of $\textbf{value}$ was transferred from $\textbf{USD}$ to $\textbf{AMD}$. To convert it back to the fiat unit, we simply multiply the values by the initial cash balance.
+Now it can be thought of as $\textbf{0.5}$ units of $\textbf{value}$ was transferred from $`\textbf{USD}`$ to $`\textbf{AMD}`$. To convert it back to the fiat unit, we simply multiply the values by the initial cash balance.
 
 This set of tools provide very powerful abstractions to portfolio modeling, allowing very efficient executions of transactions, price and value updates to be done.
