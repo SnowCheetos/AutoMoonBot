@@ -1,3 +1,3 @@
 from automoonbot.model.memory import MultiHeadMemory
-from automoonbot.model.sage import SAGENet
+from automoonbot.model.gat import GATNet
 from automoonbot.model.clf import MemoryClassifier
