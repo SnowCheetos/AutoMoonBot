@@ -1,4 +1,4 @@
-![](media/logo_100.png)
+![](media/logo.png)
 
 ---------------
 
@@ -20,11 +20,23 @@ Please note that this project is still super-pre-alpha, so hold your bags for no
 
 # Introduction
 
-See [here](automoonbot/README.MD)
+See more [here](automoonbot/README.MD)
 
 ## Intuitions
 
-*Welp, you read faster than I can type, I feel the urge to type code instead of words, so... stay tuned*
+[The Medallion Fund](https://www.cornell-capital.com/blog/2020/02/medallion-fund-the-ultimate-counterexample.html) is one of the core inspirations for this project. It showed that quantitative trading, when executed perfectly, has enormous potential for success and profit. The fund averaged an astonishing annualized return of **63.3%** for its duration, and it didn't have a single negative year, even during the **2000 dot-com bubble** and **2008 financial crisis**. 
+
+## Approach
+
+The Medallion Fund publically stated numerous times that they collect nearly all publically available data, anything that could remotely affect the price actions of an asset was included. This may not be as difficult as it sounds, since the market is inheriently influenced by the masses of investors, most of whom have access to similar amount of information. Therefore, it can be assumed that any data which can be gathered publically would have been reviewed by some investors, which inheriently means it carries some degree of influence over the price actions. However, simply having the data does not mean it can be used to make consistent profits, otherwise anyone who knows a bit of software can build a scraper and would be filthy rich. Rather, the difficult part is to make effective use of the data, which can come in a variety of forms, making it difficult to construct a single comprehensive representation. For instance, imagine one obtains news articles in the form of raw `HTML` contents, and federal interest rates as time series, it would be difficult to design a model that could take in all of them and extract meaningful information.
+
+## Graphs
+
+...
+
+## Reinforcement Learning
+
+...
 
 # Usage
 
