@@ -62,9 +62,8 @@ As an example, say we want to follow assets $`\textbf{ USD }`$, $`\textbf{BTC}`$
 If we start with $`\$1000`$ and hold no other assets, then we can initialize the matrix $\mathbf{P}$ as follows
 
 $$
-\mathbf{P}= 
-\begin{array}{c|ccc}
-&\text{value}&\log(\text{p}_t)&\log(\text{p}_{t-1})\\
+\mathbf{P}=
+\begin{array}{c|ccc}&\text{value}&\log(\text{p}_t)&\log(\text{p}_{t-1})\\
 \hline\text{USD} & 1000 & 0 & 0 \\
 \text{BTC} & 0 & 0 & 0 \\
 \text{AMD} & 0 & 0 & 0 \\
