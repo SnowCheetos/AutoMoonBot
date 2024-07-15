@@ -118,17 +118,16 @@ $$
 After at least 1 time step from initialization, we can compute the update matrix as
 
 $$
-\begin{aligned}
-&\mathbf{U}=\begin{bmatrix}
+\mathbf{U}=
+\begin{bmatrix}
 1 & 0 & 0 & 0 \\
 0 & \log(45000) - \log(50000) & 0 & 0 \\
 0 & 0 & \log(205) - \log(200) & 0 \\
 0 & 0 & 0 &\log(510) - \log(500) \\
-\end{bmatrix} \\
-&\text{Such that for each asset} \\
-&\mathbf{U}_\text{asset}=\mathbf{P}_{\text{asset}, \text{logQuote}} - \mathbf{P}_{\text{asset}, \text{lagQuote}} \\
-\end{aligned}
+\end{bmatrix}
 $$
+
+such that $`\mathbf{U}_\text{asset}=\mathbf{P}_{\text{asset}, \text{logQuote}} - \mathbf{P}_{\text{asset}, \text{lagQuote}}`$ for each $`\text{asset} \in \text{assets}`$
 
 At first glance, all of this may seem confusing and redundant, but in practice, since these are matrix operations, they can all be performed in a single step for all assets
 
@@ -252,6 +251,4 @@ $$
 \end{aligned}
 $$
 
-Now it can be thought of as $\textbf{0.5}$ units of $\textbf{value}$ was transferred from $` \textbf{USD} `$ to $`\textbf{AMD}`$. To convert it back to the fiat unit, we simply multiply the values by the initial cash balance.
-
-This set of tools provide very powerful abstractions to portfolio modeling, allowing very efficient executions of transactions, price and value updates to be done.
+Now it can be thought of as $\textbf{0.5}$ units of $\textbf{value}$ was transferred from $` \textbf{USD} `$ to $`\textbf{AMD}`$. To convert it back to the fiat unit, we simply multiply the values by the initial cash balance. This set of tools provide very powerful abstractions to portfolio modeling, allowing very efficient executions of transactions, price and value updates to be done.
