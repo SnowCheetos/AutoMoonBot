@@ -168,6 +168,7 @@ $$
 0 \\
 0 \\
 \end{bmatrix}
+\times
 \begin{bmatrix}
 -0.5 & 0 & 0.5 & 0 \\
 0 & 1 & 0 & 0 \\
@@ -205,7 +206,7 @@ $$
 500 \\
 0 \\
 \end{bmatrix}
-
+\times
 \begin{bmatrix}
 1 - 100/500 & 100/500 & 0 & 0 \\
 0 & 1 & 0 & 0 \\
