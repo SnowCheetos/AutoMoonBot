@@ -9,3 +9,4 @@ redis[hiredis]
 fastapi[standard]
 pillow
 networkx
+maturin
