@@ -162,14 +162,18 @@ Once the transaction matrix is constructed, it can be executed by multiplying it
 
 $$
 \mathbf{P_v} = 
-\begin{bmatrix}1000\\0\\0\\0\end{bmatrix}
+\begin{bmatrix}
+1000\\0\\0\\0
+\end{bmatrix}
 \begin{bmatrix}
 -0.5 & 0 & 0.5 & 0 \\
 0 & 1 & 0 & 0 \\
 0 & 0 & 1 & 0 \\
 0 & 0 & 0 & 1 \\
 \end{bmatrix}=
-\begin{bmatrix}500\\0\\500\\0\end{bmatrix}
+\begin{bmatrix}
+500\\0\\500\\0
+\end{bmatrix}
 $$
 
 Simplying by multiplying the portfolio by the transaction matrix, the portfolio updated the correct values for both `USD` and `TSLA`. Even better than that, we can hold multiple transactions in a single matrix for it to be executed at once. For example, if we then want to buy $\$100$ worth of `BTC` and sell $\$200$ worth of `TSLA`
