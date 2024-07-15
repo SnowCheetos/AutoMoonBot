@@ -1,3 +1,0 @@
-cargo:rustc-cfg=invalid_from_utf8_lint
-cargo:rustc-cfg=c_str_lit
-cargo:rustc-cfg=diagnostic_namespace
