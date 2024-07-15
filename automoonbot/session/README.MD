@@ -50,7 +50,7 @@ For this purpose, we represent a portfolio as matrix $`\mathbf{P} \in \mathbb{R}
 
 As an example, say we have assets `{USD, BTC, TSLA, SPY}`, where `USD` is the fiat currency. The row index for each asset follows the same order
 
-```json
+```
 {USD: 0, BTC: 1, TSLA: 2, SPY: 3}
 ```
 
@@ -64,7 +64,7 @@ We then define the following attributes for each asset
 
 The column attribute index also follows the same order
 
-```json
+```
 {value: 0, log_quote: 1, lag_quote: 2}
 ```
 
@@ -96,15 +96,15 @@ $$
 
 If we assume that we can fetch new data at each time step $t$, then we can write the data update loop as
 
-$\textbf{for} \, t=0 \, ... \, T \, \textbf{do}$ \
-$\quad \textbf{p} \leftarrow \textit{data}(t)$ \
-$\quad \textbf{for} \, i=1 \, ... \, 3 \, \textbf{do}$ \
-$\qquad \mathbf{P_{i, 2}} \leftarrow \mathbf{P_{i, 1}}$ \
-$\qquad \mathbf{P_{i, 1}}  \leftarrow \log(\textbf{p}_i)$ \
-$\quad \textbf{end for}$ \
-$\textbf{end for}$
+$`\textbf{for} \, t=0 \, ... \, T \, \textbf{do}`$ \
+$`\quad \textbf{p} \leftarrow \textit{data}(t)`$ \
+$`\quad \textbf{for} \, i=1 \, ... \, 3 \, \textbf{do}`$ \
+$`\qquad \mathbf{P_{i, 2}} \leftarrow \mathbf{P_{i, 1}}`$ \
+$`\qquad \mathbf{P_{i, 1}}  \leftarrow \log(\textbf{p}_i)`$ \
+$`\quad \textbf{end for}`$ \
+$`\textbf{end for}`$
 
-Or in other words, at each time step $t$, we get the prices for each asset, and we first set the `lag_quote` to be the previous `log_quote`, then we set `log_quote` to the current $\log$ price for each asset. Say after one time step, `BTC` trades at $\$45,000$, `TSLA` at $\$205$, and `SPY` at $\$510$, then
+Or in other words, at each time step $t$, we get the prices for each asset, and we first set the `lag_quote` to be the previous `log_quote`, then we set `log_quote` to the current $`\log`$ price for each asset. Say after one time step, `BTC` trades at $`\$45,000`$, `TSLA` at $`\$205`$, and `SPY` at $`\$510`$, then
 
 $$
 \mathbf{P} = 
@@ -146,7 +146,7 @@ P[:, log_quote_index] = np.log(quotes)
 U = np.diag(np.diff(P[:, [lag_quote_index, log_quote_index]]))
 ```
 
-Now comes the best part. Transactions such as buying or selling assets can also be expressed as a matrix $\mathbf{T} \in \mathbb{R}^{n \times n}$, where each row represents the source asset, and each column represents the target asset. Say we want to buy $\$500$ ($50\%$ *of the cash balance*) worth of `TSLA`, then the transaction matrix can be written as
+Now comes the best part. Transactions such as buying or selling assets can also be expressed as a matrix $\mathbf{T} \in \mathbb{R}^{n \times n}$, where each row represents the source asset, and each column represents the target asset. Say we want to buy $`\$500`$ ($50\%$ *of the cash balance*) worth of `TSLA`, then the transaction matrix can be written as
 
 $$
 \mathbf{T} = 
