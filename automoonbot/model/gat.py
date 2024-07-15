@@ -1,9 +1,9 @@
 import torch.nn as nn
 from torch import Tensor
-from torch_geometric.nn import SAGEConv, Linear, SoftmaxAggregation
+from torch_geometric.nn import GATv2Conv, Linear
 
 
-class SAGENet(nn.Module):
+class GATNet(nn.Module):
     def __init__(
         self,
         h1_dim=512,
@@ -12,37 +12,23 @@ class SAGENet(nn.Module):
     ) -> None:
         super().__init__()
 
-        self.conv1 = SAGEConv(
+        self.conv1 = GATv2Conv(
             in_channels=(-1, -1),
             out_channels=h1_dim,
-            aggr=SoftmaxAggregation(
-                channels=h1_dim,
-                learn=True,
-            ),
-            project=True,
             add_self_loops=False,
+            edge_dim=-1,
         )
-
-        self.conv2 = SAGEConv(
+        self.conv2 = GATv2Conv(
             in_channels=(-1, -1),
             out_channels=h2_dim,
-            aggr=SoftmaxAggregation(
-                channels=h2_dim,
-                learn=True,
-            ),
-            project=True,
             add_self_loops=False,
+            edge_dim=-1,
         )
-
-        self.conv3 = SAGEConv(
+        self.conv3 = GATv2Conv(
             in_channels=(-1, -1),
             out_channels=out_dim,
-            aggr=SoftmaxAggregation(
-                channels=out_dim,
-                learn=True,
-            ),
-            project=True,
             add_self_loops=False,
+            edge_dim=-1,
         )
 
         self.lin1 = Linear(-1, h1_dim)
