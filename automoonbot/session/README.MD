@@ -89,16 +89,15 @@ $$
 
 If we assume that we can fetch new data at each time step $t$, then we can write the data update loop as
 
-
 $$
 \begin{aligned}
-& \textbf{for} \, t \in \tau \, \textbf{do} \\
-& \quad \textbf{for} \, \text{asset} \in \text{assets} \, \textbf{do} \\
-& \qquad \text{quote}_{\text{asset}} \leftarrow \text{GET}(\text{asset}, t) \\
-& \qquad \mathbf{P}_{\text{asset}, \text{lagQuote}} \leftarrow \mathbf{P}_{\text{asset}, \text{logQuote}} \\
-& \qquad \mathbf{P}_{\text{asset}, \text{logQuote}}  \leftarrow \log(\text{quote}_{\text{asset}}) \\
-& \quad \textbf{end for} \\
-& \textbf{end for}
+&\textbf{for} \ t \in \tau \, \textbf{do} \\
+&\quad \textbf{for} \ \text{asset} \in \text{assets} \, \textbf{do} \\
+&\qquad \text{quote}_{\text{asset}} \leftarrow \text{GET}(\text{asset}, t) \\
+&\qquad \mathbf{P}_{\text{asset}, \text{lagQuote}} \leftarrow \mathbf{P}_{\text{asset}, \text{logQuote}} \\
+&\qquad \mathbf{P}_{\text{asset}, \text{logQuote}}  \leftarrow \log(\text{quote}_{\text{asset}}) \\
+&\quad \textbf{end for} \\
+&\textbf{end for} \\
 \end{aligned}
 $$
 
@@ -127,7 +126,7 @@ $$
 \end{bmatrix}
 $$
 
-such that $`\mathbf{U}_\text{asset}=\mathbf{P}_{\text{asset}, \text{logQuote}} - \mathbf{P}_{\text{asset}, \text{lagQuote}}`$ for each $`\text{asset} \in \text{assets}`$
+In which $`\mathbf{U}_\text{asset}=\mathbf{P}_{\text{asset}, \text{logQuote}} - \mathbf{P}_{\text{asset}, \text{lagQuote}}`$ for each $`\text{asset} \in \text{assets}`$
 
 At first glance, all of this may seem confusing and redundant, but in practice, since these are matrix operations, they can all be performed in a single step for all assets
 
