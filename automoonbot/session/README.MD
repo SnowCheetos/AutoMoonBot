@@ -73,7 +73,7 @@ $$
 \end{array}
 $$
 
-The first thing we need to do is update the prices with some data, note since $` \textbf{USD} `$ is in unit of the fiat currency itself, its price value will always be $1$, and since $`\log(1)=0`$, the $`\textbf{logQuote}`$ and $`\textbf{lagQuote}`$ attributes for $` \textbf{USD} `$ will stay constant at $`\textbf{0}`$
+The first thing we need to do is update the prices with some data, note since $`\textbf{ USD }`$ is in unit of the fiat currency itself, its price value will always be $1$, and since $`\log(1)=0`$, the $`\textbf{logQuote}`$ and $`\textbf{lagQuote}`$ attributes for $` \textbf{USD} `$ will stay constant at $`\textbf{0}`$
 
 Say $`\textbf{BTC}`$ last traded at $`\$50,000`$, $`\textbf{AMD}`$ at $`\$200`$, and $`\textbf{SPY}`$ at $`\$500`$, then
 
