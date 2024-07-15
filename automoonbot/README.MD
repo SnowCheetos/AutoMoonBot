@@ -1,5 +1,15 @@
-# Planned File Structure
+# Modules
 
+## Portfolio Modeling
+
+Please refer to [here](session/README.md) for details.
+
+## Data
+
+...
+
+
+## Planned File Structure
 ```plaintext
 backend/
     ├── data/
