@@ -1,6 +1,8 @@
 import numpy as np
+from enum import Enum
+from typing import List, Dict
 
-# TODO I need to spend some time thinking about how to do this...
+
 class Portfolio:
     """
     An object representing the portfolio of one session.
@@ -8,127 +10,125 @@ class Portfolio:
     High precision float ops are required.
     All floats use `np.float64` for numeric stability.
     All float ops use `numpy` for the same reason.
-    May move to Fortran to utilize higher precision floats than `np.float64`.
-
-    Positions (trades) represented as numpy array.
-    Rows are used to index a specific position.
-    Columns are used to index specific fields.
     """
 
-    # Row Indices
-    _balance_index: int = 0
-
-    # Col Indices
-    _cols: int = 8  # Total number of columns
-    _time_index: int = 0  # Float timestamp for creation time
-    _type_index: int = 1  # Type of position, e.g. currency
-    _subtype_index: int = 2  # Subtype of position, e.g. USD
-    _size_index: int = 3  # Position size, in ratio of portfolio
-    _entry_index: int = 4  # Asset price at entry
-    _margin_index: int = 5  # The amount of margin used, default 1
-    _exchange_index: int = 6  # Whether or not it can be traded currently
-    _expire_index: int = 7  # When the position expires, 0 for None
-
-    # Position Types
-    _currency: np.float64 = 0
-    _equity: np.float64 = 1
-    _crypto: np.float64 = 2
-    _options: np.float64 = 3
-    _commodities: np.float64 = 4
+    class ColAttr(Enum):
+        Value = 0
+        LogQuote = 1
+        LagQuote = 2
 
     def __init__(
         self,
-        timestamp: np.float64,
-        init_balance: np.float64 = 1.0,
-        max_positions: int = 100,
+        fiat: str,
+        tradables: List[str],
     ) -> None:
-        self._initialize_positions(timestamp, init_balance, max_positions)
+        self.index_map = {t: i for t, i in enumerate(tradables)}
+        self.fiat = self.index_map[fiat]
+        self._portfolio = self._reset_portfolio(self.fiat, len(tradables))
 
-    def reset(
+    def _reset_portfolio(
         self,
-        timestamp: np.float64,
-        init_balance: np.float64 = 1.0,
-        max_positions: int = 100,
-    ) -> None:
-        self._initialize_positions(timestamp, init_balance, max_positions)
-
-    def _initialize_positions(
-        self, timestamp: np.float64, init_balance: np.float64, max_positions: int
-    ) -> None:
-        self._positions = np.zeros(
-            (max_positions, self.__class__._cols),
+        fiat: int,
+        rows: int,
+    ) -> np.ndarray:
+        portfolio = np.zeros(
+            (
+                rows,
+                len(
+                    self.__class__.ColAttr,
+                ),
+            ),
             dtype=np.float64,
         )
-        self._open_slots = set(range(max_positions))
-        self._open_slots.pop(self.__class__._balance_index)
-        self._positions[
-            self.__class__._balance_index,
+        portfolio[
+            :,
             [
-                self.__class__._time_index,
-                self.__class__._type_index,
-                self.__class__._subtype_index,
-                self.__class__._size_index,
-                self.__class__._entry_index,
-                self.__class__._margin_index,
-                self.__class__._exchange_index,
-                self.__class__._expire_index,
+                self.__class__.ColAttr.LogQuote,
+                self.__class__.ColAttr.LagQuote,
             ],
-        ] = np.array(
-            [
-                timestamp,
-                self.__class__._currency,
-                np.float64(hash("usd")),
-                init_balance,
-                1.0,
-                1.0,
-                1.0,
-                0.0,
-            ],
-            dtype=np.float64,
-        )
+        ] = [1.0, 1.0]
+        portfolio[fiat, self.__class__.ColAttr.Value] = 1.0
+        return portfolio
 
-    def open_position(
+    def _reset_lag(self) -> None:
+        self._portfolio[
+            :,
+            self.__class__.ColAttr.LagQuote,
+        ] = self._portfolio[:, self.__class__.ColAttr.LogQuote]
+
+    @property
+    def U(
         self,
-        timestamp: np.float64,
-        ptype: np.float64,
-        subtype: np.float64,
-        size: np.float64,
-        entry: np.float64,
-        margin: np.float64 = 1.0,
-        exchange: np.float64 = 1.0,
-        expire: np.float64 = 0.0,
-    ) -> int:
-        if not self._open_slots:
-            return -1
-        slot = self._open_slots.pop()
-        self._positions[
-            slot,
-            [
-                self.__class__._time_index,
-                self.__class__._type_index,
-                self.__class__._subtype_index,
-                self.__class__._size_index,
-                self.__class__._entry_index,
-                self.__class__._exchange_index,
-                self.__class__._margin_index,
-                self.__class__._expire_index,
-            ],
-        ] = np.array(
-            [
-                timestamp,
-                ptype,
-                subtype,
-                size,
-                entry,
-                margin,
-                exchange,
-                expire,
-            ],
-            dtype=np.float64,
-        )
-        if ...: # TODO Checks if we have enough money first
-            pass
-        return slot
+        diag: bool = False,
+    ) -> np.ndarray:
+        u = np.exp(
+            np.diff(
+                self._portfolio[
+                    :,
+                    [
+                        self.__class__.ColAttr.LagQuote,
+                        self.__class__.ColAttr.LogQuote,
+                    ],
+                ]
+            )
+        )[:, 0]
+        self._reset_lag()
+        if diag:
+            return np.diag(u)
+        return u
 
-    def close_position(self):
-        pass
+    def update_quotes(
+        self,
+        quotes: Dict[str, float],
+    ) -> None:
+        keys = list(quotes.keys())
+        index = [self.index_map[key] for key in keys]
+        value = [np.log(quotes[key]) for key in keys]
+        self._reset_lag()
+        self._portfolio[
+            index,
+            self.__class__.ColAttr.LogQuote,
+        ] = value
+
+    def _value_transfer(
+        self,
+        src: List[int] | int,
+        tgt: List[int] | int,
+        size: np.ndarray | np.float64,
+    ) -> np.ndarray:
+        t = self.U(diag=True)
+        t[src, src] -= size
+        t[src, tgt] += size
+        return t
+
+    def _build_transaction(
+        self,
+        transactions: Dict[str, float],
+    ) -> np.ndarray:
+        src, tgt, size = [], [], []
+        for transaction in transactions:
+            if transaction["type"] == "buy":
+                src.append(self.fiat)
+                tgt.append(self.index_map[transaction["asset"]])
+                size.append(transaction["size"])
+            elif transaction["type"] == "sell":
+                src.append(self.index_map[transaction["asset"]])
+                tgt.append(self.fiat)
+                size.append(transaction["size"])
+        size = np.array(size, dtype=np.float64)
+        return self._value_transfer(src, tgt, size)
+
+    def apply_transaction(
+        self,
+        transaction: np.ndarray,
+    ) -> None:
+        self._portfolio[
+            :,
+            self.__class__.ColAttr.Value,
+        ] = (
+            self._portfolio[
+                :,
+                self.__class__.ColAttr.Value,
+            ]
+            @ transaction
+        )

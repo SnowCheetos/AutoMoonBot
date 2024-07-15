@@ -15,50 +15,246 @@ class Portfolio:
             name: {
                 "size": size,
                 "entry": price,
+                "price": price,
+                "exit": None,
             }
+        })
+
+    def update_position(self, name, price):
+        positions[name].update({
+            "price": price,
         })
 
     def close_position(self, name, price):
         position = positions.pop(name)
         position["exit"] = price
 
-    def position_value(self, name, price):
+    def position_value(self, name):
         position = positions.get(name)
-        return position["size"] * (price / position["entry"])
+        return position["size"] * (
+            position["price"] / position["entry"]
+        )
 ```
 
-This implementation would work fine for most cases. It creates an easy way to open, close positions, and to compute the current value of any open positios. However, if a large number of operations need to be performed simultaneously, the execution time grows linearly. Of course, modules suck as `multiprocessing` can be used to parallelize the operations, but it also adds a lot of complexity to the design and possibility for errors.
+This implementation would work fine for most cases. It creates an easy and intuitive way to open, close, and update positions. However, if a large number of operations need to be performed in quick succession or simultaneously (*which is the intention*), the performance can quickly become untenable. Of course, modules such as `multiprocessing` can be used to parallelize the operations, but it also adds a lot of complexity to the design and possibility for errors. This approach also comes with the added downside of needing to track and update a number of attributes for each position, which can get extremely tedious.
 
-One great property for the positions to have is additivity, such that opening a new position is simply represented as `portfolio += position`, and closing a position `portfolio -= position`. To achieve that, we can represent positions as tensors.
+## Matrix Representation
 
-## Tensor Representation
+Like many other things in life, a portfolio can be represented by matrices and would allow us to use matrix operations to execute transactions, which could bring significant benefits to the performance, especially when it comes to a large number of frequent transactions.
 
-Let's represent a single position as a matrix, where the row indicates the asset type (*e.g. equity, currency ...*), and columns representing the specific properties associated with the position (*e.g. size, value ...*). Then the entire portfolio can be expressed as an array of positions, or a 3D tensor with axes `[num_positions, position_types, position_attrs]`.
+For this purpose, we represent a portfolio as matrix $\mathbf{P} \in \mathbb{R}^{n \times m}$, where
 
-The cash balance of the portfolio can be represented as a `currency` position, specifically in `USD` for most viewers. To represent a trade, for instance 'buying $100 worth of TSLA stock', we first decompose it into two operations:
+- $n$ is the number of rows, each row represents an unique tradable asset, which also includes the fiat currency
 
-1. Take $100 off cash balance:
+- $m$ is the number of columns, each column represents an attribute for the asset
 
-    ```
-    t1 = empty_portfolio_tensor
-    t1[balance_row, USD, [size]] = [-100]
-    ```
+As an example, say we have assets `{USD, BTC, TSLA, SPY}`, where `USD` is the fiat currency. The row index for each asset follows the same order
 
-2. Convert the $100 to the equivalent amount of TSLA stock
-
-    ```
-    t2 = empty_portfolio_tensor
-    t2[some_row, TSLA, [size, value]] = [TSLA_price / 100, TSLA_price]
-    ```
-
-Then, the entire trade can simply be represented as
-
-```
-t = t1 + t2
+```json
+{USD: 0, BTC: 1, TSLA: 2, SPY: 3}
 ```
 
-Finally, to execute the trade
+We then define the following attributes for each asset
 
+- `value`: current value of the asset within the portfolio, in unit of fiat currency
+
+- `log_quote`: the most recent market price quote for the asset, in $\log$ scale
+
+- `lag_quote`: the previous market price quote for the asset, also in $\log$ scale
+
+The column attribute index also follows the same order
+
+```json
+{value: 0, log_quote: 1, lag_quote: 2}
 ```
-portfolio += t
+
+If we start with $\$1000$ and hold no other assets, then we can initialize the matrix $\mathbf{P}$ as follows
+
+$$
+\mathbf{P} = 
+\begin{bmatrix}
+1000 & 0 & 0 \\
+0 & 0 & 0 \\
+0 & 0 & 0 \\
+0 & 0 & 0 \\
+\end{bmatrix}
+$$
+
+The first thing we need to do is update the prices with some data, note since `USD` is in unit of the fiat currency itself, its price value will always be $1$, and since $\log(1)=0$, the `log_quote` and `lag_quote` attributes for `USD` will stay constant at $0$
+
+Say `BTC` last traded at $\$50,000$, `TSLA` at $\$200$, and `SPY` at $\$500$, then
+
+$$
+\mathbf{P} = 
+\begin{bmatrix}
+1000 & 0 & 0 \\
+0 & \log(50000) & 0 \\
+0 & \log(200) & 0 \\
+0 & \log(500) & 0 \\
+\end{bmatrix}
+$$
+
+If we assume that we can fetch new data at each time step $t$, then we can write the data update loop as
+
+$\textbf{for} \, t=0 \, ... \, T \, \textbf{do}$ \
+$\quad \textbf{p} \leftarrow \textit{data}(t)$ \
+$\quad \textbf{for} \, i=1 \, ... \, 3 \, \textbf{do}$ \
+$\qquad \mathbf{P_{i, 2}} \leftarrow \mathbf{P_{i, 1}}$ \
+$\qquad \mathbf{P_{i, 1}}  \leftarrow \log(\textbf{p}_i)$ \
+$\quad \textbf{end for}$ \
+$\textbf{end for}$
+
+Or in other words, at each time step $t$, we get the prices for each asset, and we first set the `lag_quote` to be the previous `log_quote`, then we set `log_quote` to the current $\log$ price for each asset. Say after one time step, `BTC` trades at $\$45,000$, `TSLA` at $\$205$, and `SPY` at $\$510$, then
+
+$$
+\mathbf{P} = 
+\begin{bmatrix}
+1000 & 0 & 0 \\
+0 & \log(45000) & \log(50000) \\
+0 & \log(205) & \log(200) \\
+0 & \log(510) & \log(500) \\
+\end{bmatrix}
+$$
+
+After at least 1 time step from initialization, we can compute the update matrix as
+
+$$
+\mathbf{U_{i}} = \mathbf{P_{i, 1}} - \mathbf{P_{i, 2}}
+$$
+
+but for purposes we'll soon get into, as a diagnoal matrix, where each diagnoal value represents the asset log-return for the time step
+
+$$
+\mathbf{U} = 
+\begin{bmatrix}
+1 & 0 & 0 & 0 \\
+0 & \log(45000) - \log(50000) & 0 & 0 \\
+0 & 0 & \log(205) - \log(200) & 0 \\
+0 & 0 & 0 &\log(510) - \log(500) \\
+\end{bmatrix}
+$$
+
+At first glance, all of this may seem confusing and redundant, but in practice, since these are matrix operations, they can all be performed in a single step for all assets
+
+```python
+import numpy as np
+
+quotes = get_market_prices(...)
+
+P[:, lag_quote_index] = P[:, log_quote_index]
+P[:, log_quote_index] = np.log(quotes)
+U = np.diag(np.diff(P[:, [lag_quote_index, log_quote_index]]))
 ```
+
+Now comes the best part. Transactions such as buying or selling assets can also be expressed as a matrix $\mathbf{T} \in \mathbb{R}^{n \times n}$, where each row represents the source asset, and each column represents the target asset. Say we want to buy $\$500$ ($50\%$ *of the cash balance*) worth of `TSLA`, then the transaction matrix can be written as
+
+$$
+\mathbf{T} = 
+\begin{bmatrix}
+1-500/1000 & 0 & 500/1000 & 0 \\
+0 & 1 & 0 & 0 \\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1 \\
+\end{bmatrix}
+$$
+
+Once the transaction matrix is constructed, it can be executed by multiplying it to the value column of the portfolio matrix
+
+$$
+\mathbf{P_v} = 
+\begin{bmatrix}
+1000 \\
+0 \\
+0 \\
+0 \\
+\end{bmatrix}
+\begin{bmatrix}
+-0.5 & 0 & 0.5 & 0 \\
+0 & 1 & 0 & 0 \\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1 \\
+\end{bmatrix}
+=
+\begin{bmatrix}
+500 \\
+0 \\
+500 \\
+0 \\
+\end{bmatrix}
+$$
+
+Simplying by multiplying the portfolio by the transaction matrix, the portfolio updated the correct values for both `USD` and `TSLA`. Even better than that, we can hold multiple transactions in a single matrix for it to be executed at once. For example, if we then want to buy $\$100$ worth of `BTC` and sell $\$200$ worth of `TSLA`
+
+$$
+\mathbf{T} = 
+\begin{bmatrix}
+1 - 100/500 & 100/500 & 0 & 0 \\
+0 & 1 & 0 & 0 \\
+200/500 & 0 & 1 - 200/500 & 0 \\
+0 & 0 & 0 & 1 \\
+\end{bmatrix}
+$$
+
+Then after executating the transaction matrix
+
+$$
+\mathbf{P_v} = 
+\begin{bmatrix}
+500 \\
+0 \\
+500 \\
+0 \\
+\end{bmatrix}
+
+\begin{bmatrix}
+1 - 100/500 & 100/500 & 0 & 0 \\
+0 & 1 & 0 & 0 \\
+200/500 & 0 & 1 - 200/500 & 0 \\
+0 & 0 & 0 & 1 \\
+\end{bmatrix}
+=
+\begin{bmatrix}
+600 \\
+100 \\
+300 \\
+0 \\
+\end{bmatrix}
+$$
+
+As a added bonus, instead of manually computing the position values using initial entry price and current price, we can use the update matrix $\mathbf{U}$ (*after taking the exponent to convert it from log scale to standard scale*) we computed earlier directly, by performing element-wise-multiplication to the transaction matrix first
+
+$$
+\mathbf{T_U} = \mathbf{T} \circ \exp(\mathbf{U})
+$$
+
+Now if $\mathbf{T_U}$ is executed, the transactions will be performed, and the values for all assets will automatically be updated as well. At any given time, if we want to obtain the total value of our portfolio, we simply need to sum the value column from $\mathbf{P}$.
+
+$$
+\mathbf{V} = \sum_{i=0}^{n} \mathbf{P_{i, 0}}
+$$
+
+When working with the transaction matrix, it's better to think of it as a '*transfer of value*' rather than a financial transaction. Since each row represents the transaction source, and each column represents the target, it can be interpreted as $X\%$ of the cash value was taken away from `source` and added to `target`. To simplify the unit conversions, it's ideal to work with a dimensionless value instead of dollars, or
+
+$$
+\mathbf{P} = 
+\begin{bmatrix}
+1 & 0 & 0 \\
+0 & 0 & 0 \\
+0 & 0 & 0 \\
+0 & 0 & 0 \\
+\end{bmatrix}
+$$
+
+$$
+\mathbf{T} = 
+\begin{bmatrix}
+1-0.5 & 0 & 0.5 & 0 \\
+0 & 1 & 0 & 0 \\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1 \\
+\end{bmatrix}
+$$
+
+Now it can be thought of as *0.5 units of value was transferred from USD to TSLA*. To convert it back to the fiat unit, we simply multiply the values by the initial cash balance.
+
+This set of tools provide very powerful abstractions to portfolio modeling, allowing very efficient executions of transactions, price and value updates to be done.
