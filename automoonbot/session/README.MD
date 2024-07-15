@@ -125,9 +125,7 @@ $$
 0 & 0 & \log(205) - \log(200) & 0 \\
 0 & 0 & 0 &\log(510) - \log(500) \\
 \end{bmatrix} \\
-\\
 &\text{Such that for each asset} \\
-\\
 &\mathbf{U}_\text{asset}=\mathbf{P}_{\text{asset}, \text{logQuote}} - \mathbf{P}_{\text{asset}, \text{lagQuote}} \\
 \end{aligned}
 $$
