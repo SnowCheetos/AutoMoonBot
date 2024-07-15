@@ -42,7 +42,7 @@ This implementation would work fine for most cases. It creates an easy and intui
 
 Like many other things in life, a portfolio can be represented by matrices and would allow us to use matrix operations to execute transactions, which could bring significant benefits to the performance, especially when it comes to a large number of frequent transactions.
 
-For this purpose, we represent a portfolio as matrix $` \mathbf{P} \in \mathbb{R}^{n \times m} `$, where
+For this purpose, we represent a portfolio as matrix $`\mathbf{P} \in \mathbb{R}^{n \times m}`$, where
 
 - $n$ is the number of rows, each row represents an unique tradable asset, which also includes the fiat currency
 
@@ -70,7 +70,7 @@ The column attribute index also follows the same order
 
 If we start with $\$1000$ and hold no other assets, then we can initialize the matrix $\mathbf{P}$ as follows
 
-```math
+$$
 \mathbf{P} = 
 \begin{bmatrix}
 1000 & 0 & 0 \\
@@ -78,7 +78,7 @@ If we start with $\$1000$ and hold no other assets, then we can initialize the m
 0 & 0 & 0 \\
 0 & 0 & 0 \\
 \end{bmatrix}
-```
+$$
 
 The first thing we need to do is update the prices with some data, note since `USD` is in unit of the fiat currency itself, its price value will always be $1$, and since $\log(1)=0$, the `log_quote` and `lag_quote` attributes for `USD` will stay constant at $0$
 
