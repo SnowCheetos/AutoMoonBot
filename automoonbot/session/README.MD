@@ -89,6 +89,7 @@ $$
 
 If we assume that we can fetch new data at each time step $t$, then we can write the data update loop as
 
+
 $$
 \begin{aligned}
 & \textbf{for} \, t \in \tau \, \textbf{do} \\
@@ -100,6 +101,7 @@ $$
 & \textbf{end for}
 \end{aligned}
 $$
+
 
 Or in other words, at each time step $t$, we get the prices for each asset, and we first set the $`\textbf{lagQuote}`$ to be the previous $`\textbf{logQuote}`$, then we set $`\textbf{logQuote}`$ to the current $`\log`$ price for each asset. Say after one time step, $`\textbf{BTC}`$ trades at $`\$45,000`$, $`\textbf{AMD}`$ at $`\$205`$, and $`\textbf{SPY}`$ at $`\$510`$, then
 
@@ -114,10 +116,10 @@ $$
 $$
 
 After at least 1 time step from initialization, we can compute the update matrix as
+
 $$
 \begin{aligned}
-&\mathbf{U} = 
-\begin{bmatrix}
+&\mathbf{U}=\begin{bmatrix}
 1 & 0 & 0 & 0 \\
 0 & \log(45000) - \log(50000) & 0 & 0 \\
 0 & 0 & \log(205) - \log(200) & 0 \\
@@ -126,7 +128,7 @@ $$
 \\
 &\text{Such that for each asset} \\
 \\
-&\mathbf{U}_\text{asset} = \mathbf{P}_{\text{asset}, \text{logQuote}} - \mathbf{P}_{\text{asset}, \text{lagQuote}}
+&\mathbf{U}_\text{asset}=\mathbf{P}_{\text{asset}, \text{logQuote}} - \mathbf{P}_{\text{asset}, \text{lagQuote}} \\
 \end{aligned}
 $$
 
