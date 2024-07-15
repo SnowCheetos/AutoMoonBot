@@ -48,7 +48,7 @@ For this purpose, we represent a portfolio as matrix $`\mathbf{P} \in \mathbb{R}
 
 - $m$ is the number of columns, each column represents an attribute for the asset
 
-As an example, say we want to follow assets $`\textbf{USD}`$, $`\textbf{BTC}`$, $`\textbf{AMD}`$, $`\textbf{SPY}`$, where $`\textbf{USD}`$ is the fiat currency. The row index for each asset follows the same order. We then define the following attributes for each asset
+As an example, say we want to follow assets $`\textbf{ USD }`$, $`\textbf{BTC}`$, $`\textbf{AMD}`$, $`\textbf{SPY}`$, where $`\textbf{ USD }`$ is the fiat currency. The row index for each asset follows the same order. We then define the following attributes for each asset
 
 1. $\textbf{value}$
     - Current value of the asset within the portfolio, in unit of fiat currency.
@@ -64,16 +64,15 @@ If we start with $`\$1000`$ and hold no other assets, then we can initialize the
 $$
 \mathbf{P}= 
 \begin{array}{c|ccc}
-&\text{value}&\log(\text{p}_t)&\log(\text{p}_{t-1}) \\
-\hline
-\text{USD} & 1000 & 0 & 0 \\
+&\text{value}&\log(\text{p}_t)&\log(\text{p}_{t-1})\\
+\hline\text{USD} & 1000 & 0 & 0 \\
 \text{BTC} & 0 & 0 & 0 \\
 \text{AMD} & 0 & 0 & 0 \\
 \text{SPY} & 0 & 0 & 0 \\
 \end{array}
 $$
 
-The first thing we need to do is update the prices with some data, note since $`\textbf{USD}`$ is in unit of the fiat currency itself, its price value will always be $1$, and since $`\log(1)=0`$, the $`\textbf{logQuote}`$ and $`\textbf{lagQuote}`$ attributes for $`\textbf{USD}`$ will stay constant at $`\textbf{0}`$
+The first thing we need to do is update the prices with some data, note since $`\textbf{ USD }`$ is in unit of the fiat currency itself, its price value will always be $1$, and since $`\log(1)=0`$, the $`\textbf{logQuote}`$ and $`\textbf{lagQuote}`$ attributes for $`\textbf{ USD }`$ will stay constant at $`\textbf{0}`$
 
 Say $`\textbf{BTC}`$ last traded at $`\$50,000`$, $`\textbf{AMD}`$ at $`\$200`$, and $`\textbf{SPY}`$ at $`\$500`$, then
 
@@ -177,7 +176,7 @@ $$
 \end{bmatrix}
 $$
 
-Simplying by multiplying the portfolio by the transaction matrix, the portfolio updated the correct values for both $`\textbf{USD}`$ and $`\textbf{AMD}`$. Even better than that, we can hold multiple transactions in a single matrix for it to be executed at once. For example, if we then want to buy $`\$100`$ worth of $`\textbf{BTC}`$ and sell $`\$200`$ worth of $`\textbf{AMD}`$
+Simplying by multiplying the portfolio by the transaction matrix, the portfolio updated the correct values for both $`\textbf{ USD }`$ and $`\textbf{AMD}`$. Even better than that, we can hold multiple transactions in a single matrix for it to be executed at once. For example, if we then want to buy $`\$100`$ worth of $`\textbf{BTC}`$ and sell $`\$200`$ worth of $`\textbf{AMD}`$
 
 $$
 \mathbf{T} = 
@@ -250,4 +249,4 @@ $$
 \end{aligned}
 $$
 
-Now it can be thought of as $\textbf{0.5}$ units of $\textbf{value}$ was transferred from $`\textbf{USD}`$ to $`\textbf{AMD}`$. To convert it back to the fiat unit, we simply multiply the values by the initial cash balance. This set of tools provide very powerful abstractions to portfolio modeling, allowing very efficient executions of transactions, price and value updates to be done.
+Now it can be thought of as $\textbf{0.5}$ units of $\textbf{value}$ was transferred from $`\textbf{ USD }`$ to $`\textbf{AMD}`$. To convert it back to the fiat unit, we simply multiply the values by the initial cash balance. This set of tools provide very powerful abstractions to portfolio modeling, allowing very efficient executions of transactions, price and value updates to be done.
