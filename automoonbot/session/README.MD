@@ -163,7 +163,7 @@ Once the transaction matrix is constructed, it can be executed by multiplying it
 $$
 \mathbf{P_v} = 
 \begin{bmatrix}
-1000\\0\\0\\0
+1000\\0\\0\\0\\
 \end{bmatrix}
 \begin{bmatrix}
 -0.5 & 0 & 0.5 & 0 \\
@@ -172,7 +172,7 @@ $$
 0 & 0 & 0 & 1 \\
 \end{bmatrix}=
 \begin{bmatrix}
-500\\0\\500\\0
+500\\0\\500\\0\\
 \end{bmatrix}
 $$
 
