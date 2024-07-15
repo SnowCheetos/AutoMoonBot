@@ -68,7 +68,7 @@ The column attribute index also follows the same order
 {value: 0, log_quote: 1, lag_quote: 2}
 ```
 
-If we start with $\$1000$ and hold no other assets, then we can initialize the matrix $\mathbf{P}$ as follows
+If we start with $`\$1000`$ and hold no other assets, then we can initialize the matrix $\mathbf{P}$ as follows
 
 $$
 \mathbf{P} = 
@@ -80,9 +80,9 @@ $$
 \end{bmatrix}
 $$
 
-The first thing we need to do is update the prices with some data, note since `USD` is in unit of the fiat currency itself, its price value will always be $1$, and since $\log(1)=0$, the `log_quote` and `lag_quote` attributes for `USD` will stay constant at $0$
+The first thing we need to do is update the prices with some data, note since `USD` is in unit of the fiat currency itself, its price value will always be $1$, and since $`\log(1)=0`$, the `log_quote` and `lag_quote` attributes for `USD` will stay constant at $`0`$
 
-Say `BTC` last traded at $\$50,000$, `TSLA` at $\$200$, and `SPY` at $\$500$, then
+Say `BTC` last traded at $`\$50,000`$, `TSLA` at $`\$200`$, and `SPY` at $`\$500`$, then
 
 $$
 \mathbf{P} = 
@@ -146,7 +146,7 @@ P[:, log_quote_index] = np.log(quotes)
 U = np.diag(np.diff(P[:, [lag_quote_index, log_quote_index]]))
 ```
 
-Now comes the best part. Transactions such as buying or selling assets can also be expressed as a matrix $\mathbf{T} \in \mathbb{R}^{n \times n}$, where each row represents the source asset, and each column represents the target asset. Say we want to buy $`\$500`$ ($50\%$ *of the cash balance*) worth of `TSLA`, then the transaction matrix can be written as
+Now comes the best part. Transactions such as buying or selling assets can also be expressed as a matrix $\mathbf{T} \in \mathbb{R}^{n \times n}$, where each row represents the source asset, and each column represents the target asset. Say we want to buy $`\$500`$ (*or* $50\%$ *of the cash balance*) worth of `TSLA`, then the transaction matrix can be written as
 
 $$
 \mathbf{T} = 
@@ -183,7 +183,7 @@ $$
 \end{bmatrix}
 $$
 
-Simplying by multiplying the portfolio by the transaction matrix, the portfolio updated the correct values for both `USD` and `TSLA`. Even better than that, we can hold multiple transactions in a single matrix for it to be executed at once. For example, if we then want to buy $\$100$ worth of `BTC` and sell $\$200$ worth of `TSLA`
+Simplying by multiplying the portfolio by the transaction matrix, the portfolio updated the correct values for both `USD` and `TSLA`. Even better than that, we can hold multiple transactions in a single matrix for it to be executed at once. For example, if we then want to buy $`\$100`$ worth of `BTC` and sell $`\$200`$ worth of `TSLA`
 
 $$
 \mathbf{T} = 
