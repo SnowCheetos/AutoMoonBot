@@ -4,3 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+petgraph = "0.6.5"
+pyo3 = "0.22.1"
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.maturin]
+name = "moonrs"

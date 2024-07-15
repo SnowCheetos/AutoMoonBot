@@ -1,0 +1,14 @@
+/Users/casssheng/Documents/AutoMoonBot/moonrs/target/debug/deps/libpyo3_build_config-f6c6baaeccb1ee09.rmeta: /Users/casssheng/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.22.1/src/lib.rs /Users/casssheng/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.22.1/src/errors.rs /Users/casssheng/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.22.1/src/impl_.rs /Users/casssheng/Documents/AutoMoonBot/moonrs/target/debug/build/pyo3-build-config-ca8e76b9673fa82e/out/pyo3-build-config-file.txt /Users/casssheng/Documents/AutoMoonBot/moonrs/target/debug/build/pyo3-build-config-ca8e76b9673fa82e/out/pyo3-build-config.txt
+
+/Users/casssheng/Documents/AutoMoonBot/moonrs/target/debug/deps/libpyo3_build_config-f6c6baaeccb1ee09.rlib: /Users/casssheng/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.22.1/src/lib.rs /Users/casssheng/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.22.1/src/errors.rs /Users/casssheng/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.22.1/src/impl_.rs /Users/casssheng/Documents/AutoMoonBot/moonrs/target/debug/build/pyo3-build-config-ca8e76b9673fa82e/out/pyo3-build-config-file.txt /Users/casssheng/Documents/AutoMoonBot/moonrs/target/debug/build/pyo3-build-config-ca8e76b9673fa82e/out/pyo3-build-config.txt
+
+/Users/casssheng/Documents/AutoMoonBot/moonrs/target/debug/deps/pyo3_build_config-f6c6baaeccb1ee09.d: /Users/casssheng/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.22.1/src/lib.rs /Users/casssheng/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.22.1/src/errors.rs /Users/casssheng/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.22.1/src/impl_.rs /Users/casssheng/Documents/AutoMoonBot/moonrs/target/debug/build/pyo3-build-config-ca8e76b9673fa82e/out/pyo3-build-config-file.txt /Users/casssheng/Documents/AutoMoonBot/moonrs/target/debug/build/pyo3-build-config-ca8e76b9673fa82e/out/pyo3-build-config.txt
+
+/Users/casssheng/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.22.1/src/lib.rs:
+/Users/casssheng/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.22.1/src/errors.rs:
+/Users/casssheng/.cargo/registry/src/index.crates.io-6f17d22bba15001f/pyo3-build-config-0.22.1/src/impl_.rs:
+/Users/casssheng/Documents/AutoMoonBot/moonrs/target/debug/build/pyo3-build-config-ca8e76b9673fa82e/out/pyo3-build-config-file.txt:
+/Users/casssheng/Documents/AutoMoonBot/moonrs/target/debug/build/pyo3-build-config-ca8e76b9673fa82e/out/pyo3-build-config.txt:
+
+# env-dep:CARGO_PKG_VERSION=0.22.1
+# env-dep:OUT_DIR=/Users/casssheng/Documents/AutoMoonBot/moonrs/target/debug/build/pyo3-build-config-ca8e76b9673fa82e/out
