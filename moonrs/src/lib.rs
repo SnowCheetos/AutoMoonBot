@@ -2,6 +2,7 @@ pub mod graph;
 pub mod nodes;
 pub mod edges;
 pub mod utils;
+pub mod data;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right
