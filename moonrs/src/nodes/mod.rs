@@ -2,21 +2,27 @@ pub mod asset;
 pub mod derivative;
 pub mod entity;
 pub mod fixed;
-pub mod node;
 pub mod temporal;
 pub mod tradable;
+pub mod dynamic;
+pub mod statics;
+
+use std::hash::Hash;
 
 /*
 News and sentiments
 */
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
-pub struct Article {}
+pub struct Author {}
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub struct Publisher {}
 
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
+pub struct Article {}
+
 /*
-Economic entities
+Commercial entities
 */
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub struct Company {}
@@ -49,7 +55,7 @@ pub struct Index {}
 pub struct Equity {}
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
-pub struct ETF {}
+pub struct ETFund {}
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub struct Commodity {}

@@ -1,7 +1,7 @@
 use petgraph::stable_graph::{EdgeIndex, NodeIndex, StableDiGraph};
 use std::collections::{HashMap, HashSet};
 
-use crate::{edges::edge::StaticEdge, nodes::node::StaticNode};
+use crate::{edges::edge::StaticEdge, nodes::statics::StaticNode};
 
 #[derive(Default)]
 pub struct HeteroGraph<N, E> {

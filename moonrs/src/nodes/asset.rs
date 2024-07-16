@@ -1,4 +1,4 @@
-use super::node::DynamicNode;
+use super::{dynamic::DynamicNode, *};
 
 pub trait Asset: DynamicNode {
     fn symbol(&self) -> String;
@@ -7,8 +7,3 @@ pub trait Asset: DynamicNode {
     fn quote(&self, aggr: Option<String>) -> f64;
 }
 
-#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
-pub struct Equity {}
-
-#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
-pub struct Bond {}

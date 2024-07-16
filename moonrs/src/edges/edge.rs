@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use crate::nodes::node::StaticNode;
+use crate::nodes::statics::StaticNode;
 
 pub trait StaticEdge: Eq + Hash + Clone + Send + Sync + Copy {
     type Source: StaticNode;
