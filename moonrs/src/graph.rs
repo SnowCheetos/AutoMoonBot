@@ -1,7 +1,7 @@
 use petgraph::stable_graph::{EdgeIndex, NodeIndex, StableDiGraph};
 use std::collections::{HashMap, HashSet};
 
-use crate::{edge::StaticEdge, node::StaticNode};
+use crate::{edges::edge::StaticEdge, nodes::node::StaticNode};
 
 #[derive(Default)]
 pub struct HeteroGraph<N, E> {
@@ -62,10 +62,4 @@ where
             }
         }
     }
-
-    fn compute_edge(&self, src: NodeIndex, tgt: NodeIndex) {
-
-    }
-
-    fn compute_edges(&self, src: NodeIndex) {}
 }
