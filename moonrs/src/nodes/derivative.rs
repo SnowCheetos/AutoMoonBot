@@ -1,5 +1,5 @@
-use crate::nodes::{asset::Asset, temporal::Temporal};
+// use crate::nodes::{asset::Asset, temporal::Temporal};
 
-pub trait Derivative: Temporal {
-    fn spot(&self);
-}
+// pub trait Derivative: Temporal {
+//     fn spot(&self);
+// }

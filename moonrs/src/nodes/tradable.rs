@@ -1,5 +1,5 @@
 use crate::nodes::{asset::Asset, *};
 
-pub trait Tradable: Asset {
-    fn exchanges(&self);
-}
+// pub trait Tradable: Asset {
+//     fn exchanges(&self);
+// }
