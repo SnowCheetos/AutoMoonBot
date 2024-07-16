@@ -115,6 +115,7 @@ dependencies = [
 name = "moonrs"
 version = "0.1.0"
 dependencies = [
+ "indexmap",
  "nalgebra 0.33.0",
  "petgraph",
  "pyo3",

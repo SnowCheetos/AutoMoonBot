@@ -1,4 +1,4 @@
-pub mod history;
+pub mod buffer;
 pub mod queue;
 pub mod aggregate;
 

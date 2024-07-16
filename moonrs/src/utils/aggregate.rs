@@ -44,6 +44,10 @@ impl Aggregate {
         self.adjusted
     }
 
+    pub fn vec4(&self) -> Vector4<f64> {
+        self.prices
+    }
+
     pub fn open(&self) -> f64 {
         self.prices[0]
     }
