@@ -1,7 +1,5 @@
-use std::time::Duration;
-
-use super::temporal::Temporal;
+use crate::nodes::{temporal::Temporal, *};
 
 pub trait Fixed: Temporal {
-    fn rate(&self, timespan: Duration) -> f64;
+    fn coupon(&self, timespan: Option<Duration>) -> f64;
 }

@@ -5,6 +5,8 @@ edition = "2021"
 
 [dependencies]
 petgraph = "0.6.5"
+nalgebra = "0.33.0"
+statrs = "0.17.1"
 pyo3 = "0.22.1"
 
 [lib]

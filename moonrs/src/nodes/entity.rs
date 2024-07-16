@@ -1,6 +1,4 @@
-use std::time::Instant;
-
-use super::statics::StaticNode;
+use crate::nodes::{statics::StaticNode, *};
 
 pub trait Entity: StaticNode {
     fn name(&self) -> String;

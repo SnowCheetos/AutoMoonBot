@@ -1,6 +1,5 @@
-use super::{asset::Asset, temporal::Temporal};
+use crate::nodes::{asset::Asset, temporal::Temporal};
 
 pub trait Derivative: Temporal {
-    type Underlying: Asset;
+    fn underlying(&self);
 }
-

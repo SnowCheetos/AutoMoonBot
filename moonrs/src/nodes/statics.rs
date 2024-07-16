@@ -1,61 +1,113 @@
-use super::*;
+use crate::nodes::*;
 
-pub trait StaticNode: Eq + Hash + Clone + Send + Sync + Copy {
-    fn params(&self);
+pub trait StaticNode: Clone + Send + Sync {
+    fn name(&self) -> &'static str;
 }
 
 impl StaticNode for Author {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.name
+    }
 }
 
 impl StaticNode for Publisher {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.name
+    }
 }
 
 impl StaticNode for Article {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.title
+    }
 }
 
 impl StaticNode for Company {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.name
+    }
 }
 
 impl StaticNode for Sector {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.name
+    }
 }
 
 impl StaticNode for Industry {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.name
+    }
 }
 
 impl StaticNode for Exchange {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.name
+    }
 }
 
 impl StaticNode for Currency {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.symbol
+    }
 }
 
 impl StaticNode for Bond {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.symbol
+    }
+}
+
+impl StaticNode for TreasuryBill {
+    fn name(&self) -> &'static str {
+        self.symbol
+    }
+}
+
+impl StaticNode for Index {
+    fn name(&self) -> &'static str {
+        self.symbol
+    }
+}
+
+impl StaticNode for MutualFund {
+    fn name(&self) -> &'static str {
+        self.symbol
+    }
 }
 
 impl StaticNode for ETFund {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.symbol
+    }
+}
+
+impl StaticNode for Equity {
+    fn name(&self) -> &'static str {
+        self.symbol
+    }
 }
 
 impl StaticNode for Commodity {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.symbol
+    }
 }
 
 impl StaticNode for CryptoCurrency {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.symbol
+    }
 }
 
 impl StaticNode for Options {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.symbol
+    }
 }
 
 impl StaticNode for Futures {
-    fn params(&self) {}
+    fn name(&self) -> &'static str {
+        self.symbol
+    }
 }

@@ -1,1 +1,4 @@
-pub mod edge;
+pub mod dynamic;
+pub mod statics;
+
+use std::hash::Hash;

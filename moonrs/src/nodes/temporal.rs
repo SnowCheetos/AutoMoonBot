@@ -1,6 +1,4 @@
-use std::time::Instant;
-
-use super::tradable::Tradable;
+use crate::nodes::{tradable::Tradable, *};
 
 pub trait Temporal: Tradable {
     fn expiration(&self) -> Instant;
