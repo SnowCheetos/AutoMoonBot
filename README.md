@@ -6,7 +6,7 @@ This repository contains code and resources for automated algorithmic trading im
 
 # Table of Contents
 
-Please note that this project is still super-pre-alpha, so hold your bags for now...
+**Please note that this project is still super-pre-alpha, so hold your bags for now...**
 
 - [`Introduction`](#introduction)
 

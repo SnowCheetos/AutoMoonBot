@@ -32,7 +32,7 @@ where
     }
 
     pub fn add_node(&mut self, node: N) {
-        let name = node.name();
+        let name = node.id();
         let index = self.graph.add_node(node);
         self.node_memo.entry(name).or_default().insert(index);
     }
@@ -45,10 +45,10 @@ where
 
     pub fn rem_node(&mut self, index: NodeIndex) {
         if let Some(node) = self.graph.remove_node(index) {
-            if let Some(indices) = self.node_memo.get_mut(&node.name()) {
+            if let Some(indices) = self.node_memo.get_mut(&node.id()) {
                 indices.remove(&index);
                 if indices.is_empty() {
-                    self.node_memo.remove(&node.name());
+                    self.node_memo.remove(&node.id());
                 }
             }
         }

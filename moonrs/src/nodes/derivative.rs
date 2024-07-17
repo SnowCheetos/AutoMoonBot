@@ -1,5 +1,16 @@
-use crate::nodes::{asset::Asset, temporal::Temporal};
+use crate::nodes::{ephemeral::Ephemeral, *};
 
-pub trait Derivative: Temporal {
+pub trait Derivative<T>: Ephemeral<T>
+where
+    T: Clone + IntoIterator<Item = f64>,
+{
     fn spot(&self);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test() {}
 }
