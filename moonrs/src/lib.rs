@@ -4,6 +4,8 @@ pub mod graph;
 pub mod nodes;
 pub mod utils;
 
+#[macro_use(defer)]
+extern crate scopeguard;
 extern crate nalgebra as na;
 
 pub fn add(left: usize, right: usize) -> usize {

@@ -107,7 +107,7 @@ impl Aggregate {
     }
 
     pub fn amean(&self) -> f64 {
-        self.to_vec().as_slice()[0..4].mean()
+        self.to_vec().as_slice().mean()
     }
 
     pub fn gmean(&self) -> f64 {
@@ -116,6 +116,10 @@ impl Aggregate {
 
     pub fn hmean(&self) -> f64 {
         self.to_vec().as_slice()[0..4].harmonic_mean()
+    }
+
+    pub fn qmean(&self) -> f64 {
+        self.to_vec().as_slice()[0..4].quadratic_mean()
     }
 
     pub fn std(&self) -> f64 {
@@ -130,7 +134,6 @@ impl Aggregate {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{cmp, time::{Duration, Instant}};
 
     #[test]
     fn test_aggregate_new() {
@@ -179,6 +182,22 @@ mod tests {
         );
         let mean = aggregate.amean();
         assert_eq!(mean, 101.25f64);
+    }
+
+    #[test]
+    fn test_aggregate_qmean() {
+        let aggregate = Aggregate::new(
+            Instant::now(),
+            Duration::new(60, 0),
+            true,
+            100.0,
+            110.0,
+            90.0,
+            105.0,
+            1000.0,
+        );
+        let mean = aggregate.qmean();
+        assert!((mean - 101.51970252123476f64).abs() < 1e-10);
     }
 
     #[test]
@@ -242,6 +261,6 @@ mod tests {
             1000.0,
         );
         let var = aggregate.var();
-        assert!((var - 54.6875f64).abs() < 1e-4);
+        assert!((var - 54.6875f64).abs() < 1e-10);
     }
 }
