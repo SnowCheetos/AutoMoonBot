@@ -119,18 +119,18 @@ impl Aggregate {
     }
 
     pub fn std(&self) -> f64 {
-        self.to_vec().as_slice()[0..4].std_dev()
+        self.to_vec().as_slice()[0..4].population_std_dev()
     }
 
     pub fn var(&self) -> f64 {
-        self.to_vec().as_slice()[0..4].variance()
+        self.to_vec().as_slice()[0..4].population_variance()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::{Duration, Instant};
+    use std::{cmp, time::{Duration, Instant}};
 
     #[test]
     fn test_aggregate_new() {
@@ -225,15 +225,8 @@ mod tests {
             105.0,
             1000.0,
         );
-        let cmp_std = aggregate.std();
-        let mnl_std = ((f64::powi(100.0 - 101.25, 2)
-            + f64::powi(110.0 - 101.25, 2)
-            + f64::powi(90.0 - 101.25, 2)
-            + f64::powi(105.0 - 101.25, 2))
-            / 4f64)
-            .sqrt();
-
-        assert!((cmp_std - mnl_std).abs() < 1e-4);
+        let std = aggregate.std();
+        assert!((std - 7.39509972887452f64).abs() < 1e-10);
     }
 
     #[test]
@@ -249,6 +242,6 @@ mod tests {
             1000.0,
         );
         let var = aggregate.var();
-        assert!((var - 72.9167).abs() < 1e-4);
+        assert!((var - 54.6875f64).abs() < 1e-4);
     }
 }
