@@ -1,26 +1,44 @@
+use crate::data::{aggregate::*, buffer::*, *};
 use indexmap::IndexMap;
-use std::{collections::VecDeque, hash::Hash};
+use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
-pub struct FixedSizeDeque<T, Ix> {
+pub struct TemporalDeque<T> {
     deque: VecDeque<T>,
-    index: IndexMap<Ix, usize>,
+    index: IndexMap<Instant, usize>,
     capacity: usize,
 }
 
-impl<T, Ix> FixedSizeDeque<T, Ix>
+impl<T> DataBuffer for TemporalDeque<T>
 where
-    Ix: Hash + Eq + PartialOrd,
+    T: Clone,
 {
-    pub fn new(capacity: usize) -> Self {
-        FixedSizeDeque {
+    fn new(capacity: usize) -> Self {
+        TemporalDeque {
             index: IndexMap::with_capacity(capacity),
             deque: VecDeque::with_capacity(capacity),
             capacity,
         }
     }
 
-    pub fn push(&mut self, id: Ix, item: T) -> bool {
+    fn len(&self) -> usize {
+        self.deque.len()
+    }
+
+    fn empty(&self) -> bool {
+        self.deque.is_empty()
+    }
+
+    fn clear(&mut self) {
+        self.deque.clear()
+    }
+}
+
+impl<T> RingIndexBuffer<Instant, T> for TemporalDeque<T>
+where
+    T: Clone,
+{
+    fn push(&mut self, id: Instant, item: T) -> bool {
         if self.index.contains_key(&id) {
             return false;
         }
@@ -33,23 +51,19 @@ where
         true
     }
 
-    pub fn len(&self) -> usize {
-        self.deque.len()
-    }
-
-    pub fn first(&self) -> Option<&T> {
+    fn first(&self) -> Option<&T> {
         self.deque.front()
     }
 
-    pub fn last(&self) -> Option<&T> {
+    fn last(&self) -> Option<&T> {
         self.deque.back()
     }
 
-    pub fn get(&self, index: usize) -> Option<&T> {
+    fn get(&self, index: usize) -> Option<&T> {
         self.deque.get(index)
     }
 
-    pub fn loc(&self, key: &Ix) -> Option<&T> {
+    fn loc(&self, key: &Instant) -> Option<&T> {
         if let Some(&index) = self.index.get(key) {
             self.get(index)
         } else {
@@ -57,7 +71,7 @@ where
         }
     }
 
-    pub fn range(&self, a: usize, b: usize) -> Option<Vec<&T>> {
+    fn range(&self, a: usize, b: usize) -> Option<Vec<&T>> {
         if a >= b || b > self.deque.len() {
             None
         } else {
@@ -65,7 +79,7 @@ where
         }
     }
 
-    pub fn between(&self, i: &Ix, j: &Ix) -> Option<Vec<&T>> {
+    fn between(&self, i: &Instant, j: &Instant) -> Option<Vec<&T>> {
         let start = self
             .index
             .iter()
@@ -80,7 +94,7 @@ where
         self.range(start, end)
     }
 
-    pub fn slice(&mut self, a: usize, b: usize) -> Option<&[T]> {
+    fn slice(&mut self, a: usize, b: usize) -> Option<&[T]> {
         self.deque.make_contiguous();
         if let (slice, &[]) = self.deque.as_slices() {
             Some(&slice[a..b])
@@ -90,12 +104,27 @@ where
     }
 }
 
-// pub fn mat(&self) -> DMatrix<f64> {
-//     let rows = self.deque.len();
-//     let cols = self
-//         .deque
-//         .front()
-//         .map_or(0, |item| item.into_iter().count());
-//     let iter = self.deque.iter().flat_map(|item| item.into_iter());
-//     DMatrix::from_iterator(rows, cols, iter)
-// }
+impl BlockRingIndexBuffer<Instant, Aggregate, f64> for TemporalDeque<Aggregate> {
+    fn rows(&self) -> usize {
+        self.deque.len()
+    }
+
+    fn cols(&self) -> usize {
+        self.deque
+            .front()
+            .map_or(0, |item| item.into_iter().count())
+    }
+
+    fn mat(&self) -> Option<na::DMatrix<f64>> {
+        let rows = self.deque.len();
+        if rows == 0 {
+            return None
+        }
+        let cols = self
+            .deque
+            .front()
+            .map_or(0, |item| item.into_iter().count());
+        let iter = self.deque.iter().flat_map(|item| item.into_iter());
+        Some(na::DMatrix::from_iterator(rows, cols, iter))
+    }
+}
