@@ -1,9 +1,9 @@
 use crate::edges::*;
-use crate::nodes::statics::StaticNode;
+use crate::nodes::StaticNode;
 
 pub trait StaticEdge: Clone + Send + Sync {
     type Source: StaticNode;
     type Target: StaticNode;
 
-    fn name(&self) -> &'static str;
+    fn cls(&self) -> &'static str;
 }

@@ -1,12 +1,6 @@
-use crate::nodes::{marketable::Marketable, *};
+use crate::nodes::*;
 
-#[doc = r#"A fixed-income (coupon) asset is one with consistent `interest` payments at a fixed interval.
-However, it\'s still considered a dynamic asset since the market prices for the asset is not fixed, 
-which is what determines the `yield` of the asset, which is defined as
-```math
-yield (pct%/period) = interest_rate / market_price
-```
-"#]
+/// ...
 pub trait FixedIncome<T>: Marketable<T>
 where
     T: Clone + IntoIterator<Item = f64>,

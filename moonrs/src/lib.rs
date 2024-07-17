@@ -4,6 +4,12 @@ pub mod graph;
 pub mod nodes;
 pub mod utils;
 
+use std::{
+    collections::HashSet,
+    hash::Hash,
+    time::{Duration, Instant},
+};
+
 #[macro_use(defer)]
 extern crate scopeguard;
 extern crate nalgebra as na;

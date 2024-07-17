@@ -1,22 +1,13 @@
 use crate::nodes::*;
 
-#[doc = r#"..."#]
+/// Static node
 pub trait StaticNode: Clone + Send + Sync {
-    type Buffer: DataBuffer;
-
-    fn id(&self) -> &'static str;
-    fn buffer(&self) -> &Self::Buffer;
+    fn cls(&self) -> &'static str;
 }
 
 impl StaticNode for Equity {
-    type Buffer = TemporalDeque<Aggregate>;
-
-    fn id(&self) -> &'static str {
+    fn cls(&self) -> &'static str {
         "Equity"
-    }
-
-    fn buffer(&self) -> &Self::Buffer {
-        &self.buffer
     }
 }
 
@@ -26,11 +17,10 @@ mod tests {
 
     #[test]
     fn test_equity() {
-        let symbol = "EQU".to_string();
-        let region = "MOON".to_string();
+        let symbol = "EQU".to_owned();
+        let region = "MOON".to_owned();
         let equity = Equity::new(10, symbol, region, Vec::new());
 
-        assert_eq!(equity.id(), "Equity");
-        assert!(equity.buffer().empty());
+        assert_eq!(equity.cls(), "Equity");
     }
 }

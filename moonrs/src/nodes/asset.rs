@@ -1,6 +1,6 @@
-use crate::nodes::{dynamic::DynamicNode, *};
+use crate::nodes::*;
 
-#[doc = r#"An asset ..."#]
+/// An asset
 pub trait Asset<T>: DynamicNode<T>
 where
     T: Clone + IntoIterator<Item = f64>,
@@ -24,7 +24,7 @@ impl Asset<Aggregate> for Equity {
     }
 
     fn quote(&self) -> Option<f64> {
-        Some(self.buffer.last()?.close())
+        Some(self.last()?.close())
     }
 }
 

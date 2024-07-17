@@ -1,6 +1,6 @@
-use crate::nodes::{statics::StaticNode, *};
+use crate::nodes::*;
 
-#[doc = r#"..."#]
+/// ...
 pub trait DynamicNode<T>: StaticNode
 where
     T: Clone,

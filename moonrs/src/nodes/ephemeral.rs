@@ -1,6 +1,6 @@
 use crate::nodes::{marketable::Marketable, *};
 
-#[doc = r#"..."#]
+/// ...
 pub trait Ephemeral<T>: Marketable<T>
 where
     T: Clone + IntoIterator<Item = f64>,
