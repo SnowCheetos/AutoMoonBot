@@ -125,9 +125,7 @@ impl BlockRingIndexBuffer<Instant, Aggregate, f64> for TemporalDeque<Aggregate> 
         if rows == 0 || cols == 0 {
             return None;
         }
-
         let data: Vec<f64> = self.deque.iter().flat_map(|item| item.to_vec()).collect();
-
         Some(na::DMatrix::from_row_slice(rows, cols, &data))
     }
 }
@@ -241,14 +239,16 @@ mod tests {
         let aggregate1 = Aggregate::new(now, span, true, 1.0, 2.0, 0.5, 1.5, 100.0);
         let aggregate2 = Aggregate::new(next, span, false, 1.1, 2.1, 0.6, 1.6, 200.0);
 
+        let mat = buffer.mat();
+        assert!(mat.is_none(), "did not none for matrix");
+
         buffer.push(aggregate1.timestamp(), aggregate1);
         buffer.push(aggregate2.timestamp(), aggregate2);
 
         let mat = buffer.mat();
-        assert!(mat.is_some(), "returned none for matrix");
+        assert!(mat.as_ref().is_some_and(|mat| mat.shape() == (2, 5)), "returned none for matrix");
 
         let mat = mat.unwrap();
-        assert_eq!(mat.shape(), (2, 5), "unmatched matrix shape");
         assert_eq!(mat[(0, 0)], 1.0, "unmatched value at (0, 0)");
         assert_eq!(mat[(0, 1)], 2.0, "unmatched value at (0, 1)");
         assert_eq!(mat[(0, 2)], 0.5, "unmatched value at (0, 2)");
