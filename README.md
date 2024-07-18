@@ -1,6 +1,6 @@
 ![](media/logo_100.png)
 
----------------
+-----
 
 This repository contains code and resources for automated algorithmic trading implementations. All content provided in this repository is for educational and informational purposes only. It is **NOT** intended to be a financial product or investment advice. By viewing, citing, using, or contributing to the contents and resources provided in this repository, you automatically acknowledge and agree to all terms and conditions found in [`DISCLAIMERS`](docs/DISCLAIMER.md), both present and future, unless explicitly stated otherwise.
 
@@ -38,7 +38,7 @@ Jim Simons have stated explicitly in public that the fund makes extensive use of
 
 ### 3. Win Small or Lose Big
 -----
-For the duration of the fund's existence, their model had an average win rate of $50.75\%$. That's right, they operated on a tiny $0.75\%$ edge over the market, which was enough to turn $\$100$ in 1982 to $\$88,190,084,543$ in 2024. Instead of trying to count cards at Blackjack, they just opened a casino. Staying consistent over millions of trades turned out to be much more advantageous than trying to win big on a few trades.
+For the duration of the fund's existence, their model had an average win rate of $`50.75\%`$. That's right, they operated on a tiny `$0.75\%`$ edge over the market, which was enough to turn $`\$100`$ in $`\text{1982}`$ to $`\$88,190,084,543`$ in $`\text{2024}`$. Instead of trying to count cards at Blackjack, they just opened a casino. Staying consistent over millions of trades turned out to be much more advantageous than trying to win big on a few trades.
 
 ### 4. Focus on The Right Thing
 -----
