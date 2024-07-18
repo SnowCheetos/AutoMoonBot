@@ -1,12 +1,14 @@
-use crate::nodes::{statics::StaticNode, *};
+use crate::nodes::*;
 
-#[doc = r#"..."#]
-pub trait Entity<K, V>: StaticNode where
-K: Clone + Hash + Eq,
-V: Clone,
+/// ...
+pub trait Entity<K, V>: StaticNode
+where
+    K: Clone + Hash + Eq,
+    V: Clone,
 {
-    type Buffer: MapBuffer<K, V>;
-    fn creation(&self) -> &Instant;
+    type MetaData: MapBuffer<K, V>;
+
+    fn metadata(&self) -> &Self::MetaData;
 }
 
 #[cfg(test)]

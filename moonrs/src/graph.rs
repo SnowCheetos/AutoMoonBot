@@ -1,7 +1,7 @@
 use petgraph::stable_graph::{EdgeIndex, NodeIndex, StableDiGraph};
 use std::collections::{HashMap, HashSet};
 
-use crate::{edges::statics::StaticEdge, nodes::statics::StaticNode};
+use crate::{edges::StaticEdge, nodes::StaticNode};
 
 #[derive(Default)]
 pub struct HeteroGraph<N, E> {
@@ -32,23 +32,23 @@ where
     }
 
     pub fn add_node(&mut self, node: N) {
-        let name = node.id();
+        let cls = node.cls();
         let index = self.graph.add_node(node);
-        self.node_memo.entry(name).or_default().insert(index);
+        self.node_memo.entry(cls).or_default().insert(index);
     }
 
     pub fn add_edge(&mut self, src: NodeIndex, tgt: NodeIndex, edge: E) {
-        let name = edge.name();
+        let cls = edge.cls();
         let index = self.graph.add_edge(src, tgt, edge);
-        self.edge_memo.entry(name).or_default().insert(index);
+        self.edge_memo.entry(cls).or_default().insert(index);
     }
 
     pub fn rem_node(&mut self, index: NodeIndex) {
         if let Some(node) = self.graph.remove_node(index) {
-            if let Some(indices) = self.node_memo.get_mut(&node.id()) {
+            if let Some(indices) = self.node_memo.get_mut(&node.cls()) {
                 indices.remove(&index);
                 if indices.is_empty() {
-                    self.node_memo.remove(&node.id());
+                    self.node_memo.remove(node.cls());
                 }
             }
         }
@@ -56,10 +56,10 @@ where
 
     pub fn rem_edge(&mut self, index: EdgeIndex) {
         if let Some(edge) = self.graph.remove_edge(index) {
-            if let Some(indices) = self.edge_memo.get_mut(&edge.name()) {
+            if let Some(indices) = self.edge_memo.get_mut(&edge.cls()) {
                 indices.remove(&index);
                 if indices.is_empty() {
-                    self.edge_memo.remove(&edge.name());
+                    self.edge_memo.remove(&edge.cls());
                 }
             }
         }
