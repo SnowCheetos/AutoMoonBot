@@ -9,10 +9,11 @@ mod marketable;
 mod statics;
 
 use crate::{
+    utils::helpers::*,
     data::{aggregate::*, buffer::*, queue::*},
     nodes::{asset::*, common::*, dynamic::*, ephemeral::*, marketable::*},
     *,
 };
 
-pub use common::{dynamic_entities::*, static_entities::*};
+pub use common::{dynamic_entities::*, static_entities::*, entity_derivatives::*};
 pub use statics::StaticNode;

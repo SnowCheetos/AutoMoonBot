@@ -9,7 +9,8 @@ use std::{
     hash::Hash,
     time::{Duration, Instant},
 };
-
+#[macro_use]
+extern crate lazy_static;
 #[macro_use(defer)]
 extern crate scopeguard;
 extern crate nalgebra as na;

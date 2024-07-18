@@ -11,6 +11,7 @@ indexmap = "2.2.6"
 pyo3 = "0.22.1"
 scopeguard = "1.2.0"
 cached = "0.52.0"
+lazy_static = "1.5.0"
 
 [lib]
 crate-type = ["cdylib"]
