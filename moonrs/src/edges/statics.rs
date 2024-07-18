@@ -53,13 +53,13 @@ pub mod static_relations {
         fn tgt(&self) -> &String {
             &self.target
         }
-        
+
         fn sid(&self) -> &String {
-            &self.src_uuid
+            &self.src_id
         }
-        
+
         fn tid(&self) -> &String {
-            &self.tgt_uuid
+            &self.tgt_id
         }
     }
 }
@@ -72,7 +72,15 @@ mod tests {
     fn test_mentioned() {
         let now = Instant::now();
         let later = now + Duration::new(60, 0);
-        let source = Article::new(now, "news".to_owned(), 0.5, None);
+        let source = Article::new(
+            now,
+            "news".to_owned(),
+            0.5,
+            "publisher".to_owned(),
+            None,
+            None,
+            None,
+        );
         let target = StaticEvent::new(later, 0.5, "".to_owned());
         let edge = Mentioned::new(&source, &target, 0.5, 0.5);
 
@@ -80,7 +88,7 @@ mod tests {
         assert_eq!(edge.src(), "Article", "Got {} instead", edge.src());
         assert_eq!(edge.tgt(), "StaticEvent", "Got {} instead", edge.tgt());
         assert_eq!(edge.cls(), "Mentioned", "Got {} instead", edge.cls());
-        assert_eq!(edge.sid(), source.uuid(), "Got {} instead", edge.src());
-        assert_eq!(edge.tid(), target.uuid(), "Got {} instead", edge.tgt());
+        assert_eq!(edge.sid(), source.name(), "Got {} instead", edge.src());
+        assert_eq!(edge.tid(), target.name(), "Got {} instead", edge.tgt());
     }
 }

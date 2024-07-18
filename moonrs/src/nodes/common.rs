@@ -16,7 +16,6 @@ pub mod static_entities {
         /// company by another is considered a static event.
         #[derive(Debug, Clone)]
         pub struct StaticEvent {
-            pub(in crate::nodes) uuid: String, // I think instead of a random uuid, need to hash some unique identifier.
             pub(in crate::nodes) occurance: Instant,
             pub(in crate::nodes) sentiment: f64,
             pub(in crate::nodes) description: String,
@@ -24,11 +23,13 @@ pub mod static_entities {
 
         #[derive(Debug, Clone)]
         pub struct Article {
-            pub(in crate::nodes) uuid: String,
             pub(in crate::nodes) published: Instant,
             pub(in crate::nodes) title: String,
-            pub(in crate::nodes) url: String,
+            pub(in crate::nodes) url: Option<String>,
+            pub(in crate::nodes) summary: Option<String>,
             pub(in crate::nodes) sentiment: f64,
+            pub(in crate::nodes) publisher: String,
+            pub(in crate::nodes) authors: Option<HashSet<String>>,
         }
     }
 
@@ -38,7 +39,6 @@ pub mod static_entities {
         impl StaticEvent {
             pub fn new(occurance: Instant, sentiment: f64, description: String) -> Self {
                 StaticEvent {
-                    uuid: Uuid::new_v4().to_string(),
                     occurance,
                     sentiment,
                     description,
@@ -51,14 +51,19 @@ pub mod static_entities {
                 published: Instant,
                 title: String,
                 sentiment: f64,
+                publisher: String,
+                authors: Option<HashSet<String>>,
                 url: Option<String>,
+                summary: Option<String>,
             ) -> Self {
                 Article {
-                    uuid: Uuid::new_v4().to_string(),
                     published,
                     title,
                     sentiment,
-                    url: url.unwrap_or("".to_owned()),
+                    url,
+                    summary,
+                    publisher,
+                    authors,
                 }
             }
         }
@@ -188,7 +193,6 @@ pub mod dynamic_entities {
 
         #[derive(Debug, Clone)]
         pub struct Equity {
-            pub(in crate::nodes) uuid: String,
             pub(in crate::nodes) symbol: String,
             pub(in crate::nodes) region: String,
             pub(in crate::nodes) exchanges: HashSet<String>,
@@ -349,7 +353,6 @@ pub mod dynamic_entities {
                 exchanges: Vec<String>,
             ) -> Self {
                 Equity {
-                    uuid: Uuid::new_v4().to_string(),
                     symbol,
                     region,
                     exchanges: HashSet::from_iter(exchanges.into_iter()),

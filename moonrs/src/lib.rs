@@ -4,14 +4,16 @@ pub mod graph;
 pub mod nodes;
 mod utils;
 
-pub use uuid::Uuid;
-pub use self::{
+pub use crate::{
     data::{aggregate::*, buffer::*, queue::*},
     utils::helpers::*,
 };
+pub use uuid::Uuid;
+
+pub use petgraph::stable_graph::{EdgeIndex, NodeIndex, StableDiGraph};
 
 pub use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     hash::Hash,
     time::{Duration, Instant},
 };

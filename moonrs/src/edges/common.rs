@@ -4,13 +4,14 @@ pub mod static_relations {
     use super::*;
 
     pub mod defs {
+        use super::*;
 
         #[derive(Debug, Clone)]
         pub struct Mentioned {
             pub(in crate::edges) source: String,
             pub(in crate::edges) target: String,
-            pub(in crate::edges) src_uuid: String,
-            pub(in crate::edges) tgt_uuid: String,
+            pub(in crate::edges) src_id: String,
+            pub(in crate::edges) tgt_id: String,
             pub(in crate::edges) relevance: f64,
             pub(in crate::edges) sentiment: f64,
         }
@@ -32,8 +33,8 @@ pub mod static_relations {
                 Mentioned {
                     source: source.cls().to_owned(),
                     target: target.cls().to_owned(),
-                    src_uuid: source.uuid().to_owned(),
-                    tgt_uuid: target.uuid().to_owned(),
+                    src_id: source.name().to_owned(),
+                    tgt_id: target.name().to_owned(),
                     relevance,
                     sentiment,
                 }
