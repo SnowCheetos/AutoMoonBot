@@ -29,10 +29,10 @@ pub trait StaticEdge: Clone + Send + Sync {
     /// assert_eq!(edge.cls(), "SomeEdge");
     /// ```
     fn cls(&self) -> &'static str;
-    fn src(&self) -> &String;
-    fn tgt(&self) -> &String;
-    fn sid(&self) -> &String;
-    fn tid(&self) -> &String;
+    fn src_ty(&self) -> &String;
+    fn tgt_ty(&self) -> &String;
+    fn src_nm(&self) -> &String;
+    fn tgt_nm(&self) -> &String;
 }
 
 pub mod static_relations {
@@ -46,20 +46,20 @@ pub mod static_relations {
             "Mentioned"
         }
 
-        fn src(&self) -> &String {
-            &self.source
+        fn src_ty(&self) -> &String {
+            &self.src_ty
         }
 
-        fn tgt(&self) -> &String {
-            &self.target
+        fn tgt_ty(&self) -> &String {
+            &self.tgt_ty
         }
-        
-        fn sid(&self) -> &String {
-            &self.src_uuid
+
+        fn src_nm(&self) -> &String {
+            &self.src_nm
         }
-        
-        fn tid(&self) -> &String {
-            &self.tgt_uuid
+
+        fn tgt_nm(&self) -> &String {
+            &self.tgt_nm
         }
     }
 }
@@ -72,15 +72,22 @@ mod tests {
     fn test_mentioned() {
         let now = Instant::now();
         let later = now + Duration::new(60, 0);
-        let source = Article::new(now, "news".to_owned(), 0.5, None);
+        let source = Article::new(
+            now,
+            "news".to_owned(),
+            0.5,
+            "publisher".to_owned(),
+            None,
+            None,
+            None,
+        );
         let target = StaticEvent::new(later, 0.5, "".to_owned());
         let edge = Mentioned::new(&source, &target, 0.5, 0.5);
 
         assert_eq!(edge.cls(), "Mentioned", "Got {} instead", edge.cls());
-        assert_eq!(edge.src(), "Article", "Got {} instead", edge.src());
-        assert_eq!(edge.tgt(), "StaticEvent", "Got {} instead", edge.tgt());
-        assert_eq!(edge.cls(), "Mentioned", "Got {} instead", edge.cls());
-        assert_eq!(edge.sid(), source.uuid(), "Got {} instead", edge.src());
-        assert_eq!(edge.tid(), target.uuid(), "Got {} instead", edge.tgt());
+        assert_eq!(edge.src_ty(), "Article", "Got {} instead", edge.src_ty());
+        assert_eq!(edge.tgt_ty(), "StaticEvent", "Got {} instead", edge.tgt_ty());
+        assert_eq!(edge.src_nm(), source.name(), "Got {} instead", edge.src_ty());
+        assert_eq!(edge.tgt_nm(), target.name(), "Got {} instead", edge.tgt_ty());
     }
 }

@@ -16,7 +16,35 @@ pub trait StaticNode: Clone + Send + Sync {
     /// assert_eq!(node.cls(), "SomeNode");
     /// ```
     fn cls(&self) -> &'static str;
-    fn uuid(&self) -> &String;
+
+    /// Returns an unique identifer string for a specific 
+    /// instance. This is to avoid using references which 
+    /// eliminates the need to manage lifetimes.
+    ///
+    /// # Examples
+    /// ```rust
+    /// 
+    /// struct SomeNode {
+    ///     name: String,
+    /// }
+    /// 
+    /// impl SomeNode {
+    ///     fn new(name: String) -> Self {
+    ///         SomeNode {
+    ///             name,
+    ///         }
+    ///     }
+    /// }
+    /// 
+    /// impl StaticNode for SomeNode {
+    ///     fn name(&self) -> &String {
+    ///         &self.name
+    ///     }
+    /// }
+    /// let node = SomeNode::new("my_name_is_Jeff".to_owned());
+    /// assert_eq!(node.name(), "my_name_is_Jeff");
+    /// ```
+    fn name(&self) -> &String;
 }
 
 pub mod static_entities {
@@ -26,9 +54,9 @@ pub mod static_entities {
         fn cls(&self) -> &'static str {
             "StaticEvent"
         }
-
-        fn uuid(&self) -> &String {
-            &self.uuid
+        
+        fn name(&self) -> &String {
+            &self.description
         }
     }
 
@@ -36,9 +64,9 @@ pub mod static_entities {
         fn cls(&self) -> &'static str {
             "Article"
         }
-
-        fn uuid(&self) -> &String {
-            &self.uuid
+        
+        fn name(&self) -> &String {
+            &self.title
         }
     }
 }
@@ -50,9 +78,9 @@ pub mod dynamic_entities {
         fn cls(&self) -> &'static str {
             "Equity"
         }
-
-        fn uuid(&self) -> &String {
-            &self.uuid
+        
+        fn name(&self) -> &String {
+            &self.symbol
         }
     }
 }
@@ -71,6 +99,6 @@ mod tests {
 
         assert_eq!(equity1.cls(), "Equity");
         assert_eq!(equity2.cls(), "Equity");
-        assert_ne!(equity1.uuid(), equity2.uuid());
+        assert_ne!(equity1.name(), equity2.name());
     }
 }
