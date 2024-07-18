@@ -39,10 +39,10 @@ mod tests {
         let mut equity = Equity::new(2, symbol, region, Vec::new());
         let now = Instant::now();
         let span = Duration::new(60, 0);
-        let next = now + span;
+        let later = now + span;
         let aggregate1 = Aggregate::new(now, span, true, 1.0, 2.0, 0.5, 1.5, 100.0);
-        let aggregate2 = Aggregate::new(next, span, false, 1.1, 2.1, 0.6, 1.6, 200.0);
-        let aggregate3 = Aggregate::new(next + span, span, false, 1.3, 2.2, 0.7, 1.5, 150.0);
+        let aggregate2 = Aggregate::new(later, span, false, 1.1, 2.1, 0.6, 1.6, 200.0);
+        let aggregate3 = Aggregate::new(later + span, span, false, 1.3, 2.2, 0.7, 1.5, 150.0);
 
         let front = equity.first();
         let back = equity.last();
@@ -61,20 +61,20 @@ mod tests {
         let front = equity.first();
         let back = equity.last();
         assert!(front.is_some_and(|item| item.timestamp() == now));
-        assert!(back.is_some_and(|item| item.timestamp() == next));
+        assert!(back.is_some_and(|item| item.timestamp() == later));
 
         let success = equity.update(aggregate2);
         assert!(!success);
         let front = equity.first();
         let back = equity.last();
         assert!(front.is_some_and(|item| item.timestamp() == now));
-        assert!(back.is_some_and(|item| item.timestamp() == next));
+        assert!(back.is_some_and(|item| item.timestamp() == later));
 
         let success = equity.update(aggregate3);
         assert!(success);
         let front = equity.first();
         let back = equity.last();
-        assert!(front.is_some_and(|item| item.timestamp() == next));
-        assert!(back.is_some_and(|item| item.timestamp() == next + span));
+        assert!(front.is_some_and(|item| item.timestamp() == later));
+        assert!(back.is_some_and(|item| item.timestamp() == later + span));
     }
 }
