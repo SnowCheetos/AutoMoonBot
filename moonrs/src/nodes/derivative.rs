@@ -1,10 +1,7 @@
 use crate::nodes::*;
 
 /// ...
-pub trait Derivative<T>: Ephemeral<T>
-where
-    T: Clone + IntoIterator<Item = f64>,
-{
+pub trait Derivative: Ephemeral {
     fn spot(&self);
 }
 

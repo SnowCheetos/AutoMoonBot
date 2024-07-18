@@ -1,7 +1,21 @@
 use crate::nodes::*;
 
-/// Static node
+/// The base trait that all nodes must implement.
 pub trait StaticNode: Clone + Send + Sync {
+    /// Returns the class name of the node. 
+    /// 
+    /// Returned string must be unique and match that of the struct name itself.
+    /// 
+    /// # Examples
+    /// ```rust
+    /// impl StaticNode for SomeNode {
+    /// fn cls(&self) -> &'static str {
+    /// "SomeNode"
+    /// }
+    /// }
+    /// let node = SomeNode::new(...);
+    /// assert_eq!(node.cls(), "Equity");
+    /// ```
     fn cls(&self) -> &'static str;
 }
 

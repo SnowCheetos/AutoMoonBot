@@ -1,10 +1,7 @@
 use crate::nodes::{marketable::Marketable, *};
 
 /// ...
-pub trait Ephemeral<T>: Marketable<T>
-where
-    T: Clone + IntoIterator<Item = f64>,
-{
+pub trait Ephemeral: Marketable {
     fn expiration(&self) -> &Instant;
 }
 

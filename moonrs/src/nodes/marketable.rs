@@ -1,14 +1,11 @@
 use crate::nodes::*;
 
 /// ...
-pub trait Marketable<T>: Asset<T>
-where
-    T: Clone + IntoIterator<Item = f64>,
-{
+pub trait Marketable: Asset {
     fn exchanges(&self) -> Vec<String>;
 }
 
-impl Marketable<Aggregate> for Equity {
+impl Marketable for Equity {
     fn exchanges(&self) -> Vec<String> {
         self.exchanges.clone().into_iter().collect()
     }
