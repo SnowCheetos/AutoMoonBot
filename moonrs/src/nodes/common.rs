@@ -16,20 +16,20 @@ pub mod static_entities {
         /// company by another is considered a static event.
         #[derive(Debug, Clone)]
         pub struct StaticEvent {
+            pub(in crate::nodes) description: String,
             pub(in crate::nodes) occurance: Instant,
             pub(in crate::nodes) sentiment: f64,
-            pub(in crate::nodes) description: String,
         }
 
         #[derive(Debug, Clone)]
         pub struct Article {
+            pub(in crate::nodes) authors: Option<HashSet<String>>,
             pub(in crate::nodes) published: Instant,
+            pub(in crate::nodes) publisher: String,
+            pub(in crate::nodes) sentiment: f64,
+            pub(in crate::nodes) summary: Option<String>,
             pub(in crate::nodes) title: String,
             pub(in crate::nodes) url: Option<String>,
-            pub(in crate::nodes) summary: Option<String>,
-            pub(in crate::nodes) sentiment: f64,
-            pub(in crate::nodes) publisher: String,
-            pub(in crate::nodes) authors: Option<HashSet<String>>,
         }
     }
 
@@ -117,7 +117,7 @@ pub mod dynamic_entities {
             pub(in crate::nodes) population: usize,
             pub(in crate::nodes) currency: String,
             pub(in crate::nodes) holidays: Vec<Instant>,
-            pub(in crate::nodes) ngdp_per_cap: f64,
+            pub(in crate::nodes) nominal_gdp_per_capita: f64,
         }
 
         #[derive(Debug, Clone)]
@@ -255,14 +255,14 @@ pub mod dynamic_entities {
                 population: usize,
                 currency: String,
                 holidays: Vec<Instant>,
-                ngdp_per_cap: f64,
+                nominal_gdp_per_capita: f64,
             ) -> Self {
                 Region {
                     name,
                     population,
                     currency,
                     holidays,
-                    ngdp_per_cap,
+                    nominal_gdp_per_capita,
                 }
             }
         }
