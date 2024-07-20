@@ -16,18 +16,18 @@ pub trait StaticNode: Clone + Send + Sync {
     /// assert_eq!(node.cls(), "SomeNode");
     /// ```
     fn cls(&self) -> &'static str;
-
-    /// Returns an unique identifer string for a specific 
-    /// instance. This is to avoid using references which 
-    /// eliminates the need to manage lifetimes.
+    /// Returns an unique identifer string for a specific
+    /// instance. This is to avoid using references which
+    /// eliminates the need to manage lifetimes, especially
+    /// since the nodes are stored in a graph.
     ///
     /// # Examples
     /// ```rust
-    /// 
+    ///
     /// struct SomeNode {
     ///     name: String,
     /// }
-    /// 
+    ///
     /// impl SomeNode {
     ///     fn new(name: String) -> Self {
     ///         SomeNode {
@@ -35,7 +35,7 @@ pub trait StaticNode: Clone + Send + Sync {
     ///         }
     ///     }
     /// }
-    /// 
+    ///
     /// impl StaticNode for SomeNode {
     ///     fn name(&self) -> &String {
     ///         &self.name
@@ -54,7 +54,7 @@ pub mod static_entities {
         fn cls(&self) -> &'static str {
             "StaticEvent"
         }
-        
+
         fn name(&self) -> &String {
             &self.description
         }
@@ -64,7 +64,7 @@ pub mod static_entities {
         fn cls(&self) -> &'static str {
             "Article"
         }
-        
+
         fn name(&self) -> &String {
             &self.title
         }
@@ -78,7 +78,7 @@ pub mod dynamic_entities {
         fn cls(&self) -> &'static str {
             "Equity"
         }
-        
+
         fn name(&self) -> &String {
             &self.symbol
         }

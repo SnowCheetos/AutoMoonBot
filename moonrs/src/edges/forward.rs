@@ -15,3 +15,10 @@ where
 {
     fn fowrard_corr(&self, src: &S, tgt: &T);
 }
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test() {}
+}

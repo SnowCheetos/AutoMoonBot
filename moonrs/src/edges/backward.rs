@@ -15,3 +15,11 @@ where
 {
     fn backward_corr(&self, src: &S, tgt: &T);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test() {}
+}
