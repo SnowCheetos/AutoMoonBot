@@ -1,6 +1,6 @@
 import time
 import pytest
-from automoonbot.data import Streamer
+from moonpy.data import Streamer
 
 DATA_SIZE = 10
 QUEUE_SIZE = 1

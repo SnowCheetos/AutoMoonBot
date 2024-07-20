@@ -3,7 +3,7 @@ from torch import Tensor
 from torch_geometric.nn import to_hetero
 from torch_geometric.data import HeteroData
 
-from automoonbot.model import SAGENet, MemoryClassifier
+from moonpy.model import SAGENet, MemoryClassifier
 
 
 class Actor(nn.Module):

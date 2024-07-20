@@ -1,4 +1,4 @@
-from automoonbot.session import Portfolio
+from moonpy.session import Portfolio
 
 
 class Session(Portfolio):

@@ -5,7 +5,7 @@ from pyrate_limiter import Duration, RequestRate, Limiter
 from requests_cache import CacheMixin, RedisCache, BaseCache
 from requests_ratelimiter import LimiterMixin, MemoryQueueBucket
 
-from automoonbot.utils import Timing
+from moonpy.utils import Timing
 
 
 class CachedLimiterSession(CacheMixin, LimiterMixin, Session):

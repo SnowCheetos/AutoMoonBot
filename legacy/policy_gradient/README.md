@@ -1,6 +1,6 @@
 # Automated Trading with Policy Gradient
 
-Please review the disclaimers [`here`](../../docs/DISCLAIMER.md) before proceeding. By continue visiting the rest of the content, you agree to all the terms and conditions of the disclaimers.
+Please review the disclaimers [`here`](DISCLAIMER.md) before proceeding. By continue visiting the rest of the content, you agree to all the terms and conditions of the disclaimers.
 
 ## Introduction
 
@@ -8,7 +8,7 @@ Please review the disclaimers [`here`](../../docs/DISCLAIMER.md) before proceedi
 
 ### Demonstration
 
-![](../../media/demo.gif)
+![](media/demo.gif)
 
 - The gif might take some time to load.
 
@@ -165,7 +165,3 @@ To download new datasets, go to `utils/download_data.py` and modify the script, 
 ## Testing
 
 Test scripts are available in the `tests` directory, once `pytest` is installed, run a test by going into the `tests` directory and execute `pytest <test_script>.py`. Note that some tests might be outdated.
-
-## Contribution
-
-Like mentioned, this is legacy code and not being activelt developed. However, if you find it useful and would like to contribute, you're more than welcome to do so. For more information, see [`CONTRIBUTE.MD`](../../docs/CONTRIBUTE.MD)

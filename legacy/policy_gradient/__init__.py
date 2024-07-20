@@ -1,1 +1,1 @@
-from legacy.policy_gradient import backend, reinforce, utils
+import backend, reinforce, utils

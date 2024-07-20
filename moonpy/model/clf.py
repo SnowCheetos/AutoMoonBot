@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 
-from automoonbot.model import MultiHeadMemory
+from moonpy.model import MultiHeadMemory
 
 
 class MemoryClassifier(nn.Module):
