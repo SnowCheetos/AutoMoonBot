@@ -1,27 +1,27 @@
 import json
 import time
 import pika
-import logging
 
 from typing import Union
 from src.wallet import Wallet
 
+
 class Trader(Wallet):
     def __init__(
-            self, 
-            exchange: str, 
-            interval: str = "1m", 
-            asset: str = "BTC/USDT", 
-            funds: float = 10_000.0, 
-            buffer_size: int = 720, 
-            host: str = "localhost", 
-            port: int = 6379,
-            risk: float = 0.05, 
-            multiplier: float = 1.025, 
-            cycle_time: int = 60,
-            max_cycles: int = 1000,
-            time_per_pred: Union[int, None] = None
-        ) -> None:
+        self,
+        exchange: str,
+        interval: str = "1m",
+        asset: str = "BTC/USDT",
+        funds: float = 10_000.0,
+        buffer_size: int = 720,
+        host: str = "localhost",
+        port: int = 6379,
+        risk: float = 0.05,
+        multiplier: float = 1.025,
+        cycle_time: int = 60,
+        max_cycles: int = 1000,
+        time_per_pred: Union[int, None] = None,
+    ) -> None:
         super().__init__(exchange, interval, asset, funds, buffer_size, host, port)
 
         self.risk = risk
@@ -45,17 +45,19 @@ class Trader(Wallet):
             "1w": 604800,
             "1M": 2592000,
         }
-        self.time_per_pred = interval_map[interval] if not time_per_pred else time_per_pred
+        self.time_per_pred = (
+            interval_map[interval] if not time_per_pred else time_per_pred
+        )
 
         self.init_trade_params()
 
     @staticmethod
-    def send_message(message_body: str, queue='pred_service'):
+    def send_message(message_body: str, queue="pred_service"):
         # Connect to RabbitMQ
-        connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        connection = pika.BlockingConnection(pika.ConnectionParameters("localhost"))
         channel = connection.channel()
         channel.queue_declare(queue=queue)
-        channel.basic_publish(exchange='', routing_key=queue, body=message_body)
+        channel.basic_publish(exchange="", routing_key=queue, body=message_body)
         connection.close()
 
     def init_trade_params(self) -> None:
@@ -85,15 +87,15 @@ class Trader(Wallet):
     @property
     def status(self) -> str:
         return self.redis_conn.get("status")
-    
+
     @status.setter
     def status(self, val: str) -> None:
         return self.redis_conn.set("status", val)
-    
+
     @property
     def prediction(self) -> str:
         return self.redis_conn.get("prediction")
-    
+
     @prediction.setter
     def prediction(self, val: str) -> None:
         return self.redis_conn.set("prediction", val)
@@ -132,21 +134,28 @@ class Trader(Wallet):
                 self.status = "sell_spec"
                 self.take_profit = price * (1 + self.risk)
                 self.stop_loss = price * (1 - self.multiplier * self.risk)
-            
-            else: print(f"Doing nothing, networth: {self.net_worth()}")
 
-        elif (self.status == "buy_spec") and (price >= self.stop_loss or price <= self.take_profit):
+            else:
+                print(f"Doing nothing, networth: {self.net_worth()}")
+
+        elif (self.status == "buy_spec") and (
+            price >= self.stop_loss or price <= self.take_profit
+        ):
             if self.fetch_cash() > 0:
                 s = self.buy(self.asset, "max")
-                if s: print(f"Executed buy, networth: {self.net_worth()}")
+                if s:
+                    print(f"Executed buy, networth: {self.net_worth()}")
             else:
                 print("No funds to buy, doing nothing...")
             self.init_trade_params()
 
-        elif (self.status == "sell_spec") and (price <= self.stop_loss or price >= self.take_profit):
+        elif (self.status == "sell_spec") and (
+            price <= self.stop_loss or price >= self.take_profit
+        ):
             if self.fetch_holdings() > 0:
                 s = self.sell(self.asset, self.fetch_holdings())
-                if s: print(f"Executed sell, networth: {self.net_worth()}")
+                if s:
+                    print(f"Executed sell, networth: {self.net_worth()}")
             else:
                 print("No holdings to sell, doing nothing...")
             self.init_trade_params()
@@ -157,7 +166,8 @@ class Trader(Wallet):
         elif (self.status == "sell_spec") and (prediction == "buy"):
             self.init_trade_params()
 
-        else: print(f"Doing nothing, networth: {self.net_worth()}")
+        else:
+            print(f"Doing nothing, networth: {self.net_worth()}")
 
     def run(self):
         for cycle in range(self.max_cycles):
