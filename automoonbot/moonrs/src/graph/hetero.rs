@@ -1,19 +1,17 @@
-use crate::*;
-
-use crate::{edges::StaticEdge, nodes::StaticNode};
+use crate::{
+    edges::{EdgeType, StaticEdge},
+    nodes::{NodeType, StaticNode},
+    *,
+};
 
 #[derive(Default)]
-pub struct HeteroGraph<N, E> {
-    graph: StableDiGraph<N, E>,
+pub struct HeteroGraph {
+    graph: StableDiGraph<NodeType, EdgeType>,
     node_memo: HashMap<&'static str, HashSet<NodeIndex>>,
     edge_memo: HashMap<&'static str, HashSet<EdgeIndex>>,
 }
 
-impl<N, E> HeteroGraph<N, E>
-where
-    N: StaticNode,
-    E: StaticEdge,
-{
+impl HeteroGraph {
     pub fn new() -> Self {
         Self {
             graph: StableDiGraph::new(),
@@ -22,21 +20,21 @@ where
         }
     }
 
-    pub fn get_node(&self, index: NodeIndex) -> Option<&N> {
+    pub fn get_node(&self, index: NodeIndex) -> Option<&NodeType> {
         self.graph.node_weight(index)
     }
 
-    pub fn get_edge(&self, index: EdgeIndex) -> Option<&E> {
+    pub fn get_edge(&self, index: EdgeIndex) -> Option<&EdgeType> {
         self.graph.edge_weight(index)
     }
 
-    pub fn add_node(&mut self, node: N) {
+    pub fn add_node(&mut self, node: NodeType) {
         let cls = node.cls();
         let index = self.graph.add_node(node);
         self.node_memo.entry(cls).or_default().insert(index);
     }
 
-    pub fn add_edge(&mut self, src: NodeIndex, tgt: NodeIndex, edge: E) {
+    pub fn add_edge(&mut self, src: NodeIndex, tgt: NodeIndex, edge: EdgeType) {
         let cls = edge.cls();
         let index = self.graph.add_edge(src, tgt, edge);
         self.edge_memo.entry(cls).or_default().insert(index);

@@ -12,7 +12,6 @@ use crate::edges::*;
 pub trait StaticEdge: Clone + Send + Sync {
     type Source: StaticNode;
     type Target: StaticNode;
-
     /// Returns the class name of the edge, must be
     /// unique and match that of the struct name itself.
     ///
@@ -29,38 +28,74 @@ pub trait StaticEdge: Clone + Send + Sync {
     /// assert_eq!(edge.cls(), "SomeEdge");
     /// ```
     fn cls(&self) -> &'static str;
-    fn src_ty(&self) -> &String;
-    fn tgt_ty(&self) -> &String;
-    fn src_nm(&self) -> &String;
-    fn tgt_nm(&self) -> &String;
+    fn src_type(&self) -> &String;
+    fn tgt_type(&self) -> &String;
+    fn src_name(&self) -> &String;
+    fn tgt_name(&self) -> &String;
 }
 
-pub mod static_relations {
-    use super::*;
+impl StaticEdge for EdgeType {
+    type Source = NodeType;
+    type Target = NodeType;
 
-    impl StaticEdge for Mentioned {
-        type Source = Article;
-        type Target = StaticEvent;
-
-        fn cls(&self) -> &'static str {
-            "Mentioned"
+    fn cls(&self) -> &'static str {
+        match self {
+            EdgeType::Mentioned(edge) => edge.cls(),
+            EdgeType::Composed(edge) => todo!(),
         }
+    }
 
-        fn src_ty(&self) -> &String {
-            &self.src_ty
+    fn src_type(&self) -> &String {
+        match self {
+            EdgeType::Mentioned(edge) => edge.src_type(),
+            EdgeType::Composed(edge) => todo!(),
         }
+    }
 
-        fn tgt_ty(&self) -> &String {
-            &self.tgt_ty
+    fn tgt_type(&self) -> &String {
+        match self {
+            EdgeType::Mentioned(edge) => edge.tgt_type(),
+            EdgeType::Composed(edge) => todo!(),
         }
+    }
 
-        fn src_nm(&self) -> &String {
-            &self.src_nm
+    fn src_name(&self) -> &String {
+        match self {
+            EdgeType::Mentioned(edge) => edge.src_name(),
+            EdgeType::Composed(edge) => todo!(),
         }
+    }
 
-        fn tgt_nm(&self) -> &String {
-            &self.tgt_nm
+    fn tgt_name(&self) -> &String {
+        match self {
+            EdgeType::Mentioned(edge) => edge.tgt_name(),
+            EdgeType::Composed(edge) => todo!(),
         }
+    }
+}
+
+impl StaticEdge for Mentioned {
+    type Source = Article;
+    type Target = StaticEvent;
+
+    fn cls(&self) -> &'static str {
+        "Mentioned"
+    }
+
+    fn src_type(&self) -> &String {
+        &self.src_ty
+    }
+
+    fn tgt_type(&self) -> &String {
+        &self.tgt_ty
+    }
+
+    fn src_name(&self) -> &String {
+        &self.src_nm
+    }
+
+    fn tgt_name(&self) -> &String {
+        &self.tgt_nm
     }
 }
 
@@ -85,9 +120,29 @@ mod tests {
         let edge = Mentioned::new(&source, &target, 0.5, 0.5);
 
         assert_eq!(edge.cls(), "Mentioned", "Got {} instead", edge.cls());
-        assert_eq!(edge.src_ty(), "Article", "Got {} instead", edge.src_ty());
-        assert_eq!(edge.tgt_ty(), "StaticEvent", "Got {} instead", edge.tgt_ty());
-        assert_eq!(edge.src_nm(), source.name(), "Got {} instead", edge.src_ty());
-        assert_eq!(edge.tgt_nm(), target.name(), "Got {} instead", edge.tgt_ty());
+        assert_eq!(
+            edge.src_type(),
+            "Article",
+            "Got {} instead",
+            edge.src_type()
+        );
+        assert_eq!(
+            edge.tgt_type(),
+            "StaticEvent",
+            "Got {} instead",
+            edge.tgt_type()
+        );
+        assert_eq!(
+            edge.src_name(),
+            source.name(),
+            "Got {} instead",
+            edge.src_type()
+        );
+        assert_eq!(
+            edge.tgt_name(),
+            target.name(),
+            "Got {} instead",
+            edge.tgt_type()
+        );
     }
 }
