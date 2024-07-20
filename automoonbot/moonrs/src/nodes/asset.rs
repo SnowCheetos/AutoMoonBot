@@ -19,33 +19,18 @@ pub trait Asset: DynamicNode<Aggregate> {
     fn quote(&self) -> Option<f64>;
 }
 
-impl Asset for Equity {
-    type Buffer = TemporalDeque<Aggregate>;
 
-    fn symbol(&self) -> &String {
-        &self.symbol
-    }
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    fn region(&self) -> &String {
-        &self.region
-    }
+//     #[test]
+//     fn test_equity() {
+//         let symbol = "EQU".to_string();
+//         let region = "MOON".to_string();
+//         let equity = Equity::new(10, symbol, region, Vec::new());
 
-    fn quote(&self) -> Option<f64> {
-        Some(self.last()?.close())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_equity() {
-        let symbol = "EQU".to_string();
-        let region = "MOON".to_string();
-        let equity = Equity::new(10, symbol, region, Vec::new());
-
-        assert_eq!(equity.symbol(), "EQU");
-        assert_eq!(equity.region(), "MOON");
-    }
-}
+//         assert_eq!(equity.symbol(), "EQU");
+//         assert_eq!(equity.region(), "MOON");
+//     }
+// }
