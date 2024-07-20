@@ -47,41 +47,83 @@ pub trait StaticNode: Clone + Send + Sync {
     fn name(&self) -> &String;
 }
 
-pub mod static_entities {
-    use super::*;
-
-    impl StaticNode for StaticEvent {
-        fn cls(&self) -> &'static str {
-            "StaticEvent"
-        }
-
-        fn name(&self) -> &String {
-            &self.description
+impl StaticNode for NodeType {
+    fn cls(&self) -> &'static str {
+        match self {
+            NodeType::StaticEvent(node) => node.cls(),
+            NodeType::Article(node) => node.cls(),
+            NodeType::TemporalEvent(node) => todo!(),
+            NodeType::Author(node) => todo!(),
+            NodeType::Publisher(node) => todo!(),
+            NodeType::Region(node) => todo!(),
+            NodeType::Exchange(node) => todo!(),
+            NodeType::Company(node) => todo!(),
+            NodeType::Sector(node) => todo!(),
+            NodeType::Indices(node) => todo!(),
+            NodeType::Commodity(node) => todo!(),
+            NodeType::Currency(node) => todo!(),
+            NodeType::Bonds(node) => todo!(),
+            NodeType::Equity(node) => node.cls(),
+            NodeType::Crypto(node) => todo!(),
+            NodeType::ETFs(node) => todo!(),
+            NodeType::Futures(node) => todo!(),
+            NodeType::Shorts(node) => todo!(),
+            NodeType::Options(node) => todo!(),
         }
     }
 
-    impl StaticNode for Article {
-        fn cls(&self) -> &'static str {
-            "Article"
-        }
-
-        fn name(&self) -> &String {
-            &self.title
+    fn name(&self) -> &String {
+        match self {
+            NodeType::StaticEvent(node) => node.name(),
+            NodeType::Article(node) => node.name(),
+            NodeType::TemporalEvent(_) => todo!(),
+            NodeType::Author(_) => todo!(),
+            NodeType::Publisher(_) => todo!(),
+            NodeType::Region(_) => todo!(),
+            NodeType::Exchange(_) => todo!(),
+            NodeType::Company(_) => todo!(),
+            NodeType::Sector(_) => todo!(),
+            NodeType::Indices(_) => todo!(),
+            NodeType::Commodity(_) => todo!(),
+            NodeType::Currency(_) => todo!(),
+            NodeType::Bonds(_) => todo!(),
+            NodeType::Equity(_) => todo!(),
+            NodeType::Crypto(_) => todo!(),
+            NodeType::ETFs(_) => todo!(),
+            NodeType::Futures(_) => todo!(),
+            NodeType::Shorts(_) => todo!(),
+            NodeType::Options(_) => todo!(),
         }
     }
 }
 
-pub mod dynamic_entities {
-    use super::*;
+impl StaticNode for StaticEvent {
+    fn cls(&self) -> &'static str {
+        "StaticEvent"
+    }
 
-    impl StaticNode for Equity {
-        fn cls(&self) -> &'static str {
-            "Equity"
-        }
+    fn name(&self) -> &String {
+        &self.description
+    }
+}
 
-        fn name(&self) -> &String {
-            &self.symbol
-        }
+impl StaticNode for Article {
+    fn cls(&self) -> &'static str {
+        "Article"
+    }
+
+    fn name(&self) -> &String {
+        &self.title
+    }
+}
+
+impl StaticNode for Equity {
+    fn cls(&self) -> &'static str {
+        "Equity"
+    }
+
+    fn name(&self) -> &String {
+        &self.symbol
     }
 }
 

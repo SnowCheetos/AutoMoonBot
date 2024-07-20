@@ -8,5 +8,5 @@ class Environment:
     def reset(self):
         pass
 
-    def step(self):
+    def step(self, state, action):
         pass

@@ -4,9 +4,9 @@ mod forward;
 mod mutual;
 mod statics;
 
-pub use nodes::{Article, DynamicNode, StaticEvent, StaticNode};
+use nodes::*;
 
 use crate::*;
 
-pub use common::{dynamic_relations::defs::*, static_relations::defs::*};
+pub use common::*;
 pub use edges::{backward::BackwardDynEdge, forward::ForwardDynEdge, statics::StaticEdge};
