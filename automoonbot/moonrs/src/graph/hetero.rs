@@ -1,6 +1,7 @@
 use crate::{edges::StaticEdge, nodes::StaticNode, *};
 
 #[derive(Default)]
+#[cfg_attr(feature = "python", pyclass)]
 pub struct HeteroGraph {
     graph: StableDiGraph<Box<dyn StaticNode>, Box<dyn StaticEdge>>,
     node_memo: HashMap<String, NodeIndex>,
@@ -84,6 +85,30 @@ impl HeteroGraph {
         if let Some(index) = self.get_edge_index(src, tgt) {
             self.remove_edge(*index);
         }
+    }
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl HeteroGraph {
+    #[new]
+    pub fn init() -> Self {
+        Self::new()
+    }
+
+    #[staticmethod]
+    pub fn hello_python() -> &'static str {
+        "Hello From HeteroGraph"
+    }
+
+    #[pyo3(name = "node_count")]
+    pub fn node_count_py(&self) -> usize {
+        self.node_count()
+    }
+
+    #[pyo3(name = "edge_count")]
+    pub fn edge_count_py(&self) -> usize {
+        self.edge_count()
     }
 }
 
@@ -222,7 +247,7 @@ mod tests {
 
         graph.add_node(Box::new(src_node));
         graph.add_node(Box::new(tgt_node));
-        
+
         let src_index = graph.get_node_index(src_name.clone()).unwrap().to_owned();
         let tgt_index = graph.get_node_index(tgt_name.clone()).unwrap().to_owned();
         let src_node = graph.get_node(src_index).unwrap();
