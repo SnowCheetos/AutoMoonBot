@@ -100,6 +100,16 @@ impl HeteroGraph {
     pub fn hello_python() -> &'static str {
         "Hello From HeteroGraph"
     }
+
+    #[pyo3(name = "node_count")]
+    pub fn node_count_py(&self) -> usize {
+        self.node_count()
+    }
+
+    #[pyo3(name = "edge_count")]
+    pub fn edge_count_py(&self) -> usize {
+        self.edge_count()
+    }
 }
 
 #[cfg(test)]
@@ -237,7 +247,7 @@ mod tests {
 
         graph.add_node(Box::new(src_node));
         graph.add_node(Box::new(tgt_node));
-        
+
         let src_index = graph.get_node_index(src_name.clone()).unwrap().to_owned();
         let tgt_index = graph.get_node_index(tgt_name.clone()).unwrap().to_owned();
         let src_node = graph.get_node(src_index).unwrap();

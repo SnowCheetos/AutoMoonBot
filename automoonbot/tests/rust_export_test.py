@@ -20,3 +20,7 @@ def test_basics():
     assert (
         HeteroGraph.hello_python() == "Hello From HeteroGraph"
     ), "incorrect hello message"
+
+    graph = HeteroGraph()
+    assert graph.node_count() == 0, "incorrect node count"
+    assert graph.edge_count() == 0, "incorrect node count"
