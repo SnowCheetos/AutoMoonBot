@@ -1,17 +1,12 @@
 use crate::edges::*;
 
 pub trait StaticEdge: Send + Sync {
-    fn cls(&self) -> &'static str;
     fn value(&self) -> f64;
     fn src_index(&self) -> &NodeIndex;
     fn tgt_index(&self) -> &NodeIndex;
 }
 
 impl StaticEdge for TestEdge {
-    fn cls(&self) -> &'static str {
-        "TestEdge"
-    }
-
     fn value(&self) -> f64 {
         self.value
     }

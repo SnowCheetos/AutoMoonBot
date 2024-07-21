@@ -1,6 +1,7 @@
 use crate::{edges::StaticEdge, nodes::StaticNode, *};
 
 #[derive(Default)]
+#[cfg_attr(feature = "python", pyclass)]
 pub struct HeteroGraph {
     graph: StableDiGraph<Box<dyn StaticNode>, Box<dyn StaticEdge>>,
     node_memo: HashMap<String, NodeIndex>,
@@ -84,6 +85,20 @@ impl HeteroGraph {
         if let Some(index) = self.get_edge_index(src, tgt) {
             self.remove_edge(*index);
         }
+    }
+}
+
+#[cfg(feature = "python")]
+#[pymethods]
+impl HeteroGraph {
+    #[new]
+    pub fn init() -> Self {
+        Self::new()
+    }
+
+    #[staticmethod]
+    pub fn hello_python() -> &'static str {
+        "Hello From HeteroGraph"
     }
 }
 
