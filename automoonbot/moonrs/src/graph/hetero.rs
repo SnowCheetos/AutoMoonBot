@@ -1,4 +1,8 @@
-use crate::{edges::StaticEdge, nodes::StaticNode, *};
+use std::clone;
+
+use edges::TestEdge;
+
+use crate::graph::*;
 
 #[derive(Default)]
 #[cfg_attr(feature = "python", pyclass(subclass))]
@@ -51,10 +55,11 @@ impl HeteroGraph {
         self.get_edge(*index)
     }
 
-    pub fn add_node(&mut self, node: Box<dyn StaticNode>) {
+    pub fn add_node(&mut self, node: Box<dyn StaticNode>) -> NodeIndex {
         let name = node.name().to_string();
         let index = self.graph.add_node(node);
         self.node_memo.entry(name).or_insert(index);
+        index
     }
 
     pub fn add_edge(&mut self, src: NodeIndex, tgt: NodeIndex, edge: Box<dyn StaticEdge>) {
@@ -86,29 +91,32 @@ impl HeteroGraph {
             self.remove_edge(*index);
         }
     }
-}
 
-#[cfg(feature = "python")]
-#[pymethods]
-impl HeteroGraph {
-    #[new]
-    pub fn init() -> Self {
-        Self::new()
+    pub fn compute_valid_edges(&mut self, src: NodeIndex) {
+        let indices: Vec<NodeIndex> = self.graph.node_indices().collect();
+        indices.into_iter().for_each(|tgt| {
+            if tgt != src {
+                if let Some(edge) = self.compute_pair_edge(src, tgt) {
+                    self.add_edge(src, tgt, edge);
+                }
+            }
+        });
     }
 
-    #[staticmethod]
-    pub fn hello_python() -> &'static str {
-        "Hello From HeteroGraph"
-    }
+    pub fn compute_pair_edge(&self, src: NodeIndex, tgt: NodeIndex) -> Option<Box<dyn StaticEdge>> {
+        let source = self.get_node(src);
+        let target = self.get_node(tgt);
 
-    #[pyo3(name = "node_count")]
-    pub fn node_count_py(&self) -> usize {
-        self.node_count()
-    }
-
-    #[pyo3(name = "edge_count")]
-    pub fn edge_count_py(&self) -> usize {
-        self.edge_count()
+        if let (Some(source), Some(target)) = (source, target) {
+            let src_cls = source.cls();
+            let tgt_cls = target.cls();
+            match (src_cls, tgt_cls) {
+                ("TestNode", "TestNode") => Some(Box::new(TestEdge::new(src, tgt, source, target))),
+                _ => None,
+            }
+        } else {
+            None
+        }
     }
 }
 
@@ -217,11 +225,8 @@ mod tests {
         let src_node = TestNode::new(src_name.clone(), src_value);
         let tgt_node = TestNode::new(tgt_name.clone(), tgt_value);
 
-        graph.add_node(Box::new(src_node));
-        graph.add_node(Box::new(tgt_node));
-
-        let src_index = graph.get_node_index(src_name.clone()).unwrap().to_owned();
-        let tgt_index = graph.get_node_index(tgt_name.clone()).unwrap().to_owned();
+        let src_index = graph.add_node(Box::new(src_node));
+        let tgt_index = graph.add_node(Box::new(tgt_node));
         let src_node = graph.get_node(src_index).unwrap();
         let tgt_node = graph.get_node(tgt_index).unwrap();
 
@@ -245,11 +250,8 @@ mod tests {
         let src_node = TestNode::new(src_name.clone(), src_value);
         let tgt_node = TestNode::new(tgt_name.clone(), tgt_value);
 
-        graph.add_node(Box::new(src_node));
-        graph.add_node(Box::new(tgt_node));
-
-        let src_index = graph.get_node_index(src_name.clone()).unwrap().to_owned();
-        let tgt_index = graph.get_node_index(tgt_name.clone()).unwrap().to_owned();
+        let src_index = graph.add_node(Box::new(src_node));
+        let tgt_index = graph.add_node(Box::new(tgt_node));
         let src_node = graph.get_node(src_index).unwrap();
         let tgt_node = graph.get_node(tgt_index).unwrap();
 

@@ -23,7 +23,30 @@ def test_basics():
 
     graph = HeteroGraph()
     assert graph.node_count() == 0, "incorrect node count"
-    assert graph.edge_count() == 0, "incorrect node count"
+    assert graph.edge_count() == 0, "incorrect edge count"
+
+    graph.add_test_node(name="test", value=1.0)
+    assert graph.node_count() == 1, "incorrect node count"
+    assert graph.edge_count() == 0, "incorrect edge count"
+
+    graph.remove_node(name="test")
+    assert graph.node_count() == 0, "incorrect node count"
+
+    graph.add_test_node(name="node_1", value=1.0)
+    assert graph.node_count() == 1, "incorrect node count"
+    assert graph.edge_count() == 0, "incorrect edge count"
+
+    graph.add_test_node(name="node_2", value=1.0)
+    assert graph.node_count() == 2, "incorrect node count"
+    assert graph.edge_count() == 1, "incorrect edge count"
+
+    graph.add_test_node(name="node_3", value=1.0)
+    assert graph.node_count() == 3, "incorrect node count"
+    assert graph.edge_count() == 3, "incorrect edge count"
+
+    graph.remove_node(name="node_1")
+    assert graph.node_count() == 2, "incorrect node count"
+    assert graph.edge_count() == 1, "incorrect edge count"
 
 
 def test_wrapping():

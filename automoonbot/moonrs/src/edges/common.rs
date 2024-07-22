@@ -1,7 +1,6 @@
 use crate::edges::*;
 
 #[derive(Debug)]
-#[cfg_attr(feature = "python", pyclass)]
 pub struct TestEdge {
     pub(super) src_index: NodeIndex,
     pub(super) tgt_index: NodeIndex,

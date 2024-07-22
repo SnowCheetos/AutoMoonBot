@@ -1,7 +1,6 @@
 use crate::nodes::*;
 
 #[derive(Debug)]
-#[cfg_attr(feature = "python", pyclass)]
 pub struct TestNode {
     pub(super) name: String,
     pub(super) value: f64,
