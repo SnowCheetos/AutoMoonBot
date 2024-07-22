@@ -24,3 +24,18 @@ def test_basics():
     graph = HeteroGraph()
     assert graph.node_count() == 0, "incorrect node count"
     assert graph.edge_count() == 0, "incorrect node count"
+
+
+def test_wrapping():
+    try:
+        from moonrs import HeteroGraph
+    except ImportError:
+        pytest.fail("Failed to import the moonrs module")
+
+    class Wrapper(HeteroGraph):
+        def __init__(self):
+            super().__init__()
+
+    wrapper = Wrapper()
+    assert wrapper.node_count() == 0, "incorrect node count"
+    assert wrapper.edge_count() == 0, "incorrect node count"

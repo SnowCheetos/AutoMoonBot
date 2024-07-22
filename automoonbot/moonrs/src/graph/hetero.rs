@@ -1,7 +1,7 @@
 use crate::{edges::StaticEdge, nodes::StaticNode, *};
 
 #[derive(Default)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(subclass))]
 pub struct HeteroGraph {
     graph: StableDiGraph<Box<dyn StaticNode>, Box<dyn StaticEdge>>,
     node_memo: HashMap<String, NodeIndex>,

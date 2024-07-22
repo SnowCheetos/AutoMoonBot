@@ -16,17 +16,3 @@ impl TestNode {
         self.value
     }
 }
-
-#[cfg(feature = "python")]
-#[pymethods]
-impl TestNode {
-    #[new]
-    pub fn init(name: String, value: f64) -> Self {
-        Self::new(name, value)
-    }
-
-    #[pyo3(name = "value")]
-    pub fn value_py(&self) -> f64 {
-        self.value
-    }
-}
