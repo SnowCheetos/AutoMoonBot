@@ -22,6 +22,7 @@ where
     Ix: Clone + Hash + Eq + PartialOrd,
     T: Clone,
 {
+    fn to_vec(&self) -> Vec<&T>;
     fn first(&self) -> Option<&T>;
     fn last(&self) -> Option<&T>;
     fn loc(&self, index: &Ix) -> Option<&T>;

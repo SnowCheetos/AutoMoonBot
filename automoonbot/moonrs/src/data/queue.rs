@@ -71,6 +71,10 @@ where
         }
     }
 
+    fn to_vec(&self) -> Vec<&T> {
+        self.deque.range(..).collect()
+    }
+
     fn range(&self, a: usize, b: usize) -> Option<Vec<&T>> {
         if a >= b || b > self.deque.len() {
             None

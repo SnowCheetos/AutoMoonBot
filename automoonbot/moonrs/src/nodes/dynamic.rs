@@ -8,6 +8,7 @@ where
 {
     fn update(&mut self, index: Ix, item: T) -> bool;
     fn empty(&self) -> bool;
+    fn to_vec(&self) -> Vec<&T>;
     fn first(&self) -> Option<&T>;
     fn last(&self) -> Option<&T>;
     fn between(&self, start: Ix, end: Ix) -> Option<Vec<&T>>;
@@ -20,6 +21,10 @@ impl DynamicNode<Instant, f64> for TestNode {
 
     fn empty(&self) -> bool {
         self.buffer.empty()
+    }
+
+    fn to_vec(&self) -> Vec<&f64> {
+        self.buffer.to_vec()
     }
 
     fn first(&self) -> Option<&f64> {
