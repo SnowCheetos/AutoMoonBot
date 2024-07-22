@@ -106,7 +106,7 @@ mod tests {
 
         let name = "node".to_owned();
         let value = 0.0;
-        let node = TestNode::new(name.clone(), value);
+        let node = TestNode::new(name.clone(), value, 1);
 
         graph.add_node(Box::new(node));
         assert_eq!(graph.node_count(), 1);
@@ -124,7 +124,7 @@ mod tests {
 
         let name = "node".to_owned();
         let value = 0.0;
-        let node = TestNode::new(name.clone(), value);
+        let node = TestNode::new(name.clone(), value, 1);
 
         graph.add_node(Box::new(node));
         assert_eq!(graph.node_count(), 1);
@@ -143,8 +143,8 @@ mod tests {
         let tgt_name = "tgt_node".to_owned();
         let src_value = 1.0;
         let tgt_value = 2.0;
-        let src_node = TestNode::new(src_name.clone(), src_value);
-        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value);
+        let src_node = TestNode::new(src_name.clone(), src_value, 1);
+        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value, 1);
 
         graph.add_node(Box::new(src_node));
         assert_eq!(graph.node_count(), 1);
@@ -190,8 +190,8 @@ mod tests {
         let tgt_name = "tgt_node".to_owned();
         let src_value = 1.0;
         let tgt_value = 2.0;
-        let src_node = TestNode::new(src_name.clone(), src_value);
-        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value);
+        let src_node = TestNode::new(src_name.clone(), src_value, 1);
+        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value, 1);
 
         let src_index = graph.add_node(Box::new(src_node));
         let tgt_index = graph.add_node(Box::new(tgt_node));
@@ -215,8 +215,8 @@ mod tests {
         let tgt_name = "tgt_node".to_owned();
         let src_value = 1.0;
         let tgt_value = 2.0;
-        let src_node = TestNode::new(src_name.clone(), src_value);
-        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value);
+        let src_node = TestNode::new(src_name.clone(), src_value, 1);
+        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value, 1);
 
         let src_index = graph.add_node(Box::new(src_node));
         let tgt_index = graph.add_node(Box::new(tgt_node));

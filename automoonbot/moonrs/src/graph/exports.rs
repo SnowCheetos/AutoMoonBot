@@ -26,8 +26,8 @@ impl HeteroGraph {
         None
     }
 
-    pub fn add_test_node(&mut self, name: String, value: f64) {
-        let node = TestNode::new(name, value);
+    pub fn add_test_node(&mut self, name: String, value: f64, capacity: usize) {
+        let node = TestNode::new(name, value, capacity);
         let index = self.add_node(Box::new(node));
         self.compute_all_edges(index);
     }
@@ -62,8 +62,8 @@ impl HeteroGraph {
     }
 
     #[pyo3(name = "add_test_node")]
-    pub fn add_test_node_py(&mut self, name: String, value: f64) {
-        self.add_test_node(name, value);
+    pub fn add_test_node_py(&mut self, name: String, value: f64, capacity: usize) {
+        self.add_test_node(name, value, capacity);
     }
 }
 
@@ -81,15 +81,15 @@ mod tests {
         let value_2 = 2.0;
         let value_3 = 2.0;
 
-        graph.add_test_node(name_1.clone(), value_1);
+        graph.add_test_node(name_1.clone(), value_1, 1);
         assert_eq!(graph.node_count(), 1);
         assert_eq!(graph.edge_count(), 0);
 
-        graph.add_test_node(name_2.clone(), value_2);
+        graph.add_test_node(name_2.clone(), value_2, 1);
         assert_eq!(graph.node_count(), 2);
         assert_eq!(graph.edge_count(), 2);
 
-        graph.add_test_node(name_3.clone(), value_3);
+        graph.add_test_node(name_3.clone(), value_3, 1);
         assert_eq!(graph.node_count(), 3);
         assert_eq!(graph.edge_count(), 4);
 

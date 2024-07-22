@@ -30,8 +30,8 @@ mod tests {
         let tgt_name = "tgt_node".to_owned();
         let src_value = 1.0;
         let tgt_value = 2.0;
-        let src_node = TestNode::new(src_name.clone(), src_value);
-        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value);
+        let src_node = TestNode::new(src_name.clone(), src_value, 1);
+        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value, 1);
 
         let src_index = NodeIndex::new(0);
         let tgt_index = NodeIndex::new(1);

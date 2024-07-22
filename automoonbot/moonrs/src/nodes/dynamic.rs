@@ -1,64 +1,76 @@
 use crate::nodes::*;
 
 /// ...
-pub trait DynamicNode<T>: StaticNode
+pub trait DynamicNode<Ix, T>: StaticNode
 where
+    Ix: Clone + Hash + Eq + PartialOrd,
     T: Clone,
 {
-    type Buffer: RingIndexBuffer<Instant, T>;
-
-    fn update(&mut self, item: T) -> bool;
+    fn update(&mut self, index: Ix, item: T) -> bool;
+    fn empty(&self) -> bool;
     fn first(&self) -> Option<&T>;
     fn last(&self) -> Option<&T>;
+    fn between(&self, start: Ix, end: Ix) -> Option<Vec<&T>>;
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+impl DynamicNode<Instant, f64> for TestNode {
+    fn update(&mut self, index: Instant, item: f64) -> bool {
+        self.buffer.push(index, item)
+    }
 
-//     #[test]
-//     fn test_equity() {
-//         let symbol = "EQU".to_string();
-//         let region = "MOON".to_string();
-//         let mut equity = Equity::new(2, symbol, region, Vec::new());
-//         let now = Instant::now();
-//         let span = Duration::new(60, 0);
-//         let later = now + span;
-//         let aggregate1 = Aggregate::new(now, span, true, 1.0, 2.0, 0.5, 1.5, 100.0);
-//         let aggregate2 = Aggregate::new(later, span, false, 1.1, 2.1, 0.6, 1.6, 200.0);
-//         let aggregate3 = Aggregate::new(later + span, span, false, 1.3, 2.2, 0.7, 1.5, 150.0);
+    fn empty(&self) -> bool {
+        self.buffer.empty()
+    }
 
-//         let front = equity.first();
-//         let back = equity.last();
-//         assert!(front.is_none());
-//         assert!(back.is_none());
+    fn first(&self) -> Option<&f64> {
+        self.buffer.first()
+    }
 
-//         let success = equity.update(aggregate1);
-//         assert!(success);
-//         let front = equity.first();
-//         let back = equity.last();
-//         assert!(front.is_some_and(|item| item.timestamp() == now));
-//         assert!(back.is_some_and(|item| item.timestamp() == now));
+    fn last(&self) -> Option<&f64> {
+        self.buffer.last()
+    }
 
-//         let success = equity.update(aggregate2);
-//         assert!(success);
-//         let front = equity.first();
-//         let back = equity.last();
-//         assert!(front.is_some_and(|item| item.timestamp() == now));
-//         assert!(back.is_some_and(|item| item.timestamp() == later));
+    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&f64>> {
+        self.buffer.between(&start, &end)
+    }
+}
 
-//         let success = equity.update(aggregate2);
-//         assert!(!success);
-//         let front = equity.first();
-//         let back = equity.last();
-//         assert!(front.is_some_and(|item| item.timestamp() == now));
-//         assert!(back.is_some_and(|item| item.timestamp() == later));
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//         let success = equity.update(aggregate3);
-//         assert!(success);
-//         let front = equity.first();
-//         let back = equity.last();
-//         assert!(front.is_some_and(|item| item.timestamp() == later));
-//         assert!(back.is_some_and(|item| item.timestamp() == later + span));
-//     }
-// }
+    #[test]
+    fn test_node() {
+        let name1 = "Node1".to_owned();
+        let name2 = "Node2".to_owned();
+        let mut node1 = TestNode::new(name1.clone(), 0.0, 5);
+        let mut node2 = TestNode::new(name2.clone(), 0.0, 5);
+        assert!(node1.empty() && node2.empty());
+
+        let now = Instant::now();
+        let value1 = 1.0;
+        let value2 = 2.0;
+        let success1 = node1.update(now, value1);
+        let success2 = node2.update(now, value2);
+        assert!(success1 && success2);
+
+        let success = node1.update(now, value1);
+        assert!(!success);
+
+        assert!(node1.first().is_some_and(|value| *value == value1));
+        assert!(node2.first().is_some_and(|value| *value == value2));
+
+        let later = Instant::now();
+        node1.update(later, value2);
+        node2.update(later, value1);
+
+        assert!(node1.last().is_some_and(|value| *value == value2));
+        assert!(node2.last().is_some_and(|value| *value == value1));
+
+        let vec1 = node1.between(now, later);
+        let vec2 = node2.between(now, later);
+
+        assert!(vec1.is_some_and(|v| v == vec![&value1, &value2]));
+        assert!(vec2.is_some_and(|v| v == vec![&value2, &value1]));
+    }
+}
