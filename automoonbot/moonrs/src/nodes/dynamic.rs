@@ -1,6 +1,5 @@
 use crate::nodes::*;
 
-/// ...
 pub trait DynamicNode<Ix, T>: StaticNode
 where
     Ix: Clone + Hash + Eq + PartialOrd,

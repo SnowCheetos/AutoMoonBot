@@ -46,6 +46,10 @@ impl HeteroGraph {
         "Hello From HeteroGraph"
     }
 
+    pub fn clear(&mut self) {
+        self.graph.clear();
+    }
+
     #[pyo3(name = "node_count")]
     pub fn node_count_py(&self) -> usize {
         self.node_count()

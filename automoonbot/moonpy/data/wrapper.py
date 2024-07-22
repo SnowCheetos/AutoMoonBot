@@ -4,10 +4,9 @@ from moonrs import HeteroGraph
 class HeteroGraphWrapper(HeteroGraph):
     def __init__(self) -> None:
         super().__init__()
-        self._db = None
 
     def reset(self):
-        pass
+        self.clear()
 
     def update(self):
         pass

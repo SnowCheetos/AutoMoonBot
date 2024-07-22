@@ -5,6 +5,8 @@ pub struct TestEdge {
     pub(super) src_index: NodeIndex,
     pub(super) tgt_index: NodeIndex,
     pub(super) value: f64,
+    pub(super) covariance: Option<f64>,
+    pub(super) correlation: Option<f64>,
 }
 
 impl TestEdge {
@@ -19,6 +21,8 @@ impl TestEdge {
             src_index,
             tgt_index,
             value,
+            covariance: None,
+            correlation: None,
         }
     }
 
@@ -37,6 +41,8 @@ impl TestEdge {
                 src_index,
                 tgt_index,
                 value,
+                covariance: None,
+                correlation: None,
             })
         } else {
             None
