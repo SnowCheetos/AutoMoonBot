@@ -1,15 +1,11 @@
-use std::clone;
-
-use edges::TestEdge;
-
 use crate::graph::*;
 
 #[derive(Default)]
 #[cfg_attr(feature = "python", pyclass(subclass))]
 pub struct HeteroGraph {
-    graph: StableDiGraph<Box<dyn StaticNode>, Box<dyn StaticEdge>>,
-    node_memo: HashMap<String, NodeIndex>,
-    edge_memo: HashMap<(NodeIndex, NodeIndex), EdgeIndex>,
+    pub(super) graph: StableDiGraph<Box<dyn StaticNode>, Box<dyn StaticEdge>>,
+    pub(super) node_memo: HashMap<String, NodeIndex>,
+    pub(super) edge_memo: HashMap<(NodeIndex, NodeIndex), EdgeIndex>,
 }
 
 impl HeteroGraph {
@@ -91,39 +87,11 @@ impl HeteroGraph {
             self.remove_edge(*index);
         }
     }
-
-    pub fn compute_valid_edges(&mut self, src: NodeIndex) {
-        let indices: Vec<NodeIndex> = self.graph.node_indices().collect();
-        indices.into_iter().for_each(|tgt| {
-            if tgt != src {
-                if let Some(edge) = self.compute_pair_edge(src, tgt) {
-                    self.add_edge(src, tgt, edge);
-                }
-            }
-        });
-    }
-
-    pub fn compute_pair_edge(&self, src: NodeIndex, tgt: NodeIndex) -> Option<Box<dyn StaticEdge>> {
-        let source = self.get_node(src);
-        let target = self.get_node(tgt);
-
-        if let (Some(source), Some(target)) = (source, target) {
-            let src_cls = source.cls();
-            let tgt_cls = target.cls();
-            match (src_cls, tgt_cls) {
-                ("TestNode", "TestNode") => Some(Box::new(TestEdge::new(src, tgt, source, target))),
-                _ => None,
-            }
-        } else {
-            None
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{edges::TestEdge, nodes::TestNode};
 
     #[test]
     fn test_new() {

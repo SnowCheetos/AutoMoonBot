@@ -8,12 +8,38 @@ pub struct TestEdge {
 }
 
 impl TestEdge {
-    pub fn new(src_index: NodeIndex, tgt_index: NodeIndex, src_node: &dyn StaticNode, tgt_node: &dyn StaticNode) -> Self {
+    pub fn new(
+        src_index: NodeIndex,
+        tgt_index: NodeIndex,
+        src_node: &dyn StaticNode,
+        tgt_node: &dyn StaticNode,
+    ) -> Self {
         let value = Self::difference(src_node, tgt_node);
         TestEdge {
             src_index,
             tgt_index,
             value,
+        }
+    }
+
+    pub fn try_new(
+        src_index: NodeIndex,
+        tgt_index: NodeIndex,
+        src_node: &dyn StaticNode,
+        tgt_node: &dyn StaticNode,
+    ) -> Option<Self> {
+        if src_index == tgt_index {
+            return None;
+        }
+        let value = Self::difference(src_node, tgt_node);
+        if value > 0.0 {
+            Some(TestEdge {
+                src_index,
+                tgt_index,
+                value,
+            })
+        } else {
+            None
         }
     }
 

@@ -36,17 +36,17 @@ def test_basics():
     assert graph.node_count() == 1, "incorrect node count"
     assert graph.edge_count() == 0, "incorrect edge count"
 
-    graph.add_test_node(name="node_2", value=1.0)
+    graph.add_test_node(name="node_2", value=2.0)
     assert graph.node_count() == 2, "incorrect node count"
-    assert graph.edge_count() == 1, "incorrect edge count"
+    assert graph.edge_count() == 2, "incorrect edge count"
 
-    graph.add_test_node(name="node_3", value=1.0)
+    graph.add_test_node(name="node_3", value=2.0)
     assert graph.node_count() == 3, "incorrect node count"
-    assert graph.edge_count() == 3, "incorrect edge count"
+    assert graph.edge_count() == 4, "incorrect edge count"
 
     graph.remove_node(name="node_1")
     assert graph.node_count() == 2, "incorrect node count"
-    assert graph.edge_count() == 1, "incorrect edge count"
+    assert graph.edge_count() == 0, "incorrect edge count"
 
 
 def test_wrapping():
@@ -61,4 +61,4 @@ def test_wrapping():
 
     wrapper = Wrapper()
     assert wrapper.node_count() == 0, "incorrect node count"
-    assert wrapper.edge_count() == 0, "incorrect node count"
+    assert wrapper.edge_count() == 0, "incorrect edge count"

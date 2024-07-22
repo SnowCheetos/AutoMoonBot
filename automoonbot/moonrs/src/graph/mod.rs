@@ -1,3 +1,8 @@
-pub mod hetero;
 pub mod exports;
-use crate::{edges::StaticEdge, nodes::{StaticNode, *}, *};
+pub mod hetero;
+use crate::{
+    edges::{StaticEdge, *},
+    graph::hetero::HeteroGraph,
+    nodes::{StaticNode, *},
+    *,
+};
