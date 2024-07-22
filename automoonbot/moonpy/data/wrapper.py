@@ -1,8 +1,7 @@
-import sqlite3
-from automoonbot.moonpy.data import HeteroGraph
+from moonrs import HeteroGraph
 
 
-class DataInterface(HeteroGraph):
+class HeteroGraphWrapper(HeteroGraph):
     def __init__(self) -> None:
         super().__init__()
         self._db = None
@@ -13,5 +12,8 @@ class DataInterface(HeteroGraph):
     def update(self):
         pass
 
-    def test(self):
+    def add_node(self):
+        pass
+
+    def remove_node(self):
         pass
