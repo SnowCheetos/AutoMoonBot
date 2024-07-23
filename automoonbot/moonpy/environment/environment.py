@@ -10,3 +10,9 @@ class Environment:
 
     def step(self, state, action):
         pass
+
+    def train(self):
+        pass
+
+    def validate(self):
+        pass
