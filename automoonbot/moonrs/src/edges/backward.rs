@@ -8,6 +8,7 @@ where
     X: Clone,
 {
     fn backward_corr(&self, src: &S, tgt: &T);
+    fn update(&mut self, src: &S, tgt: &T);
 }
 
 #[cfg(test)]

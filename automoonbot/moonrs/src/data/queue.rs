@@ -1,20 +1,21 @@
-use crate::data::{aggregate::*, buffer::*, *};
+use crate::data::*;
+use aggregates::Aggregates;
 use indexmap::IndexMap;
 use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
-pub struct TemporalDeque<T> {
+pub struct TimeSeries<T> {
     deque: VecDeque<T>,
     index: IndexMap<Instant, usize>,
     capacity: usize,
 }
 
-impl<T> DataBuffer for TemporalDeque<T>
+impl<T> DataBuffer for TimeSeries<T>
 where
     T: Clone,
 {
     fn new(capacity: usize) -> Self {
-        TemporalDeque {
+        TimeSeries {
             index: IndexMap::with_capacity(capacity),
             deque: VecDeque::with_capacity(capacity),
             capacity,
@@ -34,7 +35,7 @@ where
     }
 }
 
-impl<T> RingIndexBuffer<Instant, T> for TemporalDeque<T>
+impl<T> RingIndexBuffer<Instant, T> for TimeSeries<T>
 where
     T: Clone,
 {
@@ -112,7 +113,10 @@ where
     }
 }
 
-impl BlockRingIndexBuffer<Instant, Aggregate, f64> for TemporalDeque<Aggregate> {
+impl<T> BlockRingIndexBuffer<Instant, T, f64> for TimeSeries<T>
+where
+    T: Aggregates,
+{
     fn rows(&self) -> usize {
         self.deque.len()
     }
@@ -140,7 +144,7 @@ mod tests {
 
     #[test]
     fn test_new() {
-        let buffer: TemporalDeque<i32> = TemporalDeque::new(5);
+        let buffer: TimeSeries<i32> = TimeSeries::new(5);
         assert_eq!(buffer.capacity, 5);
         assert!(buffer.deque.is_empty());
         assert!(buffer.index.is_empty());
@@ -148,7 +152,7 @@ mod tests {
 
     #[test]
     fn test_push_and_get() {
-        let mut buffer = TemporalDeque::new(3);
+        let mut buffer = TimeSeries::new(3);
         let now = Instant::now();
 
         assert!(buffer.push(now, 1));
@@ -167,7 +171,7 @@ mod tests {
 
     #[test]
     fn test_first_last() {
-        let mut buffer = TemporalDeque::new(3);
+        let mut buffer = TimeSeries::new(3);
         let now = Instant::now();
 
         buffer.push(now, 1);
@@ -180,7 +184,7 @@ mod tests {
 
     #[test]
     fn test_loc() {
-        let mut buffer = TemporalDeque::new(3);
+        let mut buffer = TimeSeries::new(3);
         let now = Instant::now();
 
         buffer.push(now, 1);
@@ -193,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_range() {
-        let mut buffer = TemporalDeque::new(3);
+        let mut buffer = TimeSeries::new(3);
         let now = Instant::now();
 
         buffer.push(now, 1);
@@ -206,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_between() {
-        let mut buffer = TemporalDeque::new(3);
+        let mut buffer = TimeSeries::new(3);
         let now = Instant::now();
 
         buffer.push(now, 1);
@@ -221,7 +225,7 @@ mod tests {
 
     #[test]
     fn test_clear() {
-        let mut buffer = TemporalDeque::new(3);
+        let mut buffer = TimeSeries::new(3);
         let now = Instant::now();
 
         buffer.push(now, 1);
@@ -235,13 +239,13 @@ mod tests {
 
     #[test]
     fn test_aggregate_mat() {
-        let mut buffer = TemporalDeque::new(3);
+        let mut buffer = TimeSeries::new(3);
         let now = Instant::now();
         let span = Duration::new(60, 0);
         let next = now + span;
 
-        let aggregate1 = Aggregate::new(now, span, true, 1.0, 2.0, 0.5, 1.5, 100.0);
-        let aggregate2 = Aggregate::new(next, span, false, 1.1, 2.1, 0.6, 1.6, 200.0);
+        let aggregate1 = PriceAggregate::new(now, span, true, 1.0, 2.0, 0.5, 1.5, 100.0);
+        let aggregate2 = PriceAggregate::new(next, span, false, 1.1, 2.1, 0.6, 1.6, 200.0);
 
         let mat = buffer.mat();
         assert!(mat.is_none(), "did not none for matrix");

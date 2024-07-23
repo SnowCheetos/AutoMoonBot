@@ -8,6 +8,7 @@ where
     X: Clone,
 {
     fn fowrard_corr(&self, src: &S, tgt: &T);
+    fn update(&mut self, src: &S, tgt: &T);
 }
 
 mod tests {

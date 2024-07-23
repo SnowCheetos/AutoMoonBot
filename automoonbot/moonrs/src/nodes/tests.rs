@@ -4,7 +4,7 @@ use crate::nodes::*;
 pub struct TestNode {
     pub(super) name: String,
     pub(super) value: f64,
-    pub(super) buffer: TemporalDeque<f64>,
+    pub(super) buffer: TimeSeries<f64>,
 }
 
 impl TestNode {
@@ -12,7 +12,7 @@ impl TestNode {
         TestNode {
             name,
             value,
-            buffer: TemporalDeque::new(capacity),
+            buffer: TimeSeries::new(capacity),
         }
     }
 
