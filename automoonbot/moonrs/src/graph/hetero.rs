@@ -115,7 +115,7 @@ mod tests {
         assert!(node.is_some());
 
         let node = node.unwrap();
-        assert_eq!(node.value(), value);
+        assert_eq!(node.value().unwrap(), value);
     }
 
     #[test]

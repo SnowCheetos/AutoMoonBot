@@ -50,7 +50,7 @@ impl TestEdge {
     }
 
     pub fn difference(src_node: &dyn StaticNode, tgt_node: &dyn StaticNode) -> f64 {
-        (src_node.value() - tgt_node.value()).abs()
+        (src_node.value().unwrap() - tgt_node.value().unwrap()).abs()
     }
 }
 

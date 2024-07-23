@@ -43,14 +43,3 @@ where
     fn cols(&self) -> usize;
     fn mat(&self) -> Option<na::DMatrix<N>>;
 }
-
-// pub trait TimeSeriesBuffer<T>: BlockRingIndexBuffer<Instant, T, f64>
-// where
-//     T: Clone + IntoIterator<Item = f64>,
-// {
-//     fn autocorrelation(&self, lag: usize) -> na::DVector<f64>;
-//     fn zscore(&self, period: usize) -> na::DVector<f64>;
-//     fn skew(&self, period: usize) -> na::DVector<f64>;
-//     fn kurtosis(&self, period: usize) -> na::DVector<f64>;
-//     fn momentum(&self, period: usize) -> na::DVector<f64>;
-// }

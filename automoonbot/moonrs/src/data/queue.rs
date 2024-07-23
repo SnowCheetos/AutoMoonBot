@@ -138,6 +138,31 @@ where
     }
 }
 
+impl<T> TimeSeries<T>
+where
+    T: Aggregates,
+{
+    fn autocorrelation(&self, lag: usize) -> na::DVector<f64> {
+        todo!()
+    }
+
+    fn zscore(&self, period: usize) -> na::DVector<f64> {
+        todo!()
+    }
+
+    fn skew(&self, period: usize) -> na::DVector<f64> {
+        todo!()
+    }
+
+    fn kurtosis(&self, period: usize) -> na::DVector<f64> {
+        todo!()
+    }
+
+    fn momentum(&self, period: usize) -> na::DVector<f64> {
+        todo!()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -254,7 +279,10 @@ mod tests {
         buffer.push(aggregate2.timestamp(), aggregate2);
 
         let mat = buffer.mat();
-        assert!(mat.as_ref().is_some_and(|mat| mat.shape() == (2, 5)), "returned none for matrix");
+        assert!(
+            mat.as_ref().is_some_and(|mat| mat.shape() == (2, 5)),
+            "returned none for matrix"
+        );
 
         let mat = mat.unwrap();
         assert_eq!(mat[(0, 0)], 1.0, "unmatched value at (0, 0)");

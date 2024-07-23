@@ -30,8 +30,8 @@ impl StaticNode for TestNode {
         &self.name
     }
     
-    fn value(&self) -> f64 {
-        self.value
+    fn value(&self) -> Option<f64> {
+        Some(self.value)
     }
 }
 
