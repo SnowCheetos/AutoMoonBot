@@ -23,3 +23,15 @@ pub struct Issues {
     pub(super) src_index: NodeIndex,
     pub(super) tgt_index: NodeIndex,
 }
+
+#[derive(Debug)]
+pub struct Mirrors {
+    pub(super) src_index: NodeIndex,
+    pub(super) tgt_index: NodeIndex,
+}
+
+#[derive(Debug)]
+pub struct Derives {
+    pub(super) src_index: NodeIndex,
+    pub(super) tgt_index: NodeIndex,
+}
