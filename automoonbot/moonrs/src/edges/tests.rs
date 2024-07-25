@@ -35,7 +35,13 @@ impl TestEdge {
         if src_index == tgt_index {
             return None;
         }
-        let value = Self::difference(src_node, tgt_node);
+        let source = src_node.as_any().downcast_ref::<TestNode>();
+        let target = src_node.as_any().downcast_ref::<TestNode>();
+        if source.is_none() || target.is_none() {
+            return None;
+        }
+        let (source, target) = (source.unwrap(), target.unwrap());
+        let value = Self::difference(source, target);
         if value > 0.0 {
             Some(TestEdge {
                 src_index,

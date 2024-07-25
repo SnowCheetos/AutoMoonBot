@@ -74,6 +74,10 @@ impl Article {
             publisher,
         }
     }
+
+    pub fn publisher(&self) -> &String {
+        &self.publisher
+    }
 }
 
 impl Publisher {

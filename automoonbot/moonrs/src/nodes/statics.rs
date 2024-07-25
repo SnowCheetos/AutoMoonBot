@@ -4,6 +4,7 @@ pub trait StaticNode: Send + Sync {
     fn cls(&self) -> &'static str;
     fn name(&self) -> &String;
     fn value(&self) -> Option<f64>;
+    fn as_any(&self) -> &dyn Any;
 }
 
 impl StaticNode for Article {
@@ -17,6 +18,10 @@ impl StaticNode for Article {
 
     fn value(&self) -> Option<f64> {
         None
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -32,6 +37,10 @@ impl StaticNode for Publisher {
     fn value(&self) -> Option<f64> {
         None
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl StaticNode for Company {
@@ -45,6 +54,10 @@ impl StaticNode for Company {
 
     fn value(&self) -> Option<f64> {
         None
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -60,6 +73,10 @@ impl StaticNode for Currency {
     fn value(&self) -> Option<f64> {
         None
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl StaticNode for Equity {
@@ -73,6 +90,10 @@ impl StaticNode for Equity {
 
     fn value(&self) -> Option<f64> {
         None
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -88,6 +109,10 @@ impl StaticNode for Indices {
     fn value(&self) -> Option<f64> {
         None
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl StaticNode for ETFs {
@@ -101,6 +126,10 @@ impl StaticNode for ETFs {
 
     fn value(&self) -> Option<f64> {
         None
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }
 
@@ -116,6 +145,10 @@ impl StaticNode for Bonds {
     fn value(&self) -> Option<f64> {
         None
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl StaticNode for Options {
@@ -129,5 +162,9 @@ impl StaticNode for Options {
 
     fn value(&self) -> Option<f64> {
         None
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

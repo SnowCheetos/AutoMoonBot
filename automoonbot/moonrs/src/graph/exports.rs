@@ -20,6 +20,8 @@ impl HeteroGraph {
             return match (source.cls(), target.cls()) {
                 ("TestNode", "TestNode") => TestEdge::try_new(src, tgt, source, target)
                     .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
+                ("Publisher", "Article") => Published::try_new(src, tgt, source, target)
+                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
                 _ => None,
             };
         }

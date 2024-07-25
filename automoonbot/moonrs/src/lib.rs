@@ -13,6 +13,7 @@ pub mod utils;
 
 use petgraph::stable_graph::{EdgeIndex, NodeIndex, StableDiGraph};
 use std::{
+    any::Any,
     collections::{HashMap, HashSet},
     hash::Hash,
     time::{Duration, Instant},

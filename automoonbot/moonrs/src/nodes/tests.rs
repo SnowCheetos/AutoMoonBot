@@ -33,6 +33,10 @@ impl StaticNode for TestNode {
     fn value(&self) -> Option<f64> {
         Some(self.value)
     }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
 }
 
 impl DynamicNode<Instant, f64> for TestNode {
