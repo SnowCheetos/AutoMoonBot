@@ -72,7 +72,11 @@ impl Mentioned {
         let article = src_node.as_any().downcast_ref::<Article>()?;
         let company = tgt_node.as_any().downcast_ref::<Company>()?;
 
-        todo!()
+        if let Some(intersection) = article.ticker_intersect(company.symbols()) {
+            todo!()
+        } else {
+            None
+        }
     }
 }
 
@@ -90,7 +94,11 @@ impl Referenced {
         let article = src_node.as_any().downcast_ref::<Article>()?;
         let equity = tgt_node.as_any().downcast_ref::<Equity>()?;
 
-        todo!()
+        if let Some(sentiment) = article.ticker_sentiment(equity.name().clone()) {
+            todo!()
+        } else {
+            None
+        }
     }
 }
 
@@ -108,7 +116,11 @@ impl Issues {
         let company = src_node.as_any().downcast_ref::<Company>()?;
         let equity = tgt_node.as_any().downcast_ref::<Equity>()?;
 
-        todo!()
+        if company.symbols().contains(equity.name()) {
+            todo!()
+        } else {
+            None
+        }
     }
 }
 
@@ -126,7 +138,11 @@ impl Mirrors {
         let etf = src_node.as_any().downcast_ref::<ETFs>()?;
         let index = tgt_node.as_any().downcast_ref::<Indices>()?;
 
-        todo!()
+        if etf.indice() == index.name() {
+            todo!()
+        } else {
+            None
+        }
     }
 }
 
@@ -144,6 +160,10 @@ impl Derives {
         let equity = src_node.as_any().downcast_ref::<Equity>()?;
         let option = tgt_node.as_any().downcast_ref::<Options>()?;
 
-        todo!()
+        if option.underlying() == equity.name() {
+            todo!()
+        } else {
+            None
+        }
     }
 }

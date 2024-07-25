@@ -6,6 +6,7 @@ pub struct Article {
     pub(super) summary: String,
     pub(super) sentiment: f64,
     pub(super) publisher: String,
+    pub(super) tickers: Option<HashMap<String, f64>>,
 }
 
 #[derive(Debug)]
@@ -45,6 +46,7 @@ pub struct Indices {
 #[derive(Debug)]
 pub struct ETFs {
     pub(super) symbol: String,
+    pub(super) indice: String,
     pub(super) history: TimeSeries<PriceAggregate>,
 }
 
@@ -66,17 +68,43 @@ pub struct Options {
 }
 
 impl Article {
-    pub fn new(title: String, summary: String, sentiment: f64, publisher: String) -> Self {
+    pub fn new(
+        title: String,
+        summary: String,
+        sentiment: f64,
+        publisher: String,
+        tickers: Option<HashMap<String, f64>>,
+    ) -> Self {
         Article {
             title,
             summary,
             sentiment,
             publisher,
+            tickers,
         }
     }
 
     pub fn publisher(&self) -> &String {
         &self.publisher
+    }
+
+    pub fn ticker_sentiment(&self, symbol: String) -> Option<f64> {
+        if let Some(tickers) = &self.tickers {
+            tickers.get(&symbol).copied()
+        } else {
+            None
+        }
+    }
+
+    pub fn ticker_intersect(&self, symbols: HashSet<String>) -> Option<HashSet<String>> {
+        let tickers = self.tickers.as_ref()?; // Use `as_ref` to get a reference to the inner HashMap
+        let ticker_keys: HashSet<String> = tickers.keys().cloned().collect();
+        let intersection: HashSet<String> = symbols.intersection(&ticker_keys).cloned().collect();
+        if intersection.is_empty() {
+            None
+        } else {
+            Some(intersection)
+        }
     }
 }
 
@@ -117,11 +145,16 @@ impl Indices {
 }
 
 impl ETFs {
-    pub fn new(symbol: String, capacity: usize) -> Self {
+    pub fn new(symbol: String, indice: String, capacity: usize) -> Self {
         ETFs {
             symbol,
+            indice,
             history: TimeSeries::new(capacity),
         }
+    }
+
+    pub fn indice(&self) -> &String {
+        &self.indice
     }
 }
 
@@ -152,6 +185,10 @@ impl Options {
             history: TimeSeries::new(capacity),
         }
     }
+
+    pub fn underlying(&self) -> &String {
+        &self.underlying
+    }
 }
 
 impl Company {
@@ -164,5 +201,9 @@ impl Company {
             cash_flow: TimeSeries::new(capacity),
             earnings: TimeSeries::new(capacity),
         }
+    }
+
+    pub fn symbols(&self) -> HashSet<String> {
+        self.symbols.clone()
     }
 }
