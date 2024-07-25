@@ -31,6 +31,12 @@ pub struct Mirrors {
 }
 
 #[derive(Debug)]
+pub struct Influences {
+    pub(super) src_index: NodeIndex,
+    pub(super) tgt_index: NodeIndex,
+}
+
+#[derive(Debug)]
 pub struct Derives {
     pub(super) src_index: NodeIndex,
     pub(super) tgt_index: NodeIndex,
@@ -143,6 +149,24 @@ impl Mirrors {
         } else {
             None
         }
+    }
+}
+
+impl Influences {
+    pub fn try_new(
+        src_index: NodeIndex,
+        tgt_index: NodeIndex,
+        src_node: &dyn StaticNode,
+        tgt_node: &dyn StaticNode,
+    ) -> Option<Self> {
+        if src_index == tgt_index {
+            return None;
+        }
+
+        let source = src_node.as_any().downcast_ref::<Equity>()?;
+        let target = tgt_node.as_any().downcast_ref::<Equity>()?;
+
+        todo!()
     }
 }
 

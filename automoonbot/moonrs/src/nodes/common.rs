@@ -124,6 +124,10 @@ impl Currency {
             history: TimeSeries::new(capacity),
         }
     }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        self.history.mat()
+    }
 }
 
 impl Equity {
@@ -133,6 +137,10 @@ impl Equity {
             history: TimeSeries::new(capacity),
         }
     }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        self.history.mat()
+    }
 }
 
 impl Indices {
@@ -141,6 +149,10 @@ impl Indices {
             symbol,
             history: TimeSeries::new(capacity),
         }
+    }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        self.history.mat()
     }
 }
 
@@ -156,6 +168,10 @@ impl ETFs {
     pub fn indice(&self) -> &String {
         &self.indice
     }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        self.history.mat()
+    }
 }
 
 impl Bonds {
@@ -166,6 +182,10 @@ impl Bonds {
             maturity,
             history: TimeSeries::new(capacity),
         }
+    }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        self.history.mat()
     }
 }
 
@@ -188,6 +208,10 @@ impl Options {
 
     pub fn underlying(&self) -> &String {
         &self.underlying
+    }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        self.history.mat()
     }
 }
 

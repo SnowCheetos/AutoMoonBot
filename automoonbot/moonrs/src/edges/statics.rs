@@ -76,6 +76,20 @@ impl StaticEdge for Mirrors {
     }
 }
 
+impl StaticEdge for Influences {
+    fn value(&self) -> f64 {
+        0.0
+    }
+
+    fn src_index(&self) -> &NodeIndex {
+        &self.src_index
+    }
+
+    fn tgt_index(&self) -> &NodeIndex {
+        &self.tgt_index
+    }
+}
+
 impl StaticEdge for Derives {
     fn value(&self) -> f64 {
         0.0
