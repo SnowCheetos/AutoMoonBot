@@ -1,19 +1,14 @@
 use crate::edges::*;
 
-/// Backward dynamic edge, where a dnyamic source node
-/// affects the target node. For example, good performance
-/// in a company resulted in the announcement of dividends.
-///
-/// ```math
-/// {\delta S \over \delta t} \rightarrow T_t
-/// ```
-pub trait BackwardDynEdge<S, T, X>: StaticEdge
+pub trait BackwardDynEdge<S, T, Ix, X>: StaticEdge
 where
-    S: DynamicNode<X>,
+    S: DynamicNode<Ix, X>,
     T: StaticNode,
+    Ix: Clone + Hash + Eq + PartialOrd,
     X: Clone,
 {
     fn backward_corr(&self, src: &S, tgt: &T);
+    fn update(&mut self, src: &S, tgt: &T);
 }
 
 #[cfg(test)]

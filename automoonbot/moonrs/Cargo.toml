@@ -10,7 +10,7 @@ nalgebra = "0.33.0"
 statrs = "0.17.1"
 indexmap = "2.2.6"
 scopeguard = "1.2.0"
-cached = "0.52.0"
+cached = "0.53.1"
 lazy_static = "1.5.0"
 katex-doc = "0.1.0"
 

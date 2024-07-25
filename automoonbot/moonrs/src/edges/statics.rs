@@ -6,9 +6,9 @@ pub trait StaticEdge: Send + Sync {
     fn tgt_index(&self) -> &NodeIndex;
 }
 
-impl StaticEdge for TestEdge {
+impl StaticEdge for Published {
     fn value(&self) -> f64 {
-        self.value
+        0.0
     }
 
     fn src_index(&self) -> &NodeIndex {
@@ -20,26 +20,72 @@ impl StaticEdge for TestEdge {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+impl StaticEdge for Mentioned {
+    fn value(&self) -> f64 {
+        0.0
+    }
 
-    #[test]
-    fn test_edge() {
-        let src_name = "src_node".to_owned();
-        let tgt_name = "tgt_node".to_owned();
-        let src_value = 1.0;
-        let tgt_value = 2.0;
-        let src_node = TestNode::new(src_name.clone(), src_value);
-        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value);
+    fn src_index(&self) -> &NodeIndex {
+        &self.src_index
+    }
 
-        let src_index = NodeIndex::new(0);
-        let tgt_index = NodeIndex::new(1);
+    fn tgt_index(&self) -> &NodeIndex {
+        &self.tgt_index
+    }
+}
 
-        let edge = TestEdge::new(src_index, tgt_index, &src_node, &tgt_node);
-        let edge_value = 1.0;
-        assert_eq!(edge.value(), edge_value);
-        assert_eq!(*edge.src_index(), src_index);
-        assert_eq!(*edge.tgt_index(), tgt_index);
+impl StaticEdge for Referenced {
+    fn value(&self) -> f64 {
+        0.0
+    }
+
+    fn src_index(&self) -> &NodeIndex {
+        &self.src_index
+    }
+
+    fn tgt_index(&self) -> &NodeIndex {
+        &self.tgt_index
+    }
+}
+
+impl StaticEdge for Issues {
+    fn value(&self) -> f64 {
+        0.0
+    }
+
+    fn src_index(&self) -> &NodeIndex {
+        &self.src_index
+    }
+
+    fn tgt_index(&self) -> &NodeIndex {
+        &self.tgt_index
+    }
+}
+
+impl StaticEdge for Mirrors {
+    fn value(&self) -> f64 {
+        0.0
+    }
+
+    fn src_index(&self) -> &NodeIndex {
+        &self.src_index
+    }
+
+    fn tgt_index(&self) -> &NodeIndex {
+        &self.tgt_index
+    }
+}
+
+impl StaticEdge for Derives {
+    fn value(&self) -> f64 {
+        0.0
+    }
+
+    fn src_index(&self) -> &NodeIndex {
+        &self.src_index
+    }
+
+    fn tgt_index(&self) -> &NodeIndex {
+        &self.tgt_index
     }
 }

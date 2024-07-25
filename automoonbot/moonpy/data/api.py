@@ -50,10 +50,6 @@ class CachedLimiterSession(CacheMixin, LimiterMixin, Session):
         return response_json
 
 
-# TODO Oh boy did I open one big can of worms with this one... 
-# There are so so many data sources, not a single one covers all areas
-# It is essential to implement a client for each one to obtain the most comprehensive data coverage
-
 class AlphaVantage(CachedLimiterSession):
     def __init__(
         self,
@@ -108,39 +104,21 @@ class AlphaVantage(CachedLimiterSession):
         end: str,
     ) -> Dict[str, Any]:
         url = self._base_url + (
-            f"function=NEWS_SENTIMENT"
+            "function=NEWS_SENTIMENT"
+            "&sort=RELEVANCE"
+            "&limit=1000"
             f"&apikey={self._api_key}"
             f"&tickers={symbol}"
             f"&time_from={start}"
             f"&time_to={end}"
-            f"&sort=RELEVANCE"
-            f"&limit=1000"
         )
         return self.make_request(url)
 
-    def _options_daily(self, symbol: str, date: str):
-        pass
-
-
-class YahooFinance(Tickers, CachedLimiterSession):
-    def __init__(
-        self,
-        tickers: List[str],
-        cache_backend=None,
-    ) -> None:
-        CachedLimiterSession.__init__(
-            base_url=None,
-            api_key=None,
-            rate_limit="2/5s",
-            cache_backend=cache_backend,
+    def _options_eod(self, symbol: str, date: str):
+        url = self._base_url + (
+            "function=HISTORICAL_OPTIONS"
+            f"&apikey={self._api_key}"
+            f"&symbol={symbol}"
+            f"&date={date}"
         )
-        Tickers.__init__(
-            session=self,
-            tickers=tickers,
-        )
-
-    def get_prices(self):
-        pass
-
-    def get_news(self):
-        pass
+        return self.make_request(url)

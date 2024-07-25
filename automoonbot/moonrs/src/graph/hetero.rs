@@ -1,11 +1,11 @@
-use crate::{edges::StaticEdge, nodes::StaticNode, *};
+use crate::graph::*;
 
 #[derive(Default)]
-#[cfg_attr(feature = "python", pyclass)]
+#[cfg_attr(feature = "python", pyclass(subclass))]
 pub struct HeteroGraph {
-    graph: StableDiGraph<Box<dyn StaticNode>, Box<dyn StaticEdge>>,
-    node_memo: HashMap<String, NodeIndex>,
-    edge_memo: HashMap<(NodeIndex, NodeIndex), EdgeIndex>,
+    pub(super) graph: StableDiGraph<Box<dyn StaticNode>, Box<dyn StaticEdge>>,
+    pub(super) node_memo: HashMap<String, NodeIndex>,
+    pub(super) edge_memo: HashMap<(NodeIndex, NodeIndex), EdgeIndex>,
 }
 
 impl HeteroGraph {
@@ -51,10 +51,11 @@ impl HeteroGraph {
         self.get_edge(*index)
     }
 
-    pub fn add_node(&mut self, node: Box<dyn StaticNode>) {
+    pub fn add_node(&mut self, node: Box<dyn StaticNode>) -> NodeIndex {
         let name = node.name().to_string();
         let index = self.graph.add_node(node);
         self.node_memo.entry(name).or_insert(index);
+        index
     }
 
     pub fn add_edge(&mut self, src: NodeIndex, tgt: NodeIndex, edge: Box<dyn StaticEdge>) {
@@ -88,34 +89,9 @@ impl HeteroGraph {
     }
 }
 
-#[cfg(feature = "python")]
-#[pymethods]
-impl HeteroGraph {
-    #[new]
-    pub fn init() -> Self {
-        Self::new()
-    }
-
-    #[staticmethod]
-    pub fn hello_python() -> &'static str {
-        "Hello From HeteroGraph"
-    }
-
-    #[pyo3(name = "node_count")]
-    pub fn node_count_py(&self) -> usize {
-        self.node_count()
-    }
-
-    #[pyo3(name = "edge_count")]
-    pub fn edge_count_py(&self) -> usize {
-        self.edge_count()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{edges::TestEdge, nodes::TestNode};
 
     #[test]
     fn test_new() {
@@ -130,7 +106,7 @@ mod tests {
 
         let name = "node".to_owned();
         let value = 0.0;
-        let node = TestNode::new(name.clone(), value);
+        let node = TestNode::new(name.clone(), value, 1);
 
         graph.add_node(Box::new(node));
         assert_eq!(graph.node_count(), 1);
@@ -139,7 +115,7 @@ mod tests {
         assert!(node.is_some());
 
         let node = node.unwrap();
-        assert_eq!(node.value(), value);
+        assert_eq!(node.value().unwrap(), value);
     }
 
     #[test]
@@ -148,7 +124,7 @@ mod tests {
 
         let name = "node".to_owned();
         let value = 0.0;
-        let node = TestNode::new(name.clone(), value);
+        let node = TestNode::new(name.clone(), value, 1);
 
         graph.add_node(Box::new(node));
         assert_eq!(graph.node_count(), 1);
@@ -167,8 +143,8 @@ mod tests {
         let tgt_name = "tgt_node".to_owned();
         let src_value = 1.0;
         let tgt_value = 2.0;
-        let src_node = TestNode::new(src_name.clone(), src_value);
-        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value);
+        let src_node = TestNode::new(src_name.clone(), src_value, 1);
+        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value, 1);
 
         graph.add_node(Box::new(src_node));
         assert_eq!(graph.node_count(), 1);
@@ -214,14 +190,11 @@ mod tests {
         let tgt_name = "tgt_node".to_owned();
         let src_value = 1.0;
         let tgt_value = 2.0;
-        let src_node = TestNode::new(src_name.clone(), src_value);
-        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value);
+        let src_node = TestNode::new(src_name.clone(), src_value, 1);
+        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value, 1);
 
-        graph.add_node(Box::new(src_node));
-        graph.add_node(Box::new(tgt_node));
-
-        let src_index = graph.get_node_index(src_name.clone()).unwrap().to_owned();
-        let tgt_index = graph.get_node_index(tgt_name.clone()).unwrap().to_owned();
+        let src_index = graph.add_node(Box::new(src_node));
+        let tgt_index = graph.add_node(Box::new(tgt_node));
         let src_node = graph.get_node(src_index).unwrap();
         let tgt_node = graph.get_node(tgt_index).unwrap();
 
@@ -242,14 +215,11 @@ mod tests {
         let tgt_name = "tgt_node".to_owned();
         let src_value = 1.0;
         let tgt_value = 2.0;
-        let src_node = TestNode::new(src_name.clone(), src_value);
-        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value);
+        let src_node = TestNode::new(src_name.clone(), src_value, 1);
+        let tgt_node = TestNode::new(tgt_name.clone(), tgt_value, 1);
 
-        graph.add_node(Box::new(src_node));
-        graph.add_node(Box::new(tgt_node));
-
-        let src_index = graph.get_node_index(src_name.clone()).unwrap().to_owned();
-        let tgt_index = graph.get_node_index(tgt_name.clone()).unwrap().to_owned();
+        let src_index = graph.add_node(Box::new(src_node));
+        let tgt_index = graph.add_node(Box::new(tgt_node));
         let src_node = graph.get_node(src_index).unwrap();
         let tgt_node = graph.get_node(tgt_index).unwrap();
 

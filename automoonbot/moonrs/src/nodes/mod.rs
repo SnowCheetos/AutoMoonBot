@@ -1,18 +1,9 @@
-mod asset;
 mod common;
-mod coupons;
-mod derivative;
 mod dynamic;
-mod entity;
-mod ephemeral;
-mod marketable;
 mod statics;
+mod tests;
 
-use crate::*;
-
-use asset::*;
-use ephemeral::*;
-use marketable::*;
-
+use crate::{data::*, *};
+pub use tests::*;
 pub use common::*;
 pub use nodes::{dynamic::DynamicNode, statics::StaticNode};

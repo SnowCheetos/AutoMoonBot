@@ -1,64 +1,300 @@
 use crate::nodes::*;
 
-/// ...
-pub trait DynamicNode<T>: StaticNode
+pub trait DynamicNode<Ix, T>: StaticNode
 where
+    Ix: Clone + Hash + Eq + PartialOrd,
     T: Clone,
 {
-    type Buffer: RingIndexBuffer<Instant, T>;
-
-    fn update(&mut self, item: T) -> bool;
+    fn update(&mut self, index: Ix, item: T) -> bool;
+    fn empty(&self) -> bool;
+    fn to_vec(&self) -> Vec<&T>;
     fn first(&self) -> Option<&T>;
     fn last(&self) -> Option<&T>;
+    fn between(&self, start: Ix, end: Ix) -> Option<Vec<&T>>;
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+impl DynamicNode<Instant, f64> for Publisher {
+    fn update(&mut self, index: Instant, item: f64) -> bool {
+        self.sentiments.push(index, item)
+    }
 
-//     #[test]
-//     fn test_equity() {
-//         let symbol = "EQU".to_string();
-//         let region = "MOON".to_string();
-//         let mut equity = Equity::new(2, symbol, region, Vec::new());
-//         let now = Instant::now();
-//         let span = Duration::new(60, 0);
-//         let later = now + span;
-//         let aggregate1 = Aggregate::new(now, span, true, 1.0, 2.0, 0.5, 1.5, 100.0);
-//         let aggregate2 = Aggregate::new(later, span, false, 1.1, 2.1, 0.6, 1.6, 200.0);
-//         let aggregate3 = Aggregate::new(later + span, span, false, 1.3, 2.2, 0.7, 1.5, 150.0);
+    fn empty(&self) -> bool {
+        self.sentiments.empty()
+    }
 
-//         let front = equity.first();
-//         let back = equity.last();
-//         assert!(front.is_none());
-//         assert!(back.is_none());
+    fn to_vec(&self) -> Vec<&f64> {
+        self.sentiments.to_vec()
+    }
 
-//         let success = equity.update(aggregate1);
-//         assert!(success);
-//         let front = equity.first();
-//         let back = equity.last();
-//         assert!(front.is_some_and(|item| item.timestamp() == now));
-//         assert!(back.is_some_and(|item| item.timestamp() == now));
+    fn first(&self) -> Option<&f64> {
+        self.sentiments.first()
+    }
 
-//         let success = equity.update(aggregate2);
-//         assert!(success);
-//         let front = equity.first();
-//         let back = equity.last();
-//         assert!(front.is_some_and(|item| item.timestamp() == now));
-//         assert!(back.is_some_and(|item| item.timestamp() == later));
+    fn last(&self) -> Option<&f64> {
+        self.sentiments.last()
+    }
 
-//         let success = equity.update(aggregate2);
-//         assert!(!success);
-//         let front = equity.first();
-//         let back = equity.last();
-//         assert!(front.is_some_and(|item| item.timestamp() == now));
-//         assert!(back.is_some_and(|item| item.timestamp() == later));
+    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&f64>> {
+        self.sentiments.between(&start, &end)
+    }
+}
 
-//         let success = equity.update(aggregate3);
-//         assert!(success);
-//         let front = equity.first();
-//         let back = equity.last();
-//         assert!(front.is_some_and(|item| item.timestamp() == later));
-//         assert!(back.is_some_and(|item| item.timestamp() == later + span));
-//     }
-// }
+impl DynamicNode<Instant, PriceAggregate> for Currency {
+    fn update(&mut self, index: Instant, item: PriceAggregate) -> bool {
+        self.history.push(index, item)
+    }
+
+    fn empty(&self) -> bool {
+        self.history.empty()
+    }
+
+    fn to_vec(&self) -> Vec<&PriceAggregate> {
+        self.history.to_vec()
+    }
+
+    fn first(&self) -> Option<&PriceAggregate> {
+        self.history.first()
+    }
+
+    fn last(&self) -> Option<&PriceAggregate> {
+        self.history.last()
+    }
+
+    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&PriceAggregate>> {
+        self.history.between(&start, &end)
+    }
+}
+
+impl DynamicNode<Instant, PriceAggregate> for Equity {
+    fn update(&mut self, index: Instant, item: PriceAggregate) -> bool {
+        self.history.push(index, item)
+    }
+
+    fn empty(&self) -> bool {
+        self.history.empty()
+    }
+
+    fn to_vec(&self) -> Vec<&PriceAggregate> {
+        self.history.to_vec()
+    }
+
+    fn first(&self) -> Option<&PriceAggregate> {
+        self.history.first()
+    }
+
+    fn last(&self) -> Option<&PriceAggregate> {
+        self.history.last()
+    }
+
+    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&PriceAggregate>> {
+        self.history.between(&start, &end)
+    }
+}
+
+impl DynamicNode<Instant, PriceAggregate> for Indices {
+    fn update(&mut self, index: Instant, item: PriceAggregate) -> bool {
+        self.history.push(index, item)
+    }
+
+    fn empty(&self) -> bool {
+        self.history.empty()
+    }
+
+    fn to_vec(&self) -> Vec<&PriceAggregate> {
+        self.history.to_vec()
+    }
+
+    fn first(&self) -> Option<&PriceAggregate> {
+        self.history.first()
+    }
+
+    fn last(&self) -> Option<&PriceAggregate> {
+        self.history.last()
+    }
+
+    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&PriceAggregate>> {
+        self.history.between(&start, &end)
+    }
+}
+
+impl DynamicNode<Instant, PriceAggregate> for ETFs {
+    fn update(&mut self, index: Instant, item: PriceAggregate) -> bool {
+        self.history.push(index, item)
+    }
+
+    fn empty(&self) -> bool {
+        self.history.empty()
+    }
+
+    fn to_vec(&self) -> Vec<&PriceAggregate> {
+        self.history.to_vec()
+    }
+
+    fn first(&self) -> Option<&PriceAggregate> {
+        self.history.first()
+    }
+
+    fn last(&self) -> Option<&PriceAggregate> {
+        self.history.last()
+    }
+
+    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&PriceAggregate>> {
+        self.history.between(&start, &end)
+    }
+}
+
+impl DynamicNode<Instant, PriceAggregate> for Bonds {
+    fn update(&mut self, index: Instant, item: PriceAggregate) -> bool {
+        self.history.push(index, item)
+    }
+
+    fn empty(&self) -> bool {
+        self.history.empty()
+    }
+
+    fn to_vec(&self) -> Vec<&PriceAggregate> {
+        self.history.to_vec()
+    }
+
+    fn first(&self) -> Option<&PriceAggregate> {
+        self.history.first()
+    }
+
+    fn last(&self) -> Option<&PriceAggregate> {
+        self.history.last()
+    }
+
+    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&PriceAggregate>> {
+        self.history.between(&start, &end)
+    }
+}
+
+impl DynamicNode<Instant, OptionsAggregate> for Options {
+    fn update(&mut self, index: Instant, item: OptionsAggregate) -> bool {
+        self.history.push(index, item)
+    }
+
+    fn empty(&self) -> bool {
+        self.history.empty()
+    }
+
+    fn to_vec(&self) -> Vec<&OptionsAggregate> {
+        self.history.to_vec()
+    }
+
+    fn first(&self) -> Option<&OptionsAggregate> {
+        self.history.first()
+    }
+
+    fn last(&self) -> Option<&OptionsAggregate> {
+        self.history.last()
+    }
+
+    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&OptionsAggregate>> {
+        self.history.between(&start, &end)
+    }
+}
+
+impl DynamicNode<Instant, IncomeStatement> for Company {
+    fn update(&mut self, index: Instant, item: IncomeStatement) -> bool {
+        self.income_statement.push(index, item)
+    }
+
+    fn empty(&self) -> bool {
+        self.income_statement.empty()
+    }
+
+    fn to_vec(&self) -> Vec<&IncomeStatement> {
+        self.income_statement.to_vec()
+    }
+
+    fn first(&self) -> Option<&IncomeStatement> {
+        self.income_statement.first()
+    }
+
+    fn last(&self) -> Option<&IncomeStatement> {
+        self.income_statement.last()
+    }
+
+    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&IncomeStatement>> {
+        self.income_statement.between(&start, &end)
+    }
+}
+
+impl DynamicNode<Instant, BalanceSheet> for Company {
+    fn update(&mut self, index: Instant, item: BalanceSheet) -> bool {
+        self.balance_sheet.push(index, item)
+    }
+
+    fn empty(&self) -> bool {
+        self.balance_sheet.empty()
+    }
+
+    fn to_vec(&self) -> Vec<&BalanceSheet> {
+        self.balance_sheet.to_vec()
+    }
+
+    fn first(&self) -> Option<&BalanceSheet> {
+        self.balance_sheet.first()
+    }
+
+    fn last(&self) -> Option<&BalanceSheet> {
+        self.balance_sheet.last()
+    }
+
+    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&BalanceSheet>> {
+        self.balance_sheet.between(&start, &end)
+    }
+}
+
+impl DynamicNode<Instant, CashFlow> for Company {
+    fn update(&mut self, index: Instant, item: CashFlow) -> bool {
+        self.cash_flow.push(index, item)
+    }
+
+    fn empty(&self) -> bool {
+        self.cash_flow.empty()
+    }
+
+    fn to_vec(&self) -> Vec<&CashFlow> {
+        self.cash_flow.to_vec()
+    }
+
+    fn first(&self) -> Option<&CashFlow> {
+        self.cash_flow.first()
+    }
+
+    fn last(&self) -> Option<&CashFlow> {
+        self.cash_flow.last()
+    }
+
+    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&CashFlow>> {
+        self.cash_flow.between(&start, &end)
+    }
+}
+
+impl DynamicNode<Instant, Earnings> for Company {
+    fn update(&mut self, index: Instant, item: Earnings) -> bool {
+        self.earnings.push(index, item)
+    }
+
+    fn empty(&self) -> bool {
+        self.earnings.empty()
+    }
+
+    fn to_vec(&self) -> Vec<&Earnings> {
+        self.earnings.to_vec()
+    }
+
+    fn first(&self) -> Option<&Earnings> {
+        self.earnings.first()
+    }
+
+    fn last(&self) -> Option<&Earnings> {
+        self.earnings.last()
+    }
+
+    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&Earnings>> {
+        self.earnings.between(&start, &end)
+    }
+}

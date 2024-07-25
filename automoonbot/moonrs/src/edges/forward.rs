@@ -1,19 +1,14 @@
 use crate::edges::*;
 
-/// Forward dynamic edge, where a source node affects
-/// the dynamic target node. For example, a news post
-/// caused the stock prices to rise.
-///
-/// ```math
-/// S_t \rightarrow {\delta T \over \delta t}
-/// ```
-pub trait ForwardDynEdge<S, T, X>: StaticEdge
+pub trait ForwardDynEdge<S, T, Ix, X>: StaticEdge
 where
     S: StaticNode,
-    T: DynamicNode<X>,
+    T: DynamicNode<Ix, X>,
+    Ix: Clone + Hash + Eq + PartialOrd,
     X: Clone,
 {
     fn fowrard_corr(&self, src: &S, tgt: &T);
+    fn update(&mut self, src: &S, tgt: &T);
 }
 
 mod tests {

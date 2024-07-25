@@ -1,9 +1,9 @@
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
+
 #[macro_use]
 extern crate lazy_static;
 extern crate nalgebra as na;
-
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
 
 pub mod data;
 pub mod edges;
@@ -11,9 +11,9 @@ pub mod graph;
 pub mod nodes;
 pub mod utils;
 
-use data::{aggregate::*, buffer::*};
 use petgraph::stable_graph::{EdgeIndex, NodeIndex, StableDiGraph};
 use std::{
+    any::Any,
     collections::{HashMap, HashSet},
     hash::Hash,
     time::{Duration, Instant},

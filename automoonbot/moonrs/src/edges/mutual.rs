@@ -1,28 +1,61 @@
 use crate::edges::*;
 
-/// Mutual dynamic edge, where a dynamic source node
-/// affects the dynamic target node. For example, an
-/// upward momentum in ^VIX is observed with an down
-/// trend in the S&P 500 in the same period of time.
-///
-/// ```math
-/// {\delta S \over \delta t} \leftrightarrow {\delta T \over \delta t}
-/// ```
-pub trait MutualDynEdge<S, T, X, Y>
+pub trait MutualDynEdge<S, T, Ix, X, Y>: StaticEdge
 where
-    S: DynamicNode<Y>,
-    T: DynamicNode<X>,
+    S: DynamicNode<Ix, X>,
+    T: DynamicNode<Ix, Y>,
+    Ix: Clone + Hash + Eq + PartialOrd,
     X: Clone,
     Y: Clone,
 {
-    fn index_match(&self, src: &S, tgt: &T) -> Vec<usize>;
-    fn covariance(&self, src: &S, tgt: &T) -> f64;
-    fn correlation(&self, src: &S, tgt: &T) -> f64;
+    fn covariance(&self) -> Option<f64>;
+    fn correlation(&self) -> Option<f64>;
+    fn compute_covariance(&self, src: &S, tgt: &T) -> Option<f64>;
+    fn compute_correlation(&self, src: &S, tgt: &T) -> Option<f64>;
+    fn update(&mut self, src: &S, tgt: &T);
 }
 
-mod tests {
-    use super::*;
+impl MutualDynEdge<ETFs, Indices, Instant, PriceAggregate, PriceAggregate> for Mirrors {
+    fn covariance(&self) -> Option<f64> {
+        todo!()
+    }
 
-    #[test]
-    fn test() {}
+    fn correlation(&self) -> Option<f64> {
+        todo!()
+    }
+
+    fn compute_covariance(&self, src: &ETFs, tgt: &Indices) -> Option<f64> {
+        todo!()
+    }
+
+    fn compute_correlation(&self, src: &ETFs, tgt: &Indices) -> Option<f64> {
+        todo!()
+    }
+
+    fn update(&mut self, src: &ETFs, tgt: &Indices) {
+        todo!()
+    }
 }
+
+impl MutualDynEdge<Equity, Options, Instant, PriceAggregate, OptionsAggregate> for Derives {
+    fn covariance(&self) -> Option<f64> {
+        todo!()
+    }
+
+    fn correlation(&self) -> Option<f64> {
+        todo!()
+    }
+
+    fn compute_covariance(&self, src: &Equity, tgt: &Options) -> Option<f64> {
+        todo!()
+    }
+
+    fn compute_correlation(&self, src: &Equity, tgt: &Options) -> Option<f64> {
+        todo!()
+    }
+
+    fn update(&mut self, src: &Equity, tgt: &Options) {
+        todo!()
+    }
+}
+
