@@ -61,6 +61,7 @@ pub struct Bonds {
 #[derive(Debug)]
 pub struct Options {
     pub(super) contract_id: String,
+    pub(super) direction: String,
     pub(super) underlying: String,
     pub(super) strike: f64,
     pub(super) expiration: Instant,
@@ -124,6 +125,10 @@ impl Currency {
             history: TimeSeries::new(capacity),
         }
     }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        self.history.mat()
+    }
 }
 
 impl Equity {
@@ -133,6 +138,10 @@ impl Equity {
             history: TimeSeries::new(capacity),
         }
     }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        self.history.mat()
+    }
 }
 
 impl Indices {
@@ -141,6 +150,10 @@ impl Indices {
             symbol,
             history: TimeSeries::new(capacity),
         }
+    }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        self.history.mat()
     }
 }
 
@@ -156,6 +169,10 @@ impl ETFs {
     pub fn indice(&self) -> &String {
         &self.indice
     }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        self.history.mat()
+    }
 }
 
 impl Bonds {
@@ -167,11 +184,24 @@ impl Bonds {
             history: TimeSeries::new(capacity),
         }
     }
+
+    pub fn interest_rate(&self) -> f64 {
+        self.interest_rate
+    }
+
+    pub fn maturity(&self) -> &Instant {
+        &self.maturity
+    }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        self.history.mat()
+    }
 }
 
 impl Options {
     pub fn new(
         contract_id: String,
+        direction: String,
         underlying: String,
         strike: f64,
         expiration: Instant,
@@ -179,6 +209,7 @@ impl Options {
     ) -> Self {
         Options {
             contract_id,
+            direction,
             underlying,
             strike,
             expiration,
@@ -188,6 +219,22 @@ impl Options {
 
     pub fn underlying(&self) -> &String {
         &self.underlying
+    }
+
+    pub fn direction(&self) -> &String {
+        &self.direction
+    }
+
+    pub fn strike(&self) -> f64 {
+        self.strike
+    }
+
+    pub fn expiration(&self) -> &Instant {
+        &self.expiration
+    }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        self.history.mat()
     }
 }
 

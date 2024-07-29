@@ -12,6 +12,48 @@ pub enum Opt {
     Put,
 }
 
+pub fn compute_covariance(src_mat: na::DMatrix<f64>, tgt_mat: na::DMatrix<f64>) -> Option<na::DMatrix<f64>> {
+    if src_mat.nrows() != tgt_mat.nrows() {
+        return None;
+    }
+    let n = src_mat.nrows() as f64;
+    let src_mean = src_mat.column_mean();
+    let tgt_mean = tgt_mat.column_mean();
+    let centered_src =
+        src_mat.clone() - na::DMatrix::from_columns(&vec![src_mean.clone(); src_mat.nrows()]);
+    let centered_tgt =
+        tgt_mat.clone() - na::DMatrix::from_columns(&vec![tgt_mean.clone(); tgt_mat.nrows()]);
+    let covariance = (centered_src.transpose() * centered_tgt) / (n - 1.0);
+    Some(covariance)
+}
+
+pub fn compute_correlation(src_mat: na::DMatrix<f64>, tgt_mat: na::DMatrix<f64>) -> Option<na::DMatrix<f64>> {
+    if src_mat.nrows() != tgt_mat.nrows() {
+        return None;
+    }
+    let n = src_mat.nrows() as f64;
+    let src_mean = src_mat.column_mean();
+    let tgt_mean = tgt_mat.column_mean();
+    let centered_src =
+        src_mat.clone() - na::DMatrix::from_columns(&vec![src_mean.clone(); src_mat.nrows()]);
+    let centered_tgt =
+        tgt_mat.clone() - na::DMatrix::from_columns(&vec![tgt_mean.clone(); tgt_mat.nrows()]);
+    let src_std = centered_src.column_variance().map(|var| var.sqrt());
+    let tgt_std = centered_tgt.column_variance().map(|var| var.sqrt());
+    let standardized_src =
+        centered_src.component_div(&na::DMatrix::from_columns(&vec![
+            src_std.clone();
+            src_mat.nrows()
+        ]));
+    let standardized_tgt =
+        centered_tgt.component_div(&na::DMatrix::from_columns(&vec![
+            tgt_std.clone();
+            tgt_mat.nrows()
+        ]));
+    let correlation = (standardized_src.transpose() * standardized_tgt) / (n - 1.0);
+    Some(correlation)
+}
+
 lazy_static! {
     /// A quite subjective list of non-meme cryptos
     pub static ref SERIOUS_CRYPTOS: HashSet<&'static str> = {

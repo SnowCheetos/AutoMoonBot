@@ -5,13 +5,14 @@ mod mutual;
 mod statics;
 mod tests;
 
-use nodes::*;
 use data::*;
+use nodes::*;
+use utils::helpers::*;
 
 use crate::*;
 
 pub use common::*;
+pub use edges::{
+    backward::BackwardDynEdge, forward::ForwardDynEdge, mutual::MutualDynEdge, statics::StaticEdge,
+};
 pub use tests::*;
-pub use edges::{backward::BackwardDynEdge, forward::ForwardDynEdge, statics::StaticEdge, mutual::MutualDynEdge};
-
-use statrs::statistics::*;

@@ -51,6 +51,11 @@ impl HeteroGraph {
         self.get_edge(*index)
     }
 
+    pub fn get_edge_by_names(&self, src: String, tgt: String) -> Option<&dyn StaticEdge> {
+        let (source, target) = (self.get_node_index(src)?, self.get_node_index(tgt)?);
+        self.get_edge_by_pair(*source, *target)
+    }
+
     pub fn add_node(&mut self, node: Box<dyn StaticNode>) -> NodeIndex {
         let name = node.name().to_string();
         let index = self.graph.add_node(node);
