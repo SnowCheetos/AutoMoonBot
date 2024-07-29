@@ -72,6 +72,10 @@ impl StaticEdge for TestEdge {
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
     }
+    
+    fn cls(&self) -> &'static str {
+        "TestEdge"
+    }
 }
 
 impl MutualDynEdge<TestNode, TestNode, Instant, f64, f64> for TestEdge {

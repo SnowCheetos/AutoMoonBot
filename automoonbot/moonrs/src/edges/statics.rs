@@ -1,6 +1,7 @@
 use crate::edges::*;
 
 pub trait StaticEdge: Send + Sync {
+    fn cls(&self) -> &'static str;
     fn value(&self) -> f64;
     fn src_index(&self) -> &NodeIndex;
     fn tgt_index(&self) -> &NodeIndex;
@@ -18,6 +19,10 @@ impl StaticEdge for Published {
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
     }
+    
+    fn cls(&self) -> &'static str {
+        "Published"
+    }
 }
 
 impl StaticEdge for Mentioned {
@@ -31,6 +36,10 @@ impl StaticEdge for Mentioned {
 
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
+    }
+    
+    fn cls(&self) -> &'static str {
+        "Mentioned"
     }
 }
 
@@ -46,6 +55,10 @@ impl StaticEdge for Referenced {
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
     }
+    
+    fn cls(&self) -> &'static str {
+        "Referenced"
+    }
 }
 
 impl StaticEdge for Issues {
@@ -59,6 +72,10 @@ impl StaticEdge for Issues {
 
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
+    }
+    
+    fn cls(&self) -> &'static str {
+        "Issues"
     }
 }
 
@@ -74,6 +91,10 @@ impl StaticEdge for Mirrors {
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
     }
+    
+    fn cls(&self) -> &'static str {
+        "Mirrors"
+    }
 }
 
 impl StaticEdge for Influences {
@@ -88,6 +109,10 @@ impl StaticEdge for Influences {
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
     }
+    
+    fn cls(&self) -> &'static str {
+        "Influences"
+    }
 }
 
 impl StaticEdge for Derives {
@@ -101,5 +126,9 @@ impl StaticEdge for Derives {
 
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
+    }
+    
+    fn cls(&self) -> &'static str {
+        "Derives"
     }
 }

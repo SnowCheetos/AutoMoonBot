@@ -22,6 +22,18 @@ impl HeteroGraph {
                     .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
                 ("Publisher", "Article") => Published::try_new(src, tgt, source, target)
                     .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
+                ("Article", "Company") => Mentioned::try_new(src, tgt, source, target)
+                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
+                ("Article", "Equity") => Referenced::try_new(src, tgt, source, target)
+                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
+                ("Company", "Equity") => Issues::try_new(src, tgt, source, target)
+                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
+                ("ETFs", "Indices") => Mirrors::try_new(src, tgt, source, target)
+                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
+                ("Equity", "Equity") => Influences::try_new(src, tgt, source, target)
+                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
+                ("Equity", "Options") => Derives::try_new(src, tgt, source, target)
+                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
                 _ => None,
             };
         }
@@ -30,6 +42,94 @@ impl HeteroGraph {
 
     pub fn add_test_node(&mut self, name: String, value: f64, capacity: usize) {
         let node = TestNode::new(name, value, capacity);
+        let index = self.add_node(Box::new(node));
+        self.compute_all_edges(index);
+    }
+
+    pub fn add_article(
+        &mut self,
+        title: String,
+        summary: String,
+        sentiment: f64,
+        publisher: String,
+        tickers: Option<HashMap<String, f64>>,
+    ) {
+        let node = Article::new(title, summary, sentiment, publisher.clone(), tickers);
+        let index = self.add_node(Box::new(node));
+        self.compute_all_edges(index);
+        if self.get_node_index(publisher.clone()).is_none() {
+            self.add_publisher(publisher, 100);
+        }
+    }
+
+    pub fn add_publisher(&mut self, name: String, capacity: usize) {
+        let node = Publisher::new(name, capacity);
+        let index = self.add_node(Box::new(node));
+        self.compute_all_edges(index);
+    }
+
+    pub fn add_company(&mut self, name: String, symbols: HashSet<String>, capacity: usize) {
+        let node = Company::new(name, symbols, capacity);
+        let index = self.add_node(Box::new(node));
+        self.compute_all_edges(index);
+    }
+
+    pub fn add_equity(&mut self, symbol: String, capacity: usize) {
+        let node = Equity::new(symbol, capacity);
+        let index = self.add_node(Box::new(node));
+        self.compute_all_edges(index);
+    }
+
+    pub fn add_currency(&mut self, symbol: String, capacity: usize) {
+        let node = Currency::new(symbol, capacity);
+        let index = self.add_node(Box::new(node));
+        self.compute_all_edges(index);
+    }
+
+    pub fn add_etf(&mut self, symbol: String, indice: String, capacity: usize) {
+        let node = ETFs::new(symbol, indice.clone(), capacity);
+        let index = self.add_node(Box::new(node));
+        self.compute_all_edges(index);
+        if self.get_node_index(indice.clone()).is_none() {
+            self.add_indice(indice, capacity);
+        }
+    }
+
+    pub fn add_indice(&mut self, symbol: String, capacity: usize) {
+        let node = Indices::new(symbol, capacity);
+        let index = self.add_node(Box::new(node));
+        self.compute_all_edges(index);
+    }
+
+    pub fn add_bond(
+        &mut self,
+        symbol: String,
+        interest_rate: f64,
+        maturity: Instant,
+        capacity: usize,
+    ) {
+        let node = Bonds::new(symbol, interest_rate, maturity, capacity);
+        let index = self.add_node(Box::new(node));
+        self.compute_all_edges(index);
+    }
+
+    pub fn add_option(
+        &mut self,
+        contract_id: String,
+        direction: String,
+        underlying: String,
+        strike: f64,
+        expiration: Instant,
+        capacity: usize,
+    ) {
+        let node = Options::new(
+            contract_id,
+            direction,
+            underlying,
+            strike,
+            expiration,
+            capacity,
+        );
         let index = self.add_node(Box::new(node));
         self.compute_all_edges(index);
     }
@@ -102,5 +202,33 @@ mod tests {
         graph.remove_node_by_name(name_1.clone());
         assert_eq!(graph.node_count(), 2);
         assert_eq!(graph.edge_count(), 0);
+    }
+
+    #[test]
+    fn test_combination_1() {
+        let mut graph = HeteroGraph::new();
+        graph.add_article(
+            "test_article".to_owned(),
+            "test_summary".to_owned(),
+            0.5,
+            "test_publisher".to_owned(),
+            None,
+        );
+
+        assert_eq!(graph.node_count(), 2);
+        assert_eq!(graph.edge_count(), 1);
+
+        let article = graph.get_node_by_name("test_article".to_owned());
+        assert!(article.is_some_and(|a| a.name() == "test_article"));
+        let article_index = graph.get_node_index("test_article".to_owned()).unwrap();
+
+        let publisher = graph.get_node_by_name("test_publisher".to_owned());
+        assert!(publisher.is_some_and(|p| p.name() == "test_publisher"));
+        let publisher_index = graph.get_node_index("test_publisher".to_owned()).unwrap();
+
+        let edge = graph.get_edge_by_names("test_publisher".to_owned(), "test_article".to_owned());
+        assert!(edge.is_some_and(|e| e.cls() == "Published"
+            && e.src_index() == publisher_index
+            && e.tgt_index() == article_index));
     }
 }

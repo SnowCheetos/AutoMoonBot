@@ -17,11 +17,11 @@ where
 
 impl MutualDynEdge<ETFs, Indices, Instant, PriceAggregate, PriceAggregate> for Mirrors {
     fn covariance(&self) -> Option<&na::DMatrix<f64>> {
-        todo!()
+        self.covariance.as_ref()
     }
 
     fn correlation(&self) -> Option<&na::DMatrix<f64>> {
-        todo!()
+        self.correlation.as_ref()
     }
 
     fn compute_covariance(&self, src: &ETFs, tgt: &Indices) -> Option<na::DMatrix<f64>> {
@@ -37,17 +37,23 @@ impl MutualDynEdge<ETFs, Indices, Instant, PriceAggregate, PriceAggregate> for M
     }
 
     fn update(&mut self, src: &ETFs, tgt: &Indices) {
-        todo!()
+        if let (Some(covariance), Some(correlation)) = (
+            self.compute_covariance(src, tgt),
+            self.compute_correlation(src, tgt),
+        ) {
+            self.covariance = Some(covariance);
+            self.correlation = Some(correlation);
+        }
     }
 }
 
 impl MutualDynEdge<Equity, Equity, Instant, PriceAggregate, PriceAggregate> for Influences {
     fn covariance(&self) -> Option<&na::DMatrix<f64>> {
-        todo!()
+        self.covariance.as_ref()
     }
 
     fn correlation(&self) -> Option<&na::DMatrix<f64>> {
-        todo!()
+        self.correlation.as_ref()
     }
 
     fn compute_covariance(&self, src: &Equity, tgt: &Equity) -> Option<na::DMatrix<f64>> {
@@ -63,17 +69,23 @@ impl MutualDynEdge<Equity, Equity, Instant, PriceAggregate, PriceAggregate> for 
     }
 
     fn update(&mut self, src: &Equity, tgt: &Equity) {
-        todo!()
+        if let (Some(covariance), Some(correlation)) = (
+            self.compute_covariance(src, tgt),
+            self.compute_correlation(src, tgt),
+        ) {
+            self.covariance = Some(covariance);
+            self.correlation = Some(correlation);
+        }
     }
 }
 
 impl MutualDynEdge<Equity, Options, Instant, PriceAggregate, OptionsAggregate> for Derives {
     fn covariance(&self) -> Option<&na::DMatrix<f64>> {
-        todo!()
+        self.covariance.as_ref()
     }
 
     fn correlation(&self) -> Option<&na::DMatrix<f64>> {
-        todo!()
+        self.correlation.as_ref()
     }
 
     fn compute_covariance(&self, src: &Equity, tgt: &Options) -> Option<na::DMatrix<f64>> {
@@ -89,6 +101,19 @@ impl MutualDynEdge<Equity, Options, Instant, PriceAggregate, OptionsAggregate> f
     }
 
     fn update(&mut self, src: &Equity, tgt: &Options) {
-        todo!()
+        if let (Some(covariance), Some(correlation)) = (
+            self.compute_covariance(src, tgt),
+            self.compute_correlation(src, tgt),
+        ) {
+            self.covariance = Some(covariance);
+            self.correlation = Some(correlation);
+        }
     }
+}
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test() {}
 }
