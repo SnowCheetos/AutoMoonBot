@@ -5,6 +5,7 @@ where
     Ix: Clone + Hash + Eq + PartialOrd,
     T: Clone,
 {
+    fn as_any_mute(&mut self) -> &mut dyn Any;
     fn update(&mut self, index: Ix, item: T) -> bool;
     fn empty(&self) -> bool;
     fn to_vec(&self) -> Vec<&T>;
@@ -37,6 +38,10 @@ impl DynamicNode<Instant, f64> for Publisher {
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&f64>> {
         self.sentiments.between(&start, &end)
     }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 impl DynamicNode<Instant, PriceAggregate> for Currency {
@@ -62,6 +67,10 @@ impl DynamicNode<Instant, PriceAggregate> for Currency {
 
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&PriceAggregate>> {
         self.history.between(&start, &end)
+    }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
     }
 }
 
@@ -89,6 +98,10 @@ impl DynamicNode<Instant, PriceAggregate> for Equity {
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&PriceAggregate>> {
         self.history.between(&start, &end)
     }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 impl DynamicNode<Instant, PriceAggregate> for Indices {
@@ -114,6 +127,10 @@ impl DynamicNode<Instant, PriceAggregate> for Indices {
 
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&PriceAggregate>> {
         self.history.between(&start, &end)
+    }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
     }
 }
 
@@ -141,6 +158,10 @@ impl DynamicNode<Instant, PriceAggregate> for ETFs {
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&PriceAggregate>> {
         self.history.between(&start, &end)
     }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 impl DynamicNode<Instant, PriceAggregate> for Bonds {
@@ -166,6 +187,10 @@ impl DynamicNode<Instant, PriceAggregate> for Bonds {
 
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&PriceAggregate>> {
         self.history.between(&start, &end)
+    }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
     }
 }
 
@@ -193,6 +218,10 @@ impl DynamicNode<Instant, OptionsAggregate> for Options {
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&OptionsAggregate>> {
         self.history.between(&start, &end)
     }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 impl DynamicNode<Instant, IncomeStatement> for Company {
@@ -218,6 +247,10 @@ impl DynamicNode<Instant, IncomeStatement> for Company {
 
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&IncomeStatement>> {
         self.income_statement.between(&start, &end)
+    }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
     }
 }
 
@@ -245,6 +278,10 @@ impl DynamicNode<Instant, BalanceSheet> for Company {
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&BalanceSheet>> {
         self.balance_sheet.between(&start, &end)
     }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 impl DynamicNode<Instant, CashFlow> for Company {
@@ -271,6 +308,10 @@ impl DynamicNode<Instant, CashFlow> for Company {
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&CashFlow>> {
         self.cash_flow.between(&start, &end)
     }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 impl DynamicNode<Instant, Earnings> for Company {
@@ -296,5 +337,9 @@ impl DynamicNode<Instant, Earnings> for Company {
 
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&Earnings>> {
         self.earnings.between(&start, &end)
+    }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
     }
 }

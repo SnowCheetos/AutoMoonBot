@@ -253,4 +253,8 @@ impl Company {
     pub fn symbols(&self) -> HashSet<String> {
         self.symbols.clone()
     }
+
+    pub fn update_income_statement(&mut self, index: Instant, item: IncomeStatement) {
+        DynamicNode::<Instant, IncomeStatement>::update(self, index, item);
+    }
 }

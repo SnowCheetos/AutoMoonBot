@@ -1,3 +1,5 @@
+use petgraph::data::DataMapMut;
+
 use crate::graph::*;
 
 #[derive(Default)]

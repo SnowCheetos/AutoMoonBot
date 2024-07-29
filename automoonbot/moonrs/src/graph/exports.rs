@@ -1,3 +1,5 @@
+use data::IncomeStatement;
+
 use crate::graph::*;
 
 impl HeteroGraph {
