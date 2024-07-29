@@ -1,6 +1,80 @@
 use crate::nodes::*;
 
 #[derive(Debug)]
+pub enum NodeType {
+    TestNode(TestNode),
+    Article(Article),
+    Publisher(Publisher),
+    Company(Company),
+    Currency(Currency),
+    Equity(Equity),
+    Indices(Indices),
+    ETFs(ETFs),
+    Bonds(Bonds),
+    Options(Options),
+}
+
+impl From<TestNode> for NodeType {
+    fn from(test_node: TestNode) -> Self {
+        NodeType::TestNode(test_node)
+    }
+}
+
+impl From<Article> for NodeType {
+    fn from(article: Article) -> Self {
+        NodeType::Article(article)
+    }
+}
+
+impl From<Publisher> for NodeType {
+    fn from(publisher: Publisher) -> Self {
+        NodeType::Publisher(publisher)
+    }
+}
+
+impl From<Company> for NodeType {
+    fn from(company: Company) -> Self {
+        NodeType::Company(company)
+    }
+}
+
+impl From<Currency> for NodeType {
+    fn from(currency: Currency) -> Self {
+        NodeType::Currency(currency)
+    }
+}
+
+impl From<Equity> for NodeType {
+    fn from(equity: Equity) -> Self {
+        NodeType::Equity(equity)
+    }
+}
+
+impl From<Indices> for NodeType {
+    fn from(indices: Indices) -> Self {
+        NodeType::Indices(indices)
+    }
+}
+
+impl From<ETFs> for NodeType {
+    fn from(etfs: ETFs) -> Self {
+        NodeType::ETFs(etfs)
+    }
+}
+
+impl From<Bonds> for NodeType {
+    fn from(bonds: Bonds) -> Self {
+        NodeType::Bonds(bonds)
+    }
+}
+
+impl From<Options> for NodeType {
+    fn from(options: Options) -> Self {
+        NodeType::Options(options)
+    }
+}
+
+#[derive(Debug)]
 pub struct Article {
     pub(super) title: String,
     pub(super) summary: String,

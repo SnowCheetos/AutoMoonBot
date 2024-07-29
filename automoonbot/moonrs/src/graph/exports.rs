@@ -1,5 +1,3 @@
-use data::IncomeStatement;
-
 use crate::graph::*;
 
 impl HeteroGraph {
@@ -17,25 +15,33 @@ impl HeteroGraph {
         }
     }
 
-    fn compute_dir_edge(&self, src: NodeIndex, tgt: NodeIndex) -> Option<Box<dyn StaticEdge>> {
+    fn compute_dir_edge(&self, src: NodeIndex, tgt: NodeIndex) -> Option<EdgeType> {
         if let (Some(source), Some(target)) = (self.get_node(src), self.get_node(tgt)) {
-            return match (source.cls(), target.cls()) {
-                ("TestNode", "TestNode") => TestEdge::try_new(src, tgt, source, target)
-                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
-                ("Publisher", "Article") => Published::try_new(src, tgt, source, target)
-                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
-                ("Article", "Company") => Mentioned::try_new(src, tgt, source, target)
-                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
-                ("Article", "Equity") => Referenced::try_new(src, tgt, source, target)
-                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
-                ("Company", "Equity") => Issues::try_new(src, tgt, source, target)
-                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
-                ("ETFs", "Indices") => Mirrors::try_new(src, tgt, source, target)
-                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
-                ("Equity", "Equity") => Influences::try_new(src, tgt, source, target)
-                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
-                ("Equity", "Options") => Derives::try_new(src, tgt, source, target)
-                    .map(|edge| Box::new(edge) as Box<dyn StaticEdge>),
+            return match (source, target) {
+                (NodeType::TestNode(source), NodeType::TestNode(target)) => {
+                    TestEdge::try_new(src, tgt, source, target).map(|edge| edge.into())
+                }
+                (NodeType::Publisher(source), NodeType::Article(target)) => {
+                    Published::try_new(src, tgt, source, target).map(|edge| edge.into())
+                }
+                (NodeType::Article(source), NodeType::Company(target)) => {
+                    Mentioned::try_new(src, tgt, source, target).map(|edge| edge.into())
+                }
+                (NodeType::Article(source), NodeType::Equity(target)) => {
+                    Referenced::try_new(src, tgt, source, target).map(|edge| edge.into())
+                }
+                (NodeType::Company(source), NodeType::Equity(target)) => {
+                    Issues::try_new(src, tgt, source, target).map(|edge| edge.into())
+                }
+                (NodeType::ETFs(source), NodeType::Indices(target)) => {
+                    Mirrors::try_new(src, tgt, source, target).map(|edge| edge.into())
+                }
+                (NodeType::Equity(source), NodeType::Equity(target)) => {
+                    Influences::try_new(src, tgt, source, target).map(|edge| edge.into())
+                }
+                (NodeType::Equity(source), NodeType::Options(target)) => {
+                    Derives::try_new(src, tgt, source, target).map(|edge| edge.into())
+                }
                 _ => None,
             };
         }
@@ -44,7 +50,7 @@ impl HeteroGraph {
 
     pub fn add_test_node(&mut self, name: String, value: f64, capacity: usize) {
         let node = TestNode::new(name, value, capacity);
-        let index = self.add_node(Box::new(node));
+        let index = self.add_node(node.into());
         self.compute_all_edges(index);
     }
 
@@ -57,7 +63,7 @@ impl HeteroGraph {
         tickers: Option<HashMap<String, f64>>,
     ) {
         let node = Article::new(title, summary, sentiment, publisher.clone(), tickers);
-        let index = self.add_node(Box::new(node));
+        let index = self.add_node(node.into());
         self.compute_all_edges(index);
         if self.get_node_index(publisher.clone()).is_none() {
             self.add_publisher(publisher, 100);
@@ -66,31 +72,31 @@ impl HeteroGraph {
 
     pub fn add_publisher(&mut self, name: String, capacity: usize) {
         let node = Publisher::new(name, capacity);
-        let index = self.add_node(Box::new(node));
+        let index = self.add_node(node.into());
         self.compute_all_edges(index);
     }
 
     pub fn add_company(&mut self, name: String, symbols: HashSet<String>, capacity: usize) {
         let node = Company::new(name, symbols, capacity);
-        let index = self.add_node(Box::new(node));
+        let index = self.add_node(node.into());
         self.compute_all_edges(index);
     }
 
     pub fn add_equity(&mut self, symbol: String, capacity: usize) {
         let node = Equity::new(symbol, capacity);
-        let index = self.add_node(Box::new(node));
+        let index = self.add_node(node.into());
         self.compute_all_edges(index);
     }
 
     pub fn add_currency(&mut self, symbol: String, capacity: usize) {
         let node = Currency::new(symbol, capacity);
-        let index = self.add_node(Box::new(node));
+        let index = self.add_node(node.into());
         self.compute_all_edges(index);
     }
 
     pub fn add_etf(&mut self, symbol: String, indice: String, capacity: usize) {
         let node = ETFs::new(symbol, indice.clone(), capacity);
-        let index = self.add_node(Box::new(node));
+        let index = self.add_node(node.into());
         self.compute_all_edges(index);
         if self.get_node_index(indice.clone()).is_none() {
             self.add_indice(indice, capacity);
@@ -99,7 +105,7 @@ impl HeteroGraph {
 
     pub fn add_indice(&mut self, symbol: String, capacity: usize) {
         let node = Indices::new(symbol, capacity);
-        let index = self.add_node(Box::new(node));
+        let index = self.add_node(node.into());
         self.compute_all_edges(index);
     }
 
@@ -111,7 +117,7 @@ impl HeteroGraph {
         capacity: usize,
     ) {
         let node = Bonds::new(symbol, interest_rate, maturity, capacity);
-        let index = self.add_node(Box::new(node));
+        let index = self.add_node(node.into());
         self.compute_all_edges(index);
     }
 
@@ -132,7 +138,7 @@ impl HeteroGraph {
             expiration,
             capacity,
         );
-        let index = self.add_node(Box::new(node));
+        let index = self.add_node(node.into());
         self.compute_all_edges(index);
     }
 }
@@ -172,6 +178,79 @@ impl HeteroGraph {
     #[pyo3(name = "add_test_node")]
     pub fn add_test_node_py(&mut self, name: String, value: f64, capacity: usize) {
         self.add_test_node(name, value, capacity);
+    }
+
+    #[pyo3(name = "add_article")]
+    pub fn add_article_py(
+        &mut self,
+        title: String,
+        summary: String,
+        sentiment: f64,
+        publisher: String,
+        tickers: Option<HashMap<String, f64>>,
+    ) {
+        self.add_article(title, summary, sentiment, publisher, tickers);
+    }
+
+    #[pyo3(name = "add_publisher")]
+    pub fn add_publisher_py(&mut self, name: String, capacity: usize) {
+        self.add_publisher(name, capacity);
+    }
+
+    #[pyo3(name = "add_company")]
+    pub fn add_company_py(&mut self, name: String, symbols: HashSet<String>, capacity: usize) {
+        self.add_company(name, symbols, capacity);
+    }
+
+    #[pyo3(name = "add_equity")]
+    pub fn add_equity_py(&mut self, symbol: String, capacity: usize) {
+        self.add_equity(symbol, capacity);
+    }
+
+    #[pyo3(name = "add_currency")]
+    pub fn add_currency_py(&mut self, symbol: String, capacity: usize) {
+        self.add_currency(symbol, capacity);
+    }
+
+    #[pyo3(name = "add_etf")]
+    pub fn add_etf_py(&mut self, symbol: String, indice: String, capacity: usize) {
+        self.add_etf(symbol, indice, capacity);
+    }
+
+    #[pyo3(name = "add_indice")]
+    pub fn add_indice_py(&mut self, symbol: String, capacity: usize) {
+        self.add_indice(symbol, capacity);
+    }
+
+    #[pyo3(name = "add_bond")]
+    pub fn add_bond_py(
+        &mut self,
+        symbol: String,
+        interest_rate: f64,
+        maturity: Instant,
+        capacity: usize,
+    ) {
+        self.add_bond(symbol, interest_rate, maturity, capacity);
+    }
+
+    #[pyo3(name = "add_option")]
+    pub fn add_option_py(
+        &mut self,
+        contract_id: String,
+        direction: String,
+        underlying: String,
+        strike: f64,
+        expiration: Instant,
+        capacity: usize,
+    ) {
+        self.add_option(
+            contract_id,
+            direction,
+            underlying,
+            strike,
+            expiration,
+            capacity,
+        );
     }
 }
 

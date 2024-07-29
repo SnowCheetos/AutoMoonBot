@@ -1,6 +1,66 @@
 use crate::edges::*;
 
 #[derive(Debug)]
+pub enum EdgeType {
+    TestEdge(TestEdge),
+    Published(Published),
+    Mentioned(Mentioned),
+    Referenced(Referenced),
+    Issues(Issues),
+    Mirrors(Mirrors),
+    Influences(Influences),
+    Derives(Derives),
+}
+
+impl From<TestEdge> for EdgeType {
+    fn from(edge: TestEdge) -> Self {
+        EdgeType::TestEdge(edge)
+    }
+}
+
+impl From<Published> for EdgeType {
+    fn from(edge: Published) -> Self {
+        EdgeType::Published(edge)
+    }
+}
+
+impl From<Mentioned> for EdgeType {
+    fn from(edge: Mentioned) -> Self {
+        EdgeType::Mentioned(edge)
+    }
+}
+
+impl From<Referenced> for EdgeType {
+    fn from(edge: Referenced) -> Self {
+        EdgeType::Referenced(edge)
+    }
+}
+
+impl From<Issues> for EdgeType {
+    fn from(edge: Issues) -> Self {
+        EdgeType::Issues(edge)
+    }
+}
+
+impl From<Mirrors> for EdgeType {
+    fn from(edge: Mirrors) -> Self {
+        EdgeType::Mirrors(edge)
+    }
+}
+
+impl From<Influences> for EdgeType {
+    fn from(edge: Influences) -> Self {
+        EdgeType::Influences(edge)
+    }
+}
+
+impl From<Derives> for EdgeType {
+    fn from(edge: Derives) -> Self {
+        EdgeType::Derives(edge)
+    }
+}
+
+#[derive(Debug)]
 pub struct Published {
     pub(super) src_index: NodeIndex,
     pub(super) tgt_index: NodeIndex,

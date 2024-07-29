@@ -7,6 +7,46 @@ pub trait StaticNode: Send + Sync {
     fn as_any(&self) -> &dyn Any;
 }
 
+impl StaticNode for NodeType {
+    fn cls(&self) -> &'static str {
+        match self {
+            NodeType::Article(_) => "Article",
+            NodeType::Publisher(_) => "Publisher",
+            NodeType::Company(_) => "Company",
+            NodeType::Currency(_) => "Currency",
+            NodeType::Equity(_) => "Equity",
+            NodeType::Indices(_) => "Indices",
+            NodeType::ETFs(_) => "ETFs",
+            NodeType::Bonds(_) => "Bonds",
+            NodeType::Options(_) => "Options",
+            NodeType::TestNode(_) => "TestNode",
+        }
+    }
+
+    fn name(&self) -> &String {
+        match self {
+            NodeType::Article(article) => &article.title,
+            NodeType::Publisher(publisher) => &publisher.name,
+            NodeType::Company(company) => &company.name,
+            NodeType::Currency(currency) => &currency.symbol,
+            NodeType::Equity(equity) => &equity.symbol,
+            NodeType::Indices(indices) => &indices.symbol,
+            NodeType::ETFs(etfs) => &etfs.symbol,
+            NodeType::Bonds(bonds) => &bonds.symbol,
+            NodeType::Options(options) => &options.contract_id,
+            NodeType::TestNode(test_node) => &test_node.name,
+        }
+    }
+
+    fn value(&self) -> Option<f64> {
+        None
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 impl StaticNode for Article {
     fn cls(&self) -> &'static str {
         "Article"
