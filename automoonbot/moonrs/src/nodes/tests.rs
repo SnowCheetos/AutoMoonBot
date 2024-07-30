@@ -63,6 +63,10 @@ impl DynamicNode<Instant, f64> for TestNode {
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&f64>> {
         self.buffer.between(&start, &end)
     }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
+    }
 }
 
 #[cfg(test)]

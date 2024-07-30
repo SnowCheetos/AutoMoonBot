@@ -1,6 +1,66 @@
 use crate::nodes::*;
 
 #[derive(Debug)]
+pub enum NodeType {
+    TestNode(TestNode),
+    Article(Article),
+    Publisher(Publisher),
+    Company(Company),
+    Currency(Currency),
+    Equity(Equity),
+    Bonds(Bonds),
+    Options(Options),
+}
+
+impl From<TestNode> for NodeType {
+    fn from(test_node: TestNode) -> Self {
+        NodeType::TestNode(test_node)
+    }
+}
+
+impl From<Article> for NodeType {
+    fn from(article: Article) -> Self {
+        NodeType::Article(article)
+    }
+}
+
+impl From<Publisher> for NodeType {
+    fn from(publisher: Publisher) -> Self {
+        NodeType::Publisher(publisher)
+    }
+}
+
+impl From<Company> for NodeType {
+    fn from(company: Company) -> Self {
+        NodeType::Company(company)
+    }
+}
+
+impl From<Currency> for NodeType {
+    fn from(currency: Currency) -> Self {
+        NodeType::Currency(currency)
+    }
+}
+
+impl From<Equity> for NodeType {
+    fn from(equity: Equity) -> Self {
+        NodeType::Equity(equity)
+    }
+}
+
+impl From<Bonds> for NodeType {
+    fn from(bonds: Bonds) -> Self {
+        NodeType::Bonds(bonds)
+    }
+}
+
+impl From<Options> for NodeType {
+    fn from(options: Options) -> Self {
+        NodeType::Options(options)
+    }
+}
+
+#[derive(Debug)]
 pub struct Article {
     pub(super) title: String,
     pub(super) summary: String,
@@ -34,19 +94,7 @@ pub struct Currency {
 #[derive(Debug)]
 pub struct Equity {
     pub(super) symbol: String,
-    pub(super) history: TimeSeries<PriceAggregate>,
-}
-
-#[derive(Debug)]
-pub struct Indices {
-    pub(super) symbol: String,
-    pub(super) history: TimeSeries<PriceAggregate>,
-}
-
-#[derive(Debug)]
-pub struct ETFs {
-    pub(super) symbol: String,
-    pub(super) indice: String,
+    pub(super) company: Option<String>,
     pub(super) history: TimeSeries<PriceAggregate>,
 }
 
@@ -87,6 +135,14 @@ impl Article {
 
     pub fn publisher(&self) -> &String {
         &self.publisher
+    }
+
+    pub fn summary(&self) -> &String {
+        &self.summary
+    }
+
+    pub fn sentiment(&self) -> f64 {
+        self.sentiment
     }
 
     pub fn ticker_sentiment(&self, symbol: String) -> Option<f64> {
@@ -134,40 +190,14 @@ impl Currency {
 impl Equity {
     pub fn new(symbol: String, capacity: usize) -> Self {
         Equity {
-            symbol,
+            symbol: symbol.clone(),
+            company: get_company(symbol),
             history: TimeSeries::new(capacity),
         }
     }
 
-    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
-        self.history.mat()
-    }
-}
-
-impl Indices {
-    pub fn new(symbol: String, capacity: usize) -> Self {
-        Indices {
-            symbol,
-            history: TimeSeries::new(capacity),
-        }
-    }
-
-    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
-        self.history.mat()
-    }
-}
-
-impl ETFs {
-    pub fn new(symbol: String, indice: String, capacity: usize) -> Self {
-        ETFs {
-            symbol,
-            indice,
-            history: TimeSeries::new(capacity),
-        }
-    }
-
-    pub fn indice(&self) -> &String {
-        &self.indice
+    pub fn company(&self) -> Option<String> {
+        self.company.clone()
     }
 
     pub fn mat(&self) -> Option<na::DMatrix<f64>> {
@@ -239,10 +269,10 @@ impl Options {
 }
 
 impl Company {
-    pub fn new(name: String, symbols: HashSet<String>, capacity: usize) -> Self {
+    pub fn new(name: String, capacity: usize) -> Self {
         Company {
-            name,
-            symbols,
+            name: name.clone(),
+            symbols: get_symbols(name),
             income_statement: TimeSeries::new(capacity),
             balance_sheet: TimeSeries::new(capacity),
             cash_flow: TimeSeries::new(capacity),
@@ -252,5 +282,57 @@ impl Company {
 
     pub fn symbols(&self) -> HashSet<String> {
         self.symbols.clone()
+    }
+
+    pub fn update_income_statement(&mut self, index: Instant, item: IncomeStatement) {
+        DynamicNode::<Instant, IncomeStatement>::update(self, index, item);
+    }
+
+    pub fn update_balance_sheet(&mut self, index: Instant, item: BalanceSheet) {
+        DynamicNode::<Instant, BalanceSheet>::update(self, index, item);
+    }
+
+    pub fn update_cash_flow(&mut self, index: Instant, item: CashFlow) {
+        DynamicNode::<Instant, CashFlow>::update(self, index, item);
+    }
+
+    pub fn update_earnings(&mut self, index: Instant, item: Earnings) {
+        DynamicNode::<Instant, Earnings>::update(self, index, item);
+    }
+
+    pub fn mat(&self) -> Option<na::DMatrix<f64>> {
+        let income_statement = self.income_statement.mat()?;
+        let balance_sheet = self.balance_sheet.mat()?;
+        let cash_flow = self.cash_flow.mat()?;
+        let earnings = self.earnings.mat()?;
+
+        let nrows = income_statement.nrows();
+        let ncols =
+            income_statement.ncols() + balance_sheet.ncols() + cash_flow.ncols() + earnings.ncols();
+
+        let mut mat = na::DMatrix::zeros(nrows, ncols);
+
+        mat.view_mut((0, 0), (nrows, income_statement.ncols()))
+            .copy_from(&income_statement);
+        mat.view_mut(
+            (0, income_statement.ncols()),
+            (nrows, balance_sheet.ncols()),
+        )
+        .copy_from(&balance_sheet);
+        mat.view_mut(
+            (0, income_statement.ncols() + balance_sheet.ncols()),
+            (nrows, cash_flow.ncols()),
+        )
+        .copy_from(&cash_flow);
+        mat.view_mut(
+            (
+                0,
+                income_statement.ncols() + balance_sheet.ncols() + cash_flow.ncols(),
+            ),
+            (nrows, earnings.ncols()),
+        )
+        .copy_from(&earnings);
+
+        Some(mat)
     }
 }

@@ -1,6 +1,59 @@
 use crate::edges::*;
 
 #[derive(Debug)]
+pub enum EdgeType {
+    TestEdge(TestEdge),
+    Published(Published),
+    Mentioned(Mentioned),
+    Referenced(Referenced),
+    Issues(Issues),
+    Influences(Influences),
+    Derives(Derives),
+}
+
+impl From<TestEdge> for EdgeType {
+    fn from(edge: TestEdge) -> Self {
+        EdgeType::TestEdge(edge)
+    }
+}
+
+impl From<Published> for EdgeType {
+    fn from(edge: Published) -> Self {
+        EdgeType::Published(edge)
+    }
+}
+
+impl From<Mentioned> for EdgeType {
+    fn from(edge: Mentioned) -> Self {
+        EdgeType::Mentioned(edge)
+    }
+}
+
+impl From<Referenced> for EdgeType {
+    fn from(edge: Referenced) -> Self {
+        EdgeType::Referenced(edge)
+    }
+}
+
+impl From<Issues> for EdgeType {
+    fn from(edge: Issues) -> Self {
+        EdgeType::Issues(edge)
+    }
+}
+
+impl From<Influences> for EdgeType {
+    fn from(edge: Influences) -> Self {
+        EdgeType::Influences(edge)
+    }
+}
+
+impl From<Derives> for EdgeType {
+    fn from(edge: Derives) -> Self {
+        EdgeType::Derives(edge)
+    }
+}
+
+#[derive(Debug)]
 pub struct Published {
     pub(super) src_index: NodeIndex,
     pub(super) tgt_index: NodeIndex,
@@ -16,6 +69,7 @@ pub struct Mentioned {
 pub struct Referenced {
     pub(super) src_index: NodeIndex,
     pub(super) tgt_index: NodeIndex,
+    pub(super) sentiment: f64,
 }
 
 #[derive(Debug)]
@@ -54,15 +108,12 @@ impl Published {
     pub fn try_new(
         src_index: NodeIndex,
         tgt_index: NodeIndex,
-        src_node: &dyn StaticNode,
-        tgt_node: &dyn StaticNode,
+        publisher: &Publisher,
+        article: &Article,
     ) -> Option<Self> {
         if src_index == tgt_index {
             return None;
         }
-
-        let publisher = src_node.as_any().downcast_ref::<Publisher>()?;
-        let article = tgt_node.as_any().downcast_ref::<Article>()?;
 
         if publisher.name() == article.publisher() {
             Some(Published {
@@ -79,15 +130,12 @@ impl Mentioned {
     pub fn try_new(
         src_index: NodeIndex,
         tgt_index: NodeIndex,
-        src_node: &dyn StaticNode,
-        tgt_node: &dyn StaticNode,
+        article: &Article,
+        company: &Company,
     ) -> Option<Self> {
         if src_index == tgt_index {
             return None;
         }
-
-        let article = src_node.as_any().downcast_ref::<Article>()?;
-        let company = tgt_node.as_any().downcast_ref::<Company>()?;
 
         if let Some(_) = article.ticker_intersect(company.symbols()) {
             Some(Mentioned {
@@ -104,24 +152,26 @@ impl Referenced {
     pub fn try_new(
         src_index: NodeIndex,
         tgt_index: NodeIndex,
-        src_node: &dyn StaticNode,
-        tgt_node: &dyn StaticNode,
+        article: &Article,
+        equity: &Equity,
     ) -> Option<Self> {
         if src_index == tgt_index {
             return None;
         }
 
-        let article = src_node.as_any().downcast_ref::<Article>()?;
-        let equity = tgt_node.as_any().downcast_ref::<Equity>()?;
-
         if let Some(sentiment) = article.ticker_sentiment(equity.name().clone()) {
             Some(Referenced {
                 src_index,
                 tgt_index,
+                sentiment,
             })
         } else {
             None
         }
+    }
+
+    pub fn sentiment(&self) -> f64 {
+        self.sentiment
     }
 }
 
@@ -129,40 +179,22 @@ impl Issues {
     pub fn try_new(
         src_index: NodeIndex,
         tgt_index: NodeIndex,
-        src_node: &dyn StaticNode,
-        tgt_node: &dyn StaticNode,
+        company: &Company,
+        equity: &Equity,
     ) -> Option<Self> {
         if src_index == tgt_index {
             return None;
         }
-
-        let company = src_node.as_any().downcast_ref::<Company>()?;
-        let equity = tgt_node.as_any().downcast_ref::<Equity>()?;
 
         if company.symbols().contains(equity.name()) {
-            todo!()
-        } else {
-            None
-        }
-    }
-}
-
-impl Mirrors {
-    pub fn try_new(
-        src_index: NodeIndex,
-        tgt_index: NodeIndex,
-        src_node: &dyn StaticNode,
-        tgt_node: &dyn StaticNode,
-    ) -> Option<Self> {
-        if src_index == tgt_index {
-            return None;
-        }
-
-        let etf = src_node.as_any().downcast_ref::<ETFs>()?;
-        let index = tgt_node.as_any().downcast_ref::<Indices>()?;
-
-        if etf.indice() == index.name() {
-            todo!()
+            let covariance = compute_covariance(company.mat()?, equity.mat()?);
+            let correlation = compute_correlation(company.mat()?, equity.mat()?);
+            Some(Issues {
+                src_index,
+                tgt_index,
+                covariance,
+                correlation,
+            })
         } else {
             None
         }
@@ -173,17 +205,21 @@ impl Influences {
     pub fn try_new(
         src_index: NodeIndex,
         tgt_index: NodeIndex,
-        src_node: &dyn StaticNode,
-        tgt_node: &dyn StaticNode,
+        src_node: &Equity,
+        tgt_node: &Equity,
     ) -> Option<Self> {
         if src_index == tgt_index {
             return None;
         }
 
-        let source = src_node.as_any().downcast_ref::<Equity>()?;
-        let target = tgt_node.as_any().downcast_ref::<Equity>()?;
-
-        todo!()
+        let covariance = compute_covariance(src_node.mat()?, tgt_node.mat()?);
+        let correlation = compute_correlation(src_node.mat()?, tgt_node.mat()?);
+        Some(Influences {
+            src_index,
+            tgt_index,
+            covariance,
+            correlation,
+        })
     }
 }
 
@@ -191,18 +227,22 @@ impl Derives {
     pub fn try_new(
         src_index: NodeIndex,
         tgt_index: NodeIndex,
-        src_node: &dyn StaticNode,
-        tgt_node: &dyn StaticNode,
+        equity: &Equity,
+        option: &Options,
     ) -> Option<Self> {
         if src_index == tgt_index {
             return None;
         }
 
-        let equity = src_node.as_any().downcast_ref::<Equity>()?;
-        let option = tgt_node.as_any().downcast_ref::<Options>()?;
-
         if option.underlying() == equity.name() {
-            todo!()
+            let covariance = compute_covariance(equity.mat()?, option.mat()?);
+            let correlation = compute_correlation(equity.mat()?, option.mat()?);
+            Some(Derives {
+                src_index,
+                tgt_index,
+                covariance,
+                correlation,
+            })
         } else {
             None
         }

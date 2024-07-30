@@ -13,14 +13,11 @@ impl TestEdge {
     pub fn new(
         src_index: NodeIndex,
         tgt_index: NodeIndex,
-        src_node: &dyn StaticNode,
-        tgt_node: &dyn StaticNode,
     ) -> Self {
-        let value = Self::difference(src_node, tgt_node);
         TestEdge {
             src_index,
             tgt_index,
-            value,
+            value: 0.0,
             covariance: None,
             correlation: None,
         }
@@ -29,19 +26,13 @@ impl TestEdge {
     pub fn try_new(
         src_index: NodeIndex,
         tgt_index: NodeIndex,
-        src_node: &dyn StaticNode,
-        tgt_node: &dyn StaticNode,
+        src_node: &TestNode,
+        tgt_node: &TestNode,
     ) -> Option<Self> {
         if src_index == tgt_index {
             return None;
         }
-        let source = src_node.as_any().downcast_ref::<TestNode>();
-        let target = tgt_node.as_any().downcast_ref::<TestNode>();
-        if source.is_none() || target.is_none() {
-            return None;
-        }
-        let (source, target) = (source.unwrap(), target.unwrap());
-        let value = Self::difference(source, target);
+        let value = Self::difference(src_node, tgt_node);
         if value > 0.0 {
             Some(TestEdge {
                 src_index,
@@ -55,8 +46,9 @@ impl TestEdge {
         }
     }
 
-    pub fn difference(src_node: &dyn StaticNode, tgt_node: &dyn StaticNode) -> f64 {
-        (src_node.value().unwrap() - tgt_node.value().unwrap()).abs()
+    pub fn difference(src_node: &TestNode, tgt_node: &TestNode) -> f64 {
+        let (src_val,tgt_val) = (src_node.value(), tgt_node.value());
+        (src_val - tgt_val).abs()
     }
 }
 
@@ -142,7 +134,7 @@ mod tests {
 
         let src_index = NodeIndex::new(0);
         let tgt_index = NodeIndex::new(1);
-        let mut edge = TestEdge::new(src_index, tgt_index, &src_node, &tgt_node);
+        let mut edge = TestEdge::new(src_index, tgt_index);
 
         assert!(edge.covariance().is_none());
         assert!(edge.correlation().is_none());
@@ -167,7 +159,9 @@ mod tests {
         let src_index = NodeIndex::new(0);
         let tgt_index = NodeIndex::new(1);
 
-        let edge = TestEdge::new(src_index, tgt_index, &src_node, &tgt_node);
+        let edge = TestEdge::try_new(src_index, tgt_index, &src_node, &tgt_node);
+        assert!(edge.is_some());
+        let edge = edge.unwrap();
         let edge_value = 1.0;
         assert_eq!(edge.value(), edge_value);
         assert_eq!(*edge.src_index(), src_index);

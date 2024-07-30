@@ -38,6 +38,14 @@ pub struct OptionsAggregateIterator {
     index: usize,
 }
 
+#[derive(Clone)]
+pub enum FinancialStatement {
+    IncomeStatement(IncomeStatement),
+    BalanceSheet(BalanceSheet),
+    CashFlow(CashFlow),
+    Earnings(Earnings),
+}
+
 impl Iterator for IncomeStatementIterator {
     type Item = f64;
 

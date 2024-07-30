@@ -375,6 +375,10 @@ impl Earnings {
             surprise,
         }
     }
+
+    pub fn after_hours(&self) -> bool {
+        self.after_hours
+    }
 }
 
 impl PriceAggregate {
@@ -398,6 +402,10 @@ impl PriceAggregate {
             close,
             volume,
         }
+    }
+
+    pub fn adjusted(&self) -> bool {
+        self.adjusted
     }
 }
 
