@@ -4,7 +4,8 @@ pub trait StaticNode: Send + Sync {
     fn cls(&self) -> &'static str;
     fn name(&self) -> &String;
     fn value(&self) -> Option<f64>;
-    fn as_any(&self) -> &dyn Any;
+    fn dim(&self) -> usize;
+    fn feature(&self) -> Option<na::RowDVector<f64>>;
 }
 
 impl StaticNode for NodeType {
@@ -38,8 +39,46 @@ impl StaticNode for NodeType {
         None
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
+    fn dim(&self) -> usize {
+        match self {
+            NodeType::Article(node) => node.dim(),
+            NodeType::Publisher(node) => node.dim(),
+            NodeType::Company(node) => node.dim(),
+            NodeType::Currency(node) => node.dim(),
+            NodeType::Equity(node) => node.dim(),
+            NodeType::Bonds(node) => node.dim(),
+            NodeType::Options(node) => node.dim(),
+            NodeType::TestNode(node) => node.dim(),
+        }
+    }
+
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        match self {
+            NodeType::Article(node) => {
+                Some(na::RowDVector::from_vec(vec![node.sentiment()]))
+            },
+            NodeType::Publisher(node) => {
+                Some(na::RowDVector::from_vec(vec![*node.sentiments().last().unwrap()]))
+            },
+            NodeType::Company(node) => {
+                Some(node.mat()?.row(0).into_owned())
+            },
+            NodeType::Currency(node) => {
+                Some(node.mat()?.row(0).into_owned())
+            },
+            NodeType::Equity(node) => {
+                Some(node.mat()?.row(0).into_owned())
+            },
+            NodeType::Bonds(node) => {
+                Some(node.mat()?.row(0).into_owned())
+            },
+            NodeType::Options(node) => {
+                Some(node.mat()?.row(0).into_owned())
+            },
+            NodeType::TestNode(_) => {
+                Some(na::RowDVector::from_vec(vec![0.0]))
+            },
+        }
     }
 }
 
@@ -56,8 +95,12 @@ impl StaticNode for Article {
         None
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        todo!()
+    }
+
+    fn dim(&self) -> usize {
+        1
     }
 }
 
@@ -74,8 +117,12 @@ impl StaticNode for Publisher {
         None
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        todo!()
+    }
+
+    fn dim(&self) -> usize {
+        1
     }
 }
 
@@ -92,8 +139,15 @@ impl StaticNode for Company {
         None
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        todo!()
+    }
+
+    fn dim(&self) -> usize {
+        self.income_statement.cols()
+            + self.balance_sheet.cols()
+            + self.cash_flow.cols()
+            + self.earnings.cols()
     }
 }
 
@@ -110,8 +164,12 @@ impl StaticNode for Currency {
         None
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        todo!()
+    }
+
+    fn dim(&self) -> usize {
+        self.history.cols()
     }
 }
 
@@ -128,8 +186,12 @@ impl StaticNode for Equity {
         None
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        todo!()
+    }
+
+    fn dim(&self) -> usize {
+        self.history.cols()
     }
 }
 
@@ -146,8 +208,12 @@ impl StaticNode for Bonds {
         None
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        todo!()
+    }
+
+    fn dim(&self) -> usize {
+        self.history.cols()
     }
 }
 
@@ -164,7 +230,11 @@ impl StaticNode for Options {
         None
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        todo!()
+    }
+
+    fn dim(&self) -> usize {
+        self.history.cols()
     }
 }

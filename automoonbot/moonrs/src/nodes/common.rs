@@ -172,6 +172,10 @@ impl Publisher {
             sentiments: TimeSeries::new(capacity),
         }
     }
+
+    pub fn sentiments(&self) -> &TimeSeries<f64> {
+        &self.sentiments
+    }
 }
 
 impl Currency {
@@ -188,10 +192,10 @@ impl Currency {
 }
 
 impl Equity {
-    pub fn new(symbol: String, capacity: usize) -> Self {
+    pub fn new(symbol: String, company: Option<String>, capacity: usize) -> Self {
         Equity {
             symbol: symbol.clone(),
-            company: get_company(symbol),
+            company,
             history: TimeSeries::new(capacity),
         }
     }
@@ -269,10 +273,16 @@ impl Options {
 }
 
 impl Company {
-    pub fn new(name: String, capacity: usize) -> Self {
+    pub fn new(name: String, symbols: Vec<String>, capacity: usize) -> Self {
+        let s: HashSet<String>;
+        if symbols.is_empty() {
+            s = get_symbols(name.clone());
+        } else {
+            s = symbols.into_iter().collect();
+        }
         Company {
             name: name.clone(),
-            symbols: get_symbols(name),
+            symbols: s,
             income_statement: TimeSeries::new(capacity),
             balance_sheet: TimeSeries::new(capacity),
             cash_flow: TimeSeries::new(capacity),

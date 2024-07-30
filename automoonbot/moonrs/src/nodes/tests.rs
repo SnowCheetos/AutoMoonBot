@@ -34,8 +34,12 @@ impl StaticNode for TestNode {
         Some(self.value)
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        todo!()
+    }
+
+    fn dim(&self) -> usize {
+        1
     }
 }
 

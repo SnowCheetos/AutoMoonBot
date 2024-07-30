@@ -21,6 +21,14 @@ impl HeteroGraph {
         }
     }
 
+    pub fn node_cls_memo(&self) -> &HashMap<String, HashSet<NodeIndex>> {
+        &self.node_cls_memo
+    }
+
+    pub fn edge_cls_memo(&self) -> &HashMap<String, HashSet<EdgeIndex>> {
+        &self.edge_cls_memo
+    }
+
     pub fn node_count(&self) -> usize {
         self.graph.node_count()
     }

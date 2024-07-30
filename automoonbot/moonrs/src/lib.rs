@@ -1,5 +1,8 @@
 #[cfg(feature = "python")]
-use pyo3::prelude::*;
+use {
+    pyo3::prelude::*,
+    std::time::{SystemTime, UNIX_EPOCH},
+};
 
 #[macro_use]
 extern crate lazy_static;
