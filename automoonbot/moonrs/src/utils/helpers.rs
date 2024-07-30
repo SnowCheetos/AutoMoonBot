@@ -54,6 +54,14 @@ pub fn compute_correlation(src_mat: na::DMatrix<f64>, tgt_mat: na::DMatrix<f64>)
     Some(correlation)
 }
 
+pub fn get_company(symbol: String) -> Option<String> {
+    todo!()
+}
+
+pub fn get_symbols(company: String) -> HashSet<String> {
+    todo!()
+}
+
 lazy_static! {
     /// A quite subjective list of non-meme cryptos
     pub static ref SERIOUS_CRYPTOS: HashSet<&'static str> = {

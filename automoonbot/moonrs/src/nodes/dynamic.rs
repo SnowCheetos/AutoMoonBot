@@ -104,66 +104,6 @@ impl DynamicNode<Instant, PriceAggregate> for Equity {
     }
 }
 
-impl DynamicNode<Instant, PriceAggregate> for Indices {
-    fn update(&mut self, index: Instant, item: PriceAggregate) -> bool {
-        self.history.push(index, item)
-    }
-
-    fn empty(&self) -> bool {
-        self.history.empty()
-    }
-
-    fn to_vec(&self) -> Vec<&PriceAggregate> {
-        self.history.to_vec()
-    }
-
-    fn first(&self) -> Option<&PriceAggregate> {
-        self.history.first()
-    }
-
-    fn last(&self) -> Option<&PriceAggregate> {
-        self.history.last()
-    }
-
-    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&PriceAggregate>> {
-        self.history.between(&start, &end)
-    }
-
-    fn as_any_mute(&mut self) -> &mut dyn Any {
-        self
-    }
-}
-
-impl DynamicNode<Instant, PriceAggregate> for ETFs {
-    fn update(&mut self, index: Instant, item: PriceAggregate) -> bool {
-        self.history.push(index, item)
-    }
-
-    fn empty(&self) -> bool {
-        self.history.empty()
-    }
-
-    fn to_vec(&self) -> Vec<&PriceAggregate> {
-        self.history.to_vec()
-    }
-
-    fn first(&self) -> Option<&PriceAggregate> {
-        self.history.first()
-    }
-
-    fn last(&self) -> Option<&PriceAggregate> {
-        self.history.last()
-    }
-
-    fn between(&self, start: Instant, end: Instant) -> Option<Vec<&PriceAggregate>> {
-        self.history.between(&start, &end)
-    }
-
-    fn as_any_mute(&mut self) -> &mut dyn Any {
-        self
-    }
-}
-
 impl DynamicNode<Instant, PriceAggregate> for Bonds {
     fn update(&mut self, index: Instant, item: PriceAggregate) -> bool {
         self.history.push(index, item)
@@ -217,6 +157,42 @@ impl DynamicNode<Instant, OptionsAggregate> for Options {
 
     fn between(&self, start: Instant, end: Instant) -> Option<Vec<&OptionsAggregate>> {
         self.history.between(&start, &end)
+    }
+
+    fn as_any_mute(&mut self) -> &mut dyn Any {
+        self
+    }
+}
+
+impl DynamicNode<Instant, FinancialStatement> for Company
+{
+    fn update(&mut self, index: Instant, item: FinancialStatement) -> bool {
+        match item {
+            FinancialStatement::IncomeStatement(item) => self.income_statement.push(index, item),
+            FinancialStatement::BalanceSheet(item) => self.balance_sheet.push(index, item),
+            FinancialStatement::CashFlow(item) => self.cash_flow.push(index, item),
+            FinancialStatement::Earnings(item) => self.earnings.push(index, item),
+        }
+    }
+
+    fn empty(&self) -> bool {
+        false
+    }
+
+    fn to_vec(&self) -> Vec<&FinancialStatement> {
+        Vec::new()
+    }
+
+    fn first(&self) -> Option<&FinancialStatement> {
+        None
+    }
+
+    fn last(&self) -> Option<&FinancialStatement> {
+        None
+    }
+
+    fn between(&self, _: Instant, _: Instant) -> Option<Vec<&FinancialStatement>> {
+        None
     }
 
     fn as_any_mute(&mut self) -> &mut dyn Any {

@@ -15,8 +15,6 @@ impl StaticNode for NodeType {
             NodeType::Company(_) => "Company",
             NodeType::Currency(_) => "Currency",
             NodeType::Equity(_) => "Equity",
-            NodeType::Indices(_) => "Indices",
-            NodeType::ETFs(_) => "ETFs",
             NodeType::Bonds(_) => "Bonds",
             NodeType::Options(_) => "Options",
             NodeType::TestNode(_) => "TestNode",
@@ -30,8 +28,6 @@ impl StaticNode for NodeType {
             NodeType::Company(company) => &company.name,
             NodeType::Currency(currency) => &currency.symbol,
             NodeType::Equity(equity) => &equity.symbol,
-            NodeType::Indices(indices) => &indices.symbol,
-            NodeType::ETFs(etfs) => &etfs.symbol,
             NodeType::Bonds(bonds) => &bonds.symbol,
             NodeType::Options(options) => &options.contract_id,
             NodeType::TestNode(test_node) => &test_node.name,
@@ -122,42 +118,6 @@ impl StaticNode for Currency {
 impl StaticNode for Equity {
     fn cls(&self) -> &'static str {
         "Equity"
-    }
-
-    fn name(&self) -> &String {
-        &self.symbol
-    }
-
-    fn value(&self) -> Option<f64> {
-        None
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-impl StaticNode for Indices {
-    fn cls(&self) -> &'static str {
-        "Indices"
-    }
-
-    fn name(&self) -> &String {
-        &self.symbol
-    }
-
-    fn value(&self) -> Option<f64> {
-        None
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-impl StaticNode for ETFs {
-    fn cls(&self) -> &'static str {
-        "ETFs"
     }
 
     fn name(&self) -> &String {

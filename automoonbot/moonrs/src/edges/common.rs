@@ -7,7 +7,6 @@ pub enum EdgeType {
     Mentioned(Mentioned),
     Referenced(Referenced),
     Issues(Issues),
-    Mirrors(Mirrors),
     Influences(Influences),
     Derives(Derives),
 }
@@ -42,12 +41,6 @@ impl From<Issues> for EdgeType {
     }
 }
 
-impl From<Mirrors> for EdgeType {
-    fn from(edge: Mirrors) -> Self {
-        EdgeType::Mirrors(edge)
-    }
-}
-
 impl From<Influences> for EdgeType {
     fn from(edge: Influences) -> Self {
         EdgeType::Influences(edge)
@@ -76,6 +69,7 @@ pub struct Mentioned {
 pub struct Referenced {
     pub(super) src_index: NodeIndex,
     pub(super) tgt_index: NodeIndex,
+    pub(super) sentiment: f64,
 }
 
 #[derive(Debug)]
@@ -169,10 +163,15 @@ impl Referenced {
             Some(Referenced {
                 src_index,
                 tgt_index,
+                sentiment,
             })
         } else {
             None
         }
+    }
+
+    pub fn sentiment(&self) -> f64 {
+        self.sentiment
     }
 }
 
@@ -188,26 +187,14 @@ impl Issues {
         }
 
         if company.symbols().contains(equity.name()) {
-            todo!()
-        } else {
-            None
-        }
-    }
-}
-
-impl Mirrors {
-    pub fn try_new(
-        src_index: NodeIndex,
-        tgt_index: NodeIndex,
-        etf: &ETFs,
-        indice: &Indices,
-    ) -> Option<Self> {
-        if src_index == tgt_index {
-            return None;
-        }
-
-        if etf.indice() == indice.name() {
-            todo!()
+            let covariance = compute_covariance(company.mat()?, equity.mat()?);
+            let correlation = compute_correlation(company.mat()?, equity.mat()?);
+            Some(Issues {
+                src_index,
+                tgt_index,
+                covariance,
+                correlation,
+            })
         } else {
             None
         }
@@ -225,7 +212,14 @@ impl Influences {
             return None;
         }
 
-        todo!()
+        let covariance = compute_covariance(src_node.mat()?, tgt_node.mat()?);
+        let correlation = compute_correlation(src_node.mat()?, tgt_node.mat()?);
+        Some(Influences {
+            src_index,
+            tgt_index,
+            covariance,
+            correlation,
+        })
     }
 }
 
@@ -241,7 +235,14 @@ impl Derives {
         }
 
         if option.underlying() == equity.name() {
-            todo!()
+            let covariance = compute_covariance(equity.mat()?, option.mat()?);
+            let correlation = compute_correlation(equity.mat()?, option.mat()?);
+            Some(Derives {
+                src_index,
+                tgt_index,
+                covariance,
+                correlation,
+            })
         } else {
             None
         }

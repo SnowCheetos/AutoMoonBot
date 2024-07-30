@@ -159,7 +159,9 @@ mod tests {
         let src_index = NodeIndex::new(0);
         let tgt_index = NodeIndex::new(1);
 
-        let edge = TestEdge::new(src_index, tgt_index);
+        let edge = TestEdge::try_new(src_index, tgt_index, &src_node, &tgt_node);
+        assert!(edge.is_some());
+        let edge = edge.unwrap();
         let edge_value = 1.0;
         assert_eq!(edge.value(), edge_value);
         assert_eq!(*edge.src_index(), src_index);

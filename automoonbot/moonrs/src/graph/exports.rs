@@ -33,9 +33,6 @@ impl HeteroGraph {
                 (NodeType::Company(source), NodeType::Equity(target)) => {
                     Issues::try_new(src, tgt, source, target).map(|edge| edge.into())
                 }
-                (NodeType::ETFs(source), NodeType::Indices(target)) => {
-                    Mirrors::try_new(src, tgt, source, target).map(|edge| edge.into())
-                }
                 (NodeType::Equity(source), NodeType::Equity(target)) => {
                     Influences::try_new(src, tgt, source, target).map(|edge| edge.into())
                 }
@@ -60,13 +57,14 @@ impl HeteroGraph {
         summary: String,
         sentiment: f64,
         publisher: String,
+        capacity: usize,
         tickers: Option<HashMap<String, f64>>,
     ) {
         let node = Article::new(title, summary, sentiment, publisher.clone(), tickers);
         let index = self.add_node(node.into());
         self.compute_all_edges(index);
         if self.get_node_index(publisher.clone()).is_none() {
-            self.add_publisher(publisher, 100);
+            self.add_publisher(publisher, capacity);
         }
     }
 
@@ -76,35 +74,26 @@ impl HeteroGraph {
         self.compute_all_edges(index);
     }
 
-    pub fn add_company(&mut self, name: String, symbols: HashSet<String>, capacity: usize) {
-        let node = Company::new(name, symbols, capacity);
+    pub fn add_company(&mut self, name: String, capacity: usize) {
+        let node = Company::new(name, capacity);
         let index = self.add_node(node.into());
         self.compute_all_edges(index);
     }
 
     pub fn add_equity(&mut self, symbol: String, capacity: usize) {
         let node = Equity::new(symbol, capacity);
+        let company = node.company();
         let index = self.add_node(node.into());
         self.compute_all_edges(index);
+        if let Some(company) = company {
+            if self.get_node_index(company.clone()).is_none() {
+                self.add_company(company.to_owned(), capacity);
+            }
+        }
     }
 
     pub fn add_currency(&mut self, symbol: String, capacity: usize) {
         let node = Currency::new(symbol, capacity);
-        let index = self.add_node(node.into());
-        self.compute_all_edges(index);
-    }
-
-    pub fn add_etf(&mut self, symbol: String, indice: String, capacity: usize) {
-        let node = ETFs::new(symbol, indice.clone(), capacity);
-        let index = self.add_node(node.into());
-        self.compute_all_edges(index);
-        if self.get_node_index(indice.clone()).is_none() {
-            self.add_indice(indice, capacity);
-        }
-    }
-
-    pub fn add_indice(&mut self, symbol: String, capacity: usize) {
-        let node = Indices::new(symbol, capacity);
         let index = self.add_node(node.into());
         self.compute_all_edges(index);
     }
@@ -293,6 +282,7 @@ mod tests {
             "test_summary".to_owned(),
             0.5,
             "test_publisher".to_owned(),
+            10,
             None,
         );
 

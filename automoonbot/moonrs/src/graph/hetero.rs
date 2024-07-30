@@ -6,6 +6,8 @@ pub struct HeteroGraph {
     pub(super) graph: StableDiGraph<NodeType, EdgeType>,
     pub(super) node_memo: HashMap<String, NodeIndex>,
     pub(super) edge_memo: HashMap<(NodeIndex, NodeIndex), EdgeIndex>,
+    pub(super) node_cls_memo: HashMap<String, HashSet<NodeIndex>>,
+    pub(super) edge_cls_memo: HashMap<String, HashSet<EdgeIndex>>,
 }
 
 impl HeteroGraph {
@@ -14,6 +16,8 @@ impl HeteroGraph {
             graph: StableDiGraph::new(),
             node_memo: HashMap::new(),
             edge_memo: HashMap::new(),
+            node_cls_memo: HashMap::new(),
+            edge_cls_memo: HashMap::new(),
         }
     }
 
@@ -58,19 +62,27 @@ impl HeteroGraph {
 
     pub fn add_node(&mut self, node: NodeType) -> NodeIndex {
         let name = node.name().to_string();
+        let cls = node.cls().to_string();
         let index = self.graph.add_node(node);
         self.node_memo.entry(name).or_insert(index);
+        self.node_cls_memo.entry(cls).or_default().insert(index);
         index
     }
 
     pub fn add_edge(&mut self, src: NodeIndex, tgt: NodeIndex, edge: EdgeType) {
+        let cls = edge.cls().to_string();
         let index = self.graph.add_edge(src, tgt, edge);
         self.edge_memo.entry((src, tgt)).or_insert(index);
+        self.edge_cls_memo.entry(cls).or_default().insert(index);
     }
 
     pub fn remove_node(&mut self, index: NodeIndex) {
         if let Some(node) = self.graph.remove_node(index) {
             self.node_memo.remove(node.name());
+            let cls = node.cls().to_string();
+            if let Some(cls_set) = self.node_cls_memo.get_mut(&cls) {
+                cls_set.remove(&index);
+            }
         }
     }
 
@@ -78,6 +90,10 @@ impl HeteroGraph {
         if let Some(edge) = self.graph.remove_edge(index) {
             self.edge_memo
                 .remove(&(*edge.src_index(), *edge.tgt_index()));
+            let cls = edge.cls().to_string();
+            if let Some(cls_set) = self.edge_cls_memo.get_mut(&cls) {
+                cls_set.remove(&index);
+            }
         }
     }
 
