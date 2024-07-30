@@ -117,7 +117,10 @@ mod tests {
         assert_eq!(graph.node_count(), 1);
 
         let node = graph.get_node_by_name(name.clone());
-        assert!(node.map(|n| n.name()).map(|name_| *name_ == name).unwrap_or(false));
+        assert!(node
+            .map(|n| n.name())
+            .map(|name_| *name_ == name)
+            .unwrap_or(false));
     }
 
     #[test]
@@ -149,26 +152,27 @@ mod tests {
         let tgt_node = TestNode::new(tgt_name.clone(), tgt_value, 1);
 
         let src_index = graph.add_node(src_node.into());
-        assert_eq!(graph.node_count(), 1);
-
         let tgt_index = graph.add_node(tgt_node.into());
         assert_eq!(graph.node_count(), 2);
-
-        let src_node = graph.get_node(src_index.clone());
-        let tgt_node = graph.get_node(tgt_index.clone());
-        assert!(src_node.map(|n| n.name()).map(|name_| *name_ == src_name).unwrap_or(false));
-        assert!(tgt_node.map(|n| n.name()).map(|name_| *name_ == tgt_name).unwrap_or(false));
-
         assert_eq!(graph.edge_count(), 0);
-        let src_node = graph.get_node(src_index).expect("Failed to get source node");
-        let tgt_node = graph.get_node(tgt_index).expect("Failed to get target node");
-        let edge = TestEdge::new(src_index, tgt_index, src_node, tgt_node);
-        graph.add_edge(src_index, tgt_index, edge.into());
-        assert_eq!(graph.edge_count(), 1);
 
-        // //let edge_index = graph.get_edge_index(src_index, tgt_index).expect("Failed to get edge index");
-        // let edge = graph.get_edge_by_pair(src_index, tgt_index).expect("Failed to get edge");
-        // assert_eq!(edge.value(), edge_value);
+        let (source, target) = (
+            graph.get_node(src_index.clone()).unwrap(),
+            graph.get_node(tgt_index.clone()).unwrap(),
+        );
+
+        match (source, target) {
+            (NodeType::TestNode(source), NodeType::TestNode(target)) => {
+                let edge = TestEdge::try_new(src_index, tgt_index, source, target);
+                assert!(edge.is_some());
+                graph.add_edge(src_index, tgt_index, edge.unwrap().into());
+                assert_eq!(graph.edge_count(), 1);
+            }
+            _ => panic!("Failed to get nodes"),
+        }
+
+        let edge_index = graph.get_edge_index(src_index, tgt_index);
+        assert!(edge_index.is_some());
     }
 
     #[test]
@@ -184,12 +188,23 @@ mod tests {
 
         let src_index = graph.add_node(src_node.into());
         let tgt_index = graph.add_node(tgt_node.into());
-        let src_node = graph.get_node(src_index).unwrap();
-        let tgt_node = graph.get_node(tgt_index).unwrap();
+        assert_eq!(graph.node_count(), 2);
+        assert_eq!(graph.edge_count(), 0);
 
-        let edge = TestEdge::new(src_index, tgt_index, src_node, tgt_node);
-        graph.add_edge(src_index, tgt_index, edge.into());
-        assert_eq!(graph.edge_count(), 1);
+        let (source, target) = (
+            graph.get_node(src_index.clone()).unwrap(),
+            graph.get_node(tgt_index.clone()).unwrap(),
+        );
+
+        match (source, target) {
+            (NodeType::TestNode(source), NodeType::TestNode(target)) => {
+                let edge = TestEdge::try_new(src_index, tgt_index, source, target);
+                assert!(edge.is_some());
+                graph.add_edge(src_index, tgt_index, edge.unwrap().into());
+                assert_eq!(graph.edge_count(), 1);
+            }
+            _ => panic!("Failed to get nodes"),
+        }
 
         graph.remove_node_by_name(src_name.clone());
         assert_eq!(graph.node_count(), 1);
@@ -209,12 +224,23 @@ mod tests {
 
         let src_index = graph.add_node(src_node.into());
         let tgt_index = graph.add_node(tgt_node.into());
-        let src_node = graph.get_node(src_index).unwrap();
-        let tgt_node = graph.get_node(tgt_index).unwrap();
+        assert_eq!(graph.node_count(), 2);
+        assert_eq!(graph.edge_count(), 0);
 
-        let edge = TestEdge::new(src_index, tgt_index, src_node, tgt_node);
-        graph.add_edge(src_index, tgt_index, edge.into());
-        assert_eq!(graph.edge_count(), 1);
+        let (source, target) = (
+            graph.get_node(src_index.clone()).unwrap(),
+            graph.get_node(tgt_index.clone()).unwrap(),
+        );
+
+        match (source, target) {
+            (NodeType::TestNode(source), NodeType::TestNode(target)) => {
+                let edge = TestEdge::try_new(src_index, tgt_index, source, target);
+                assert!(edge.is_some());
+                graph.add_edge(src_index, tgt_index, edge.unwrap().into());
+                assert_eq!(graph.edge_count(), 1);
+            }
+            _ => panic!("Failed to get nodes"),
+        }
 
         graph.remove_edge_by_pair(src_index, tgt_index);
         assert_eq!(graph.node_count(), 2);
