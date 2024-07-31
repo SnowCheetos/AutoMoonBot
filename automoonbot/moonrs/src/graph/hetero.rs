@@ -49,6 +49,10 @@ impl HeteroGraph {
         self.node_memo.get(&name)
     }
 
+    pub fn get_node_mut(&mut self, index: NodeIndex) -> Option<&mut NodeType> {
+        self.graph.node_weight_mut(index)
+    }
+
     pub fn get_edge_index(&self, src: NodeIndex, tgt: NodeIndex) -> Option<&EdgeIndex> {
         self.edge_memo.get(&(src, tgt))
     }

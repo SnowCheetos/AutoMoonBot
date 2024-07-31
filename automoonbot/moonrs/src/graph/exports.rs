@@ -1,9 +1,9 @@
-use petgraph::graph::edge_index;
+use data::{Aggregates, PriceAggregate};
 
 use crate::graph::*;
 
 impl HeteroGraph {
-    fn to_pyg(
+    pub fn to_pyg(
         &self,
     ) -> (
         HashMap<String, na::DMatrix<f64>>,
@@ -160,6 +160,16 @@ impl HeteroGraph {
         self.compute_all_edges(index);
     }
 
+    pub fn update_currency(&mut self, symbol: String, data: PriceAggregate) {
+        if let Some(index) = self.get_node_index(symbol) {
+            if let Some(node) = self.get_node_mut(*index) {
+                if let NodeType::Currency(ref mut currency) = node {
+                    currency.update(data.timestamp().clone(), data);
+                }
+            }
+        }
+    }
+
     pub fn add_bond(
         &mut self,
         symbol: String,
@@ -195,6 +205,19 @@ impl HeteroGraph {
 }
 
 #[cfg(feature = "python")]
+fn dmatrix_to_pylist<T>(py: Python, matrix: &na::DMatrix<T>) -> PyObject
+where
+    T: ToPyObject + Copy,
+{
+    let list = PyList::empty_bound(py);
+    for row in matrix.row_iter() {
+        let py_row = PyList::new_bound(py, row.iter().cloned());
+        list.append(py_row).unwrap();
+    }
+    list.into()
+}
+
+#[cfg(feature = "python")]
 #[pymethods]
 impl HeteroGraph {
     #[new]
@@ -209,6 +232,30 @@ impl HeteroGraph {
 
     pub fn clear(&mut self) {
         self.graph.clear();
+    }
+
+    #[pyo3(name = "to_pyg")]
+    pub fn to_pyg_py(&self) -> PyResult<(PyObject, PyObject, PyObject)> {
+        let (x, edge_index, edge_attr) = self.to_pyg();
+        Python::with_gil(|py| {
+            let x_py: HashMap<_, _> = x
+                .into_iter()
+                .map(|(k, v)| (k, dmatrix_to_pylist(py, &v)))
+                .collect();
+            let edge_index_py: HashMap<_, _> = edge_index
+                .into_iter()
+                .map(|(k, v)| (k, dmatrix_to_pylist(py, &v)))
+                .collect();
+            let edge_attr_py: HashMap<_, _> = edge_attr
+                .into_iter()
+                .map(|(k, v)| (k, dmatrix_to_pylist(py, &v)))
+                .collect();
+            Ok((
+                x_py.into_py(py),
+                edge_index_py.into_py(py),
+                edge_attr_py.into_py(py),
+            ))
+        })
     }
 
     #[pyo3(name = "node_count")]
@@ -261,13 +308,13 @@ impl HeteroGraph {
     }
 
     #[pyo3(name = "add_company")]
-    pub fn add_company_py(&mut self, name: String, capacity: usize) {
-        self.add_company(name, capacity);
+    pub fn add_company_py(&mut self, name: String, symbols: Vec<String>, capacity: usize) {
+        self.add_company(name, symbols, capacity);
     }
 
     #[pyo3(name = "add_equity")]
-    pub fn add_equity_py(&mut self, symbol: String, capacity: usize) {
-        self.add_equity(symbol, capacity);
+    pub fn add_equity_py(&mut self, symbol: String, company: String, capacity: usize) {
+        self.add_equity(symbol, Some(company), capacity);
     }
 
     #[pyo3(name = "add_currency")]
