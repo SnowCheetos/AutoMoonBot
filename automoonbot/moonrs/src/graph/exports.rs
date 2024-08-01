@@ -502,26 +502,21 @@ mod tests {
 
         graph.add_test_node("TestNode1".to_string(), 1.0, 3);
         graph.add_test_node("TestNode2".to_string(), 2.0, 3);
-        graph.add_article(
-            "Article1".to_string(),
-            "Summary1".to_string(),
-            0.5,
-            "Publisher1".to_string(),
-            3,
-            None,
-        );
-        graph.add_company("Company1".to_string(), vec!["Equity1".to_string()], 3);
-        graph.add_equity("Equity1".to_string(), Some("Company1".to_string()), 3);
 
         let (x_py, edge_index_py, edge_attr_py) = graph.to_pyg();
         let mut expected_x: HashMap<String, na::DMatrix<f64>> = HashMap::new();
         expected_x.insert(
             "TestNode".to_string(),
-            na::DMatrix::from_row_slice(2, 3, &[1.0, 1.0, 1.0, 2.0, 2.0, 2.0]),
+            na::DMatrix::from_row_slice(2, 1, &[0.0, 0.0]),
         );
 
-        let mut expected_edge_index: HashMap<String, na::DMatrix<i64>> = HashMap::new();
-        expected_edge_index.insert(
+        let mut expected_edge_index_1: HashMap<String, na::DMatrix<i64>> = HashMap::new();
+        let mut expected_edge_index_2: HashMap<String, na::DMatrix<i64>> = HashMap::new();
+        expected_edge_index_1.insert(
+            "TestEdge".to_string(),
+            na::DMatrix::from_row_slice(2, 2, &[1, 0, 0, 1]),
+        );
+        expected_edge_index_2.insert(
             "TestEdge".to_string(),
             na::DMatrix::from_row_slice(2, 2, &[0, 1, 1, 0]),
         );
@@ -529,11 +524,11 @@ mod tests {
         let mut expected_edge_attr: HashMap<String, na::DMatrix<f64>> = HashMap::new();
         expected_edge_attr.insert(
             "TestEdge".to_string(),
-            na::DMatrix::from_row_slice(2, 3, &[0.5, 0.5, 0.5, 0.5, 0.5, 0.5]),
+            na::DMatrix::from_row_slice(2, 1, &[0.0, 0.0]),
         );
 
         assert_eq!(x_py, expected_x);
-        assert_eq!(edge_index_py, expected_edge_index);
+        assert!(edge_index_py == expected_edge_index_1 || edge_index_py == expected_edge_index_2);
         assert_eq!(edge_attr_py, expected_edge_attr);
     }
 

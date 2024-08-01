@@ -11,14 +11,14 @@ pub trait StaticNode: Send + Sync {
 impl StaticNode for NodeType {
     fn cls(&self) -> &'static str {
         match self {
-            NodeType::Article(_) => "Article",
-            NodeType::Publisher(_) => "Publisher",
-            NodeType::Company(_) => "Company",
-            NodeType::Currency(_) => "Currency",
-            NodeType::Equity(_) => "Equity",
-            NodeType::Bonds(_) => "Bonds",
-            NodeType::Options(_) => "Options",
-            NodeType::TestNode(_) => "TestNode",
+            NodeType::Article(article) => article.cls(),
+            NodeType::Publisher(publisher) => publisher.cls(),
+            NodeType::Company(company) => company.cls(),
+            NodeType::Currency(currency) => currency.cls(),
+            NodeType::Equity(equity) => equity.cls(),
+            NodeType::Bonds(bonds) => bonds.cls(),
+            NodeType::Options(options) => options.cls(),
+            NodeType::TestNode(test_node) => test_node.cls(),
         }
     }
 
@@ -55,31 +55,28 @@ impl StaticNode for NodeType {
     fn feature(&self) -> Option<na::RowDVector<f64>> {
         match self {
             NodeType::Article(node) => {
-                Some(na::RowDVector::from_vec(vec![node.sentiment()]))
+                node.feature()
             },
             NodeType::Publisher(node) => {
-                if node.sentiments().empty() {
-                    return None;
-                }
-                Some(na::RowDVector::from_vec(vec![*node.sentiments().last().unwrap()]))
+                node.feature()
             },
             NodeType::Company(node) => {
-                Some(node.mat()?.row(0).into_owned())
+                node.feature()
             },
             NodeType::Currency(node) => {
-                Some(node.mat()?.row(0).into_owned())
+                node.feature()
             },
             NodeType::Equity(node) => {
-                Some(node.mat()?.row(0).into_owned())
+                node.feature()
             },
             NodeType::Bonds(node) => {
-                Some(node.mat()?.row(0).into_owned())
+                node.feature()
             },
             NodeType::Options(node) => {
-                Some(node.mat()?.row(0).into_owned())
+                node.feature()
             },
-            NodeType::TestNode(_) => {
-                Some(na::RowDVector::from_vec(vec![0.0]))
+            NodeType::TestNode(node) => {
+                node.feature()
             },
         }
     }
@@ -121,6 +118,9 @@ impl StaticNode for Publisher {
     }
 
     fn feature(&self) -> Option<na::RowDVector<f64>> {
+        if self.sentiments().empty() {
+            return None;
+        }
         Some(na::RowDVector::from_vec(vec![*self.sentiments().last().unwrap()]))
     }
 
