@@ -21,6 +21,14 @@ impl HeteroGraph {
         }
     }
 
+    pub fn node_cls_memo(&self) -> &HashMap<String, HashSet<NodeIndex>> {
+        &self.node_cls_memo
+    }
+
+    pub fn edge_cls_memo(&self) -> &HashMap<String, HashSet<EdgeIndex>> {
+        &self.edge_cls_memo
+    }
+
     pub fn node_count(&self) -> usize {
         self.graph.node_count()
     }
@@ -39,6 +47,10 @@ impl HeteroGraph {
 
     pub fn get_node_index(&self, name: String) -> Option<&NodeIndex> {
         self.node_memo.get(&name)
+    }
+
+    pub fn get_node_mut(&mut self, index: NodeIndex) -> Option<&mut NodeType> {
+        self.graph.node_weight_mut(index)
     }
 
     pub fn get_edge_index(&self, src: NodeIndex, tgt: NodeIndex) -> Option<&EdgeIndex> {

@@ -68,6 +68,10 @@ impl StaticEdge for TestEdge {
     fn cls(&self) -> &'static str {
         "TestEdge"
     }
+
+    fn feature(&self) -> na::RowDVector<f64> {
+        todo!()
+    }
 }
 
 impl MutualDynEdge<TestNode, TestNode, Instant, f64, f64> for TestEdge {
