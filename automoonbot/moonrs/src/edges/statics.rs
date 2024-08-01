@@ -5,7 +5,7 @@ pub trait StaticEdge: Send + Sync {
     fn value(&self) -> f64;
     fn src_index(&self) -> &NodeIndex;
     fn tgt_index(&self) -> &NodeIndex;
-    fn feature(&self) -> na::RowDVector<f64>;
+    fn feature(&self) -> Option<na::RowDVector<f64>>;
 }
 
 impl StaticEdge for EdgeType {
@@ -36,21 +36,29 @@ impl StaticEdge for EdgeType {
             EdgeType::TestEdge(t) => &t.tgt_index,
         }
     }
-    
+
     fn cls(&self) -> &'static str {
         match self {
-            EdgeType::Published(_) => "Published",
-            EdgeType::Mentioned(_) => "Mentioned",
-            EdgeType::Referenced(_) => "Referenced",
-            EdgeType::Issues(_) => "Issues",
-            EdgeType::Influences(_) => "Influences",
-            EdgeType::Derives(_) => "Derives",
-            EdgeType::TestEdge(_) => "TestEdge",
+            EdgeType::Published(p) => p.cls(),
+            EdgeType::Mentioned(m) => m.cls(),
+            EdgeType::Referenced(r) => r.cls(),
+            EdgeType::Issues(i) => i.cls(),
+            EdgeType::Influences(i) => i.cls(),
+            EdgeType::Derives(d) => d.cls(),
+            EdgeType::TestEdge(t) => t.cls(),
         }
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
-        todo!()
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        match self {
+            EdgeType::Published(p) => p.feature(),
+            EdgeType::Mentioned(m) => m.feature(),
+            EdgeType::Referenced(r) => r.feature(),
+            EdgeType::Issues(i) => i.feature(),
+            EdgeType::Influences(i) => i.feature(),
+            EdgeType::Derives(d) => d.feature(),
+            EdgeType::TestEdge(t) => t.feature(),
+        }
     }
 }
 
@@ -66,13 +74,13 @@ impl StaticEdge for Published {
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
     }
-    
+
     fn cls(&self) -> &'static str {
         "Published"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
-        todo!()
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        Some(na::RowDVector::from_vec(vec![0.0]))
     }
 }
 
@@ -88,13 +96,13 @@ impl StaticEdge for Mentioned {
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
     }
-    
+
     fn cls(&self) -> &'static str {
         "Mentioned"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
-        todo!()
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        Some(na::RowDVector::from_vec(vec![0.0]))
     }
 }
 
@@ -110,13 +118,13 @@ impl StaticEdge for Referenced {
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
     }
-    
+
     fn cls(&self) -> &'static str {
         "Referenced"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
-        todo!()
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        Some(na::RowDVector::from_vec(vec![self.sentiment]))
     }
 }
 
@@ -132,35 +140,13 @@ impl StaticEdge for Issues {
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
     }
-    
+
     fn cls(&self) -> &'static str {
         "Issues"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
-        todo!()
-    }
-}
-
-impl StaticEdge for Mirrors {
-    fn value(&self) -> f64 {
-        0.0
-    }
-
-    fn src_index(&self) -> &NodeIndex {
-        &self.src_index
-    }
-
-    fn tgt_index(&self) -> &NodeIndex {
-        &self.tgt_index
-    }
-    
-    fn cls(&self) -> &'static str {
-        "Mirrors"
-    }
-
-    fn feature(&self) -> na::RowDVector<f64> {
-        todo!()
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        self.covariance.as_ref().map(|cov| cov.row(0).into_owned())
     }
 }
 
@@ -176,13 +162,13 @@ impl StaticEdge for Influences {
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
     }
-    
+
     fn cls(&self) -> &'static str {
         "Influences"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
-        todo!()
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        self.covariance.as_ref().map(|cov| cov.row(0).into_owned())
     }
 }
 
@@ -198,12 +184,12 @@ impl StaticEdge for Derives {
     fn tgt_index(&self) -> &NodeIndex {
         &self.tgt_index
     }
-    
+
     fn cls(&self) -> &'static str {
         "Derives"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
-        todo!()
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        self.covariance.as_ref().map(|cov| cov.row(0).into_owned())
     }
 }

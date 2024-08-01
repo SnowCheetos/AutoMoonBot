@@ -81,14 +81,6 @@ pub struct Issues {
 }
 
 #[derive(Debug)]
-pub struct Mirrors {
-    pub(super) src_index: NodeIndex,
-    pub(super) tgt_index: NodeIndex,
-    pub(super) covariance: Option<na::DMatrix<f64>>,
-    pub(super) correlation: Option<na::DMatrix<f64>>,
-}
-
-#[derive(Debug)]
 pub struct Influences {
     pub(super) src_index: NodeIndex,
     pub(super) tgt_index: NodeIndex,
@@ -214,6 +206,7 @@ impl Influences {
 
         let covariance = compute_covariance(src_node.mat()?, tgt_node.mat()?);
         let correlation = compute_correlation(src_node.mat()?, tgt_node.mat()?);
+
         Some(Influences {
             src_index,
             tgt_index,

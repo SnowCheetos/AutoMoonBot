@@ -35,7 +35,7 @@ impl StaticNode for TestNode {
     }
 
     fn feature(&self) -> Option<na::RowDVector<f64>> {
-        todo!()
+        Some(na::RowDVector::from_vec(vec![0.0]))
     }
 
     fn dim(&self) -> usize {

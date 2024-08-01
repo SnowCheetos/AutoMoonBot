@@ -69,8 +69,8 @@ impl StaticEdge for TestEdge {
         "TestEdge"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
-        todo!()
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
+        Some(na::RowDVector::from_vec(vec![0.0]))
     }
 }
 
