@@ -214,6 +214,7 @@ impl Influences {
 
         let covariance = compute_covariance(src_node.mat()?, tgt_node.mat()?);
         let correlation = compute_correlation(src_node.mat()?, tgt_node.mat()?);
+
         Some(Influences {
             src_index,
             tgt_index,

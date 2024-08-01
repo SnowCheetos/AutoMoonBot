@@ -1,4 +1,4 @@
-use data::{Aggregates, PriceAggregate};
+use std::borrow::Borrow;
 
 use crate::graph::*;
 
@@ -38,28 +38,50 @@ impl HeteroGraph {
                 }
             }
         }
+
         for (cls, edges) in self.edge_cls_memo() {
             if edges.is_empty() {
                 continue;
             }
 
-            let edge_index_matrix = edge_index.get_mut(cls).unwrap();
-            let edge_attr_matrix = edge_attr.get_mut(cls).unwrap();
+            if edge_index.get(cls).is_none() {
+                edge_index.insert(cls.clone(), na::DMatrix::zeros(2, edges.len()));
+            }
+            if edge_attr.get(cls).is_none() {
+                if let Some(index) = edges.iter().next() {
+                    if let Some(edge) = self.get_edge(*index) {
+                        if let Some(feature) = edge.feature() {
+                            edge_attr.insert(
+                                cls.clone(),
+                                na::DMatrix::zeros(edges.len(), feature.len()),
+                            );
+                        }
+                    }
+                }
+            }
 
-            for (i, edge_index) in edges.iter().enumerate() {
-                let edge = self.get_edge(*edge_index).unwrap();
-                let src = edge.src_index();
-                let tgt = edge.tgt_index();
+            if let Some(edge_index_matrix) = edge_index.get_mut(cls) {
+                if let Some(edge_attr_matrix) = edge_attr.get_mut(cls) {
+                    for (i, &edge_index) in edges.iter().enumerate() {
+                        if let Some(edge) = self.get_edge(edge_index) {
+                            let src = edge.src_index();
+                            let tgt = edge.tgt_index();
 
-                if let (Some(&(_, src_index)), Some(&(_, tgt_index))) =
-                    (temp.get(&src), temp.get(&tgt))
-                {
-                    edge_index_matrix[(0, i)] = src_index as i64;
-                    edge_index_matrix[(1, i)] = tgt_index as i64;
-                    edge_attr_matrix.row_mut(i).copy_from(&edge.feature());
+                            if let (Some(&(_, src_index)), Some(&(_, tgt_index))) =
+                                (temp.get(&src), temp.get(&tgt))
+                            {
+                                if let Some(edge_feature) = edge.feature() {
+                                    edge_index_matrix[(0, i)] = src_index as i64;
+                                    edge_index_matrix[(1, i)] = tgt_index as i64;
+                                    edge_attr_matrix.row_mut(i).copy_from(&edge_feature);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
+
         (x, edge_index, edge_attr)
     }
 
@@ -160,16 +182,6 @@ impl HeteroGraph {
         self.compute_all_edges(index);
     }
 
-    pub fn update_currency(&mut self, symbol: String, data: PriceAggregate) {
-        if let Some(index) = self.get_node_index(symbol) {
-            if let Some(node) = self.get_node_mut(*index) {
-                if let NodeType::Currency(ref mut currency) = node {
-                    currency.update(data.timestamp().clone(), data);
-                }
-            }
-        }
-    }
-
     pub fn add_bond(
         &mut self,
         symbol: String,
@@ -201,6 +213,28 @@ impl HeteroGraph {
         );
         let index = self.add_node(node.into());
         self.compute_all_edges(index);
+    }
+
+    pub fn update_currency(&mut self, symbol: String, data: PriceAggregate) {
+        if let Some(index) = self.get_node_index(symbol) {
+            if let Some(node) = self.get_node_mut(*index) {
+                if let NodeType::Currency(ref mut currency) = node {
+                    currency.update(data.timestamp().clone(), data);
+                }
+            }
+        }
+    }
+
+    pub fn update_equity(&mut self, symbol: String, data: PriceAggregate) {
+        if let Some(index) = self.get_node_index(symbol) {
+            let index_clone = *index;
+            if let Some(node) = self.get_node_mut(index_clone) {
+                if let NodeType::Equity(ref mut equity) = node {
+                    equity.update(data.timestamp().clone(), data);
+                    self.compute_all_edges(index_clone);
+                }
+            }
+        }
     }
 }
 
@@ -234,10 +268,12 @@ impl HeteroGraph {
         self.graph.clear();
     }
 
+    /// This method will be made more efficient upon the stable
+    /// release of `rust-numpy=0.22.0`.`
     #[pyo3(name = "to_pyg")]
     pub fn to_pyg_py(&self) -> PyResult<(PyObject, PyObject, PyObject)> {
-        let (x, edge_index, edge_attr) = self.to_pyg();
         Python::with_gil(|py| {
+            let (x, edge_index, edge_attr) = self.to_pyg();
             let x_py: HashMap<_, _> = x
                 .into_iter()
                 .map(|(k, v)| (k, dmatrix_to_pylist(py, &v)))
@@ -314,7 +350,12 @@ impl HeteroGraph {
 
     #[pyo3(name = "add_equity")]
     pub fn add_equity_py(&mut self, symbol: String, company: String, capacity: usize) {
-        self.add_equity(symbol, Some(company), capacity);
+        let company = if company.is_empty() {
+            None
+        } else {
+            Some(company)
+        };
+        self.add_equity(symbol, company, capacity);
     }
 
     #[pyo3(name = "add_currency")]
@@ -360,6 +401,68 @@ impl HeteroGraph {
             capacity,
         );
     }
+
+    #[pyo3(name = "update_currency")]
+    pub fn update_currency_py(
+        &mut self,
+        symbol: String,
+        timestamp: f64,
+        duration: f64,
+        adjusted: bool,
+        open: f64,
+        close: f64,
+        high: f64,
+        low: f64,
+        volume: f64,
+    ) {
+        let instant = UNIX_EPOCH + Duration::from_secs_f64(timestamp);
+        let instant_rs = match instant.duration_since(SystemTime::now()) {
+            Ok(duration) => Instant::now() + duration,
+            Err(_) => Instant::now(),
+        };
+        let data = PriceAggregate::new(
+            instant_rs,
+            Duration::from_secs_f64(duration),
+            adjusted,
+            open,
+            close,
+            high,
+            low,
+            volume,
+        );
+        self.update_currency(symbol, data);
+    }
+
+    #[pyo3(name = "update_equity")]
+    pub fn update_equity_py(
+        &mut self,
+        symbol: String,
+        timestamp: f64,
+        duration: f64,
+        adjusted: bool,
+        open: f64,
+        close: f64,
+        high: f64,
+        low: f64,
+        volume: f64,
+    ) {
+        let instant = UNIX_EPOCH + Duration::from_secs_f64(timestamp);
+        let instant_rs = match instant.duration_since(SystemTime::now()) {
+            Ok(duration) => Instant::now() + duration,
+            Err(_) => Instant::now(),
+        };
+        let data = PriceAggregate::new(
+            instant_rs,
+            Duration::from_secs_f64(duration),
+            adjusted,
+            open,
+            close,
+            high,
+            low,
+            volume,
+        );
+        self.update_equity(symbol, data);
+    }
 }
 
 #[cfg(test)]
@@ -395,10 +498,8 @@ mod tests {
 
     #[test]
     fn test_to_pyg() {
-        // Initialize the graph
         let mut graph = HeteroGraph::new();
 
-        // Add nodes and edges
         graph.add_test_node("TestNode1".to_string(), 1.0, 3);
         graph.add_test_node("TestNode2".to_string(), 2.0, 3);
         graph.add_article(
@@ -412,10 +513,7 @@ mod tests {
         graph.add_company("Company1".to_string(), vec!["Equity1".to_string()], 3);
         graph.add_equity("Equity1".to_string(), Some("Company1".to_string()), 3);
 
-        // Convert graph to pyg format
         let (x_py, edge_index_py, edge_attr_py) = graph.to_pyg();
-
-        // Define expected results
         let mut expected_x: HashMap<String, na::DMatrix<f64>> = HashMap::new();
         expected_x.insert(
             "TestNode".to_string(),
@@ -423,7 +521,6 @@ mod tests {
         );
 
         let mut expected_edge_index: HashMap<String, na::DMatrix<i64>> = HashMap::new();
-        // Assume edges between nodes are added in some order
         expected_edge_index.insert(
             "TestEdge".to_string(),
             na::DMatrix::from_row_slice(2, 2, &[0, 1, 1, 0]),
@@ -435,7 +532,6 @@ mod tests {
             na::DMatrix::from_row_slice(2, 3, &[0.5, 0.5, 0.5, 0.5, 0.5, 0.5]),
         );
 
-        // Check if the result matches the expected values
         assert_eq!(x_py, expected_x);
         assert_eq!(edge_index_py, expected_edge_index);
         assert_eq!(edge_attr_py, expected_edge_attr);
@@ -468,5 +564,70 @@ mod tests {
         assert!(edge.is_some_and(|e| e.cls() == "Published"
             && e.src_index() == publisher_index
             && e.tgt_index() == article_index));
+    }
+
+    #[test]
+    fn test_combination_2() {
+        let mut graph = HeteroGraph::new();
+
+        graph.add_equity("foo".to_owned(), None, 10);
+        graph.add_equity("bar".to_owned(), None, 10);
+
+        assert_eq!(graph.node_count(), 2);
+        assert_eq!(graph.edge_count(), 0);
+
+        let timestamp = Instant::now();
+        let duration = Duration::from_secs(60);
+        let adjusted = true;
+        let open = 100.0;
+        let high = 110.0;
+        let low = 90.0;
+        let close = 105.0;
+        let volume = 1000.0;
+
+        graph.update_equity(
+            "foo".to_owned(),
+            PriceAggregate::new(
+                timestamp, duration, adjusted, open, high, low, close, volume,
+            ),
+        );
+        let foo = graph.get_node_by_name("foo".to_owned());
+        assert!(foo.is_some_and(|f| f.name() == "foo"));
+        let foo = foo.unwrap();
+        match foo {
+            NodeType::Equity(equity) => {
+                let mat = equity.mat().unwrap();
+                assert_eq!(mat[(0, 0)], open);
+                assert_eq!(mat[(0, 1)], high);
+                assert_eq!(mat[(0, 2)], low);
+                assert_eq!(mat[(0, 3)], close);
+                assert_eq!(mat[(0, 4)], volume);
+            }
+            _ => panic!("Expected Equity"),
+        }
+        assert_eq!(graph.edge_count(), 0);
+
+        graph.update_equity(
+            "bar".to_owned(),
+            PriceAggregate::new(
+                timestamp, duration, adjusted, open, high, low, close, volume,
+            ),
+        );
+        let bar = graph.get_node_by_name("bar".to_owned());
+        assert!(bar.is_some_and(|b| b.name() == "bar"));
+        let bar = bar.unwrap();
+        match bar {
+            NodeType::Equity(equity) => {
+                let mat = equity.mat().unwrap();
+                assert_eq!(mat[(0, 0)], open);
+                assert_eq!(mat[(0, 1)], high);
+                assert_eq!(mat[(0, 2)], low);
+                assert_eq!(mat[(0, 3)], close);
+                assert_eq!(mat[(0, 4)], volume);
+            }
+            _ => panic!("Expected Equity"),
+        }
+
+        assert_eq!(graph.edge_count(), 2);
     }
 }

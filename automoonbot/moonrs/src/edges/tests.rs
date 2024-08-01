@@ -69,7 +69,7 @@ impl StaticEdge for TestEdge {
         "TestEdge"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
         todo!()
     }
 }

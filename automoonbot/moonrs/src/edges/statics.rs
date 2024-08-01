@@ -5,7 +5,7 @@ pub trait StaticEdge: Send + Sync {
     fn value(&self) -> f64;
     fn src_index(&self) -> &NodeIndex;
     fn tgt_index(&self) -> &NodeIndex;
-    fn feature(&self) -> na::RowDVector<f64>;
+    fn feature(&self) -> Option<na::RowDVector<f64>>;
 }
 
 impl StaticEdge for EdgeType {
@@ -49,7 +49,7 @@ impl StaticEdge for EdgeType {
         }
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
         todo!()
     }
 }
@@ -71,7 +71,7 @@ impl StaticEdge for Published {
         "Published"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
         todo!()
     }
 }
@@ -93,7 +93,7 @@ impl StaticEdge for Mentioned {
         "Mentioned"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
         todo!()
     }
 }
@@ -115,7 +115,7 @@ impl StaticEdge for Referenced {
         "Referenced"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
         todo!()
     }
 }
@@ -137,7 +137,7 @@ impl StaticEdge for Issues {
         "Issues"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
         todo!()
     }
 }
@@ -159,7 +159,7 @@ impl StaticEdge for Mirrors {
         "Mirrors"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
         todo!()
     }
 }
@@ -181,7 +181,7 @@ impl StaticEdge for Influences {
         "Influences"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
         todo!()
     }
 }
@@ -203,7 +203,7 @@ impl StaticEdge for Derives {
         "Derives"
     }
 
-    fn feature(&self) -> na::RowDVector<f64> {
+    fn feature(&self) -> Option<na::RowDVector<f64>> {
         todo!()
     }
 }

@@ -361,18 +361,3 @@ impl Aggregates for OptionsAggregate {
         self.duration
     }
 }
-
-#[cfg(feature = "python")]
-impl<'a> FromPyObject<'a> for PriceAggregate {
-    fn extract(ob: &'a PyAny) -> PyResult<Self> {
-        let dict = ob.downcast::<PyDict>()?;
-        Ok(PriceAggregate {
-            timestamp: dict.get_item("timestamp").ok_or_else(|| PyTypeError::new_err("Missing key: timestamp"))?.extract()?,
-            duration: dict.get_item("duration").ok_or_else(|| PyTypeError::new_err("Missing key: duration"))?.extract()?,
-            adjusted: dict.get_item("adjusted").ok_or_else(|| PyTypeError::new_err("Missing key: adjusted"))?.extract()?,
-            open: dict.get_item("open").ok_or_else(|| PyTypeError::new_err("Missing key: open"))?.extract()?,
-            high: dict.get_item("high").ok_or_else(|| PyTypeError::new_err("Missing key: high"))?.extract()?,
-            // Add other fields as needed
-        })
-    }
-}

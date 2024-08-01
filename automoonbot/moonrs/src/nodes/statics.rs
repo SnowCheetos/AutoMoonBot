@@ -58,6 +58,9 @@ impl StaticNode for NodeType {
                 Some(na::RowDVector::from_vec(vec![node.sentiment()]))
             },
             NodeType::Publisher(node) => {
+                if node.sentiments().empty() {
+                    return None;
+                }
                 Some(na::RowDVector::from_vec(vec![*node.sentiments().last().unwrap()]))
             },
             NodeType::Company(node) => {
@@ -96,7 +99,7 @@ impl StaticNode for Article {
     }
 
     fn feature(&self) -> Option<na::RowDVector<f64>> {
-        todo!()
+        Some(na::RowDVector::from_vec(vec![self.sentiment()]))
     }
 
     fn dim(&self) -> usize {
@@ -118,7 +121,7 @@ impl StaticNode for Publisher {
     }
 
     fn feature(&self) -> Option<na::RowDVector<f64>> {
-        todo!()
+        Some(na::RowDVector::from_vec(vec![*self.sentiments().last().unwrap()]))
     }
 
     fn dim(&self) -> usize {
@@ -140,7 +143,7 @@ impl StaticNode for Company {
     }
 
     fn feature(&self) -> Option<na::RowDVector<f64>> {
-        todo!()
+        Some(self.mat()?.row(0).into_owned())
     }
 
     fn dim(&self) -> usize {
@@ -165,7 +168,7 @@ impl StaticNode for Currency {
     }
 
     fn feature(&self) -> Option<na::RowDVector<f64>> {
-        todo!()
+        Some(self.mat()?.row(0).into_owned())
     }
 
     fn dim(&self) -> usize {
@@ -187,7 +190,7 @@ impl StaticNode for Equity {
     }
 
     fn feature(&self) -> Option<na::RowDVector<f64>> {
-        todo!()
+        Some(self.mat()?.row(0).into_owned())
     }
 
     fn dim(&self) -> usize {
@@ -209,7 +212,7 @@ impl StaticNode for Bonds {
     }
 
     fn feature(&self) -> Option<na::RowDVector<f64>> {
-        todo!()
+        Some(self.mat()?.row(0).into_owned())
     }
 
     fn dim(&self) -> usize {
@@ -231,7 +234,7 @@ impl StaticNode for Options {
     }
 
     fn feature(&self) -> Option<na::RowDVector<f64>> {
-        todo!()
+        Some(self.mat()?.row(0).into_owned())
     }
 
     fn dim(&self) -> usize {
