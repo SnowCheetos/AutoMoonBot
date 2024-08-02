@@ -84,8 +84,8 @@ To run tests for a specific module, run `pytest -v tests/{module}/...{submodules
 
 The current version of this project stands on the shoulders of... its past versions? Oh and giants too. Jokes aside, it went through a few significant iterations in the past, previous approaches used were very different. If you would like to view the legacy code and implementations for more insights, go to the `legacy` directory, or use the links below.
 
-- [`Automated Trading with Policy Gradient`](legacy/policy_gradient/README.md)
-- [`An Ensemble of Models Trading Together`](legacy/classical_ensemble/README.md)
+- [`Automated Trading with Policy Gradient`](https://github.com/MedallionDream/PolicyGradient)
+- [`Automated Trading with Classical Ensemble`](https://github.com/MedallionDream/ClassicalEnsemble)
 
 # Contribution
 
