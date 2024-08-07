@@ -19,6 +19,7 @@ pub mod nodes;
 pub mod utils;
 
 use petgraph::stable_graph::{EdgeIndex, NodeIndex, StableDiGraph};
+use http::Request;
 use std::{
     any::Any,
     collections::{HashMap, HashSet},

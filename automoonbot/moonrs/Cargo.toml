@@ -13,6 +13,7 @@ scopeguard = "1.2.0"
 cached = "0.53.1"
 lazy_static = "1.5.0"
 katex-doc = "0.1.0"
+http = "1.1.0"
 
 [features]
 python = ["pyo3"]

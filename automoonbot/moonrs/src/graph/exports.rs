@@ -139,15 +139,15 @@ impl HeteroGraph {
         summary: String,
         sentiment: f64,
         publisher: String,
-        capacity: usize,
+        // capacity: usize,
         tickers: Option<HashMap<String, f64>>,
     ) {
         let node = Article::new(title, summary, sentiment, publisher.clone(), tickers);
         let index = self.add_node(node.into());
         self.compute_all_edges(index);
-        if self.get_node_index(publisher.clone()).is_none() {
-            self.add_publisher(publisher, capacity);
-        }
+        // if self.get_node_index(publisher.clone()).is_none() {
+        //     self.add_publisher(publisher, capacity);
+        // }
     }
 
     pub fn add_publisher(&mut self, name: String, capacity: usize) {
@@ -164,14 +164,14 @@ impl HeteroGraph {
 
     pub fn add_equity(&mut self, symbol: String, company: Option<String>, capacity: usize) {
         let node = Equity::new(symbol, company, capacity);
-        let company = node.company();
+        // let company = node.company();
         let index = self.add_node(node.into());
         self.compute_all_edges(index);
-        if let Some(company) = company {
-            if self.get_node_index(company.clone()).is_none() {
-                self.add_company(company.to_owned(), Vec::new(), capacity);
-            }
-        }
+        // if let Some(company) = company {
+        //     if self.get_node_index(company.clone()).is_none() {
+        //         self.add_company(company.to_owned(), Vec::new(), capacity);
+        //     }
+        // }
     }
 
     pub fn add_currency(&mut self, symbol: String, capacity: usize) {
@@ -266,6 +266,10 @@ impl HeteroGraph {
         self.graph.clear();
     }
 
+    pub fn has_node(&self, name: String) -> bool {
+        self.get_node_index(name).is_some()
+    }
+
     /// This method will be made more efficient upon the stable
     /// release of `rust-numpy=0.22.0`.`
     #[pyo3(name = "to_pyg")]
@@ -319,27 +323,27 @@ impl HeteroGraph {
         summary: String,
         sentiment: f64,
         publisher: String,
-        capacity: usize,
+        //capacity: usize,
         tickers: HashMap<String, f64>,
     ) {
         if tickers.is_empty() {
-            self.add_article(title, summary, sentiment, publisher, capacity, None);
+            self.add_article(title, summary, sentiment, publisher, None);
         } else {
             self.add_article(
                 title,
                 summary,
                 sentiment,
                 publisher,
-                capacity,
+                //capacity,
                 Some(tickers),
             );
         }
     }
 
-    // #[pyo3(name = "add_publisher")]
-    // pub fn add_publisher_py(&mut self, name: String, capacity: usize) {
-    //     self.add_publisher(name, capacity);
-    // }
+    #[pyo3(name = "add_publisher")]
+    pub fn add_publisher_py(&mut self, name: String, capacity: usize) {
+        self.add_publisher(name, capacity);
+    }
 
     #[pyo3(name = "add_company")]
     pub fn add_company_py(&mut self, name: String, symbols: Vec<String>, capacity: usize) {
@@ -538,9 +542,10 @@ mod tests {
             "test_summary".to_owned(),
             0.5,
             "test_publisher".to_owned(),
-            10,
+            // 10,
             None,
         );
+        graph.add_publisher("test_publisher".to_owned(), 1);
 
         assert_eq!(graph.node_count(), 2);
         assert_eq!(graph.edge_count(), 1);
@@ -622,5 +627,14 @@ mod tests {
         }
 
         assert_eq!(graph.edge_count(), 2);
+    }
+
+    #[test]
+    fn test_equity_company() {
+        let mut graph = HeteroGraph::new();
+
+        graph.add_company("bar".to_owned(), vec!["foo".to_owned()], 10);
+        graph.add_equity("foo".to_owned(), Some("bar".to_owned()), 10);
+        assert!(graph.get_node_by_name("bar".to_owned()).is_some());
     }
 }

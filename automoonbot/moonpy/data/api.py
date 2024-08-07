@@ -122,3 +122,19 @@ class AlphaVantage(CachedLimiterSession):
             f"&date={date}"
         )
         return self.make_request(url)
+    
+    def get_symbols(self, company: str) -> Dict[str, Any]:
+        url = self._base_url + (
+            "function=SYMBOL_SEARCH"
+            f"&keywords={company}"
+            f"&apikey={self._api_key}"
+        )
+        return self.make_request(url)
+
+    def get_company(self, symbol: str) -> Dict[str, Any]:
+        url = self._base_url + (
+            "function=OVERVIEW"
+            f"&symbol={symbol}"
+            f"&apikey={self._api_key}"
+        )
+        return self.make_request(url)
