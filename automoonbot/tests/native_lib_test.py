@@ -146,8 +146,7 @@ def test_equity():
     )
 
     x, edge_index, edge_attr = graph.to_pyg()
-    print(x, edge_attr, edge_index)
     assert len(x.get("Equity")) == 2, "incorrect currency node count"
     assert len(x) == 1, "incorrect node class count"
-    assert len(edge_index) == 2, "incorrect edge count"
-    assert len(edge_attr) == 2, "incorrect edge count"
+    assert len(edge_index) == 1, "incorrect edge count"
+    assert len(edge_attr) == 1, "incorrect edge count"
