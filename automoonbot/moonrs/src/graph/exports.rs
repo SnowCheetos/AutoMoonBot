@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 use crate::graph::*;
 
 impl HeteroGraph {
@@ -338,10 +336,10 @@ impl HeteroGraph {
         }
     }
 
-    #[pyo3(name = "add_publisher")]
-    pub fn add_publisher_py(&mut self, name: String, capacity: usize) {
-        self.add_publisher(name, capacity);
-    }
+    // #[pyo3(name = "add_publisher")]
+    // pub fn add_publisher_py(&mut self, name: String, capacity: usize) {
+    //     self.add_publisher(name, capacity);
+    // }
 
     #[pyo3(name = "add_company")]
     pub fn add_company_py(&mut self, name: String, symbols: Vec<String>, capacity: usize) {
