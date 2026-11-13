@@ -421,9 +421,258 @@ fn snapshot_to_py(
     Ok(out)
 }
 
+// ------------------------------------------------------------- backtest
+
+use crate::backtest::{Constraints, Costs, Market, Simulator, StepReport};
+use numpy::PyReadonlyArray2 as Ro2;
+use std::sync::Arc;
+
+fn panel_f64(a: &Ro2<'_, f64>, name: &str, shape: (usize, usize)) -> PyResult<Vec<f64>> {
+    let sh = a.shape();
+    if (sh[0], sh[1]) != shape {
+        return Err(PyValueError::new_err(format!(
+            "{name} has shape {sh:?}, expected {shape:?}"
+        )));
+    }
+    Ok(a.as_array().iter().copied().collect())
+}
+
+/// Immutable `[T, S]` market panel shared by any number of simulators.
+#[pyclass(name = "Market", module = "automoonbot._moonrs", frozen)]
+#[derive(Debug)]
+pub struct PyMarket {
+    inner: Arc<Market>,
+}
+
+#[pymethods]
+impl PyMarket {
+    #[new]
+    #[allow(clippy::too_many_arguments)]
+    fn new(
+        open: Ro2<'_, f64>,
+        close: Ro2<'_, f64>,
+        adv_shares: Ro2<'_, f64>,
+        sigma: Ro2<'_, f64>,
+        tradable: Ro2<'_, bool>,
+        listed: Ro2<'_, bool>,
+        split: Ro2<'_, f64>,
+        dividend: Ro2<'_, f64>,
+    ) -> PyResult<Self> {
+        let sh = open.shape();
+        let shape = (sh[0], sh[1]);
+        for (name, a) in [("tradable", &tradable), ("listed", &listed)] {
+            let tsh = a.shape();
+            if (tsh[0], tsh[1]) != shape {
+                return Err(PyValueError::new_err(format!("{name} has the wrong shape")));
+            }
+        }
+        let m = Market {
+            periods: shape.0,
+            securities: shape.1,
+            open: panel_f64(&open, "open", shape)?,
+            close: panel_f64(&close, "close", shape)?,
+            adv_shares: panel_f64(&adv_shares, "adv_shares", shape)?,
+            sigma: panel_f64(&sigma, "sigma", shape)?,
+            tradable: tradable.as_array().iter().copied().collect(),
+            listed: listed.as_array().iter().copied().collect(),
+            split: panel_f64(&split, "split", shape)?,
+            dividend: panel_f64(&dividend, "dividend", shape)?,
+        };
+        m.validate().map_err(to_py)?;
+        Ok(Self { inner: Arc::new(m) })
+    }
+
+    #[getter]
+    fn shape(&self) -> (usize, usize) {
+        (self.inner.periods, self.inner.securities)
+    }
+}
+
+/// Costs and constraints as keyword arguments with conservative defaults.
+#[pyclass(name = "Simulator", module = "automoonbot._moonrs")]
+#[derive(Debug)]
+pub struct PySimulator {
+    inner: Simulator,
+}
+
+const REPORT_FIELDS: [&str; 15] = [
+    "equity_open",
+    "equity",
+    "log_return",
+    "gross",
+    "net",
+    "turnover",
+    "commission",
+    "spread_cost",
+    "impact_cost",
+    "borrow_cost",
+    "financing",
+    "dividends",
+    "projection",
+    "delisted",
+    "clipped",
+];
+
+fn report_values(r: &StepReport) -> [f64; 15] {
+    [
+        r.equity_open,
+        r.equity,
+        r.log_return,
+        r.gross,
+        r.net,
+        r.turnover,
+        r.commission,
+        r.spread_cost,
+        r.impact_cost,
+        r.borrow_cost,
+        r.financing,
+        r.dividends,
+        r.projection,
+        r.delisted as f64,
+        r.clipped as f64,
+    ]
+}
+
+#[pymethods]
+impl PySimulator {
+    #[new]
+    #[pyo3(signature = (
+        market, start=0, capital=1.0, *,
+        commission_bps=None, half_spread_bps=None, impact_coef=None, max_participation=None,
+        borrow_rate=None, cash_rate=None, margin_rate=None, delist_haircut=None,
+        periods_per_year=None, long_only=true, max_gross=1.0, max_weight=1.0,
+    ))]
+    #[allow(clippy::too_many_arguments)]
+    fn new(
+        market: &PyMarket,
+        start: usize,
+        capital: f64,
+        commission_bps: Option<f64>,
+        half_spread_bps: Option<f64>,
+        impact_coef: Option<f64>,
+        max_participation: Option<f64>,
+        borrow_rate: Option<f64>,
+        cash_rate: Option<f64>,
+        margin_rate: Option<f64>,
+        delist_haircut: Option<f64>,
+        periods_per_year: Option<f64>,
+        long_only: bool,
+        max_gross: f64,
+        max_weight: f64,
+    ) -> PyResult<Self> {
+        let d = Costs::default();
+        let costs = Costs {
+            commission_bps: commission_bps.unwrap_or(d.commission_bps),
+            half_spread_bps: half_spread_bps.unwrap_or(d.half_spread_bps),
+            impact_coef: impact_coef.unwrap_or(d.impact_coef),
+            max_participation: max_participation.unwrap_or(d.max_participation),
+            borrow_rate: borrow_rate.unwrap_or(d.borrow_rate),
+            cash_rate: cash_rate.unwrap_or(d.cash_rate),
+            margin_rate: margin_rate.unwrap_or(d.margin_rate),
+            delist_haircut: delist_haircut.unwrap_or(d.delist_haircut),
+            periods_per_year: periods_per_year.unwrap_or(d.periods_per_year),
+        };
+        let c = Constraints {
+            long_only,
+            max_gross,
+            max_weight,
+        };
+        Simulator::new(Arc::clone(&market.inner), costs, c, start, capital)
+            .map(|inner| Self { inner })
+            .map_err(to_py)
+    }
+
+    #[getter]
+    fn period(&self) -> usize {
+        self.inner.period()
+    }
+
+    #[getter]
+    fn done(&self) -> bool {
+        self.inner.done()
+    }
+
+    #[getter]
+    fn equity(&self) -> f64 {
+        self.inner.equity()
+    }
+
+    #[getter]
+    fn cash(&self) -> f64 {
+        self.inner.cash()
+    }
+
+    fn shares<'py>(&self, py: Python<'py>) -> Bound<'py, numpy::PyArray1<f64>> {
+        self.inner.shares().to_vec().into_pyarray(py)
+    }
+
+    fn weights<'py>(&mut self, py: Python<'py>) -> Bound<'py, numpy::PyArray1<f64>> {
+        self.inner.weights().to_vec().into_pyarray(py)
+    }
+
+    /// Execute one step; returns a dict of floats plus `period` and `ruined`.
+    fn step<'py>(
+        &mut self,
+        py: Python<'py>,
+        target: PyReadonlyArray1<'py, f64>,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let w = slice(&target, "target")?;
+        let r = self.inner.step(w).map_err(to_py)?;
+        let d = PyDict::new(py);
+        for (k, v) in REPORT_FIELDS.iter().zip(report_values(&r)) {
+            d.set_item(*k, v)?;
+        }
+        d.set_item("period", r.period)?;
+        d.set_item("ruined", r.ruined)?;
+        Ok(d)
+    }
+
+    /// Run consecutive steps for each row of `targets` `[N, S]` (stops early
+    /// on ruin). Returns `{field: float64[n]}` for the steps taken.
+    fn run<'py>(
+        &mut self,
+        py: Python<'py>,
+        targets: Ro2<'py, f64>,
+    ) -> PyResult<Bound<'py, PyDict>> {
+        let sh = targets.shape();
+        let (n, s) = (sh[0], sh[1]);
+        let flat = targets
+            .as_slice()
+            .map_err(|_| PyValueError::new_err("targets must be C-contiguous float64"))?;
+        let sim = &mut self.inner;
+        let (rows, periods) = py
+            .detach(|| {
+                let mut rows: Vec<[f64; 15]> = Vec::with_capacity(n);
+                let mut periods = Vec::with_capacity(n);
+                for k in 0..n {
+                    if sim.done() {
+                        break;
+                    }
+                    let r = sim.step(&flat[k * s..(k + 1) * s])?;
+                    rows.push(report_values(&r));
+                    periods.push(r.period as i64);
+                    if r.ruined {
+                        break;
+                    }
+                }
+                Ok::<_, Error>((rows, periods))
+            })
+            .map_err(to_py)?;
+        let d = PyDict::new(py);
+        for (j, k) in REPORT_FIELDS.iter().enumerate() {
+            let col: Vec<f64> = rows.iter().map(|r| r[j]).collect();
+            d.set_item(*k, col.into_pyarray(py))?;
+        }
+        d.set_item("period", periods.into_pyarray(py))?;
+        Ok(d)
+    }
+}
+
 #[pymodule]
 fn _moonrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyTemporalGraph>()?;
+    m.add_class::<PyMarket>()?;
+    m.add_class::<PySimulator>()?;
     m.add("FORMAT_VERSION", crate::persist::FORMAT_VERSION)?;
     m.add("MISSING_TIME", crate::snapshot::MISSING_TIME)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;

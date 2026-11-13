@@ -78,3 +78,54 @@ class TemporalGraph:
     def save(self, path: str | PathLike[str]) -> None: ...
     @staticmethod
     def load(path: str | PathLike[str]) -> TemporalGraph: ...
+
+_B = npt.NDArray[np.bool_]
+_F64 = npt.NDArray[np.float64]
+
+class Market:
+    def __init__(
+        self,
+        open: _F64,
+        close: _F64,
+        adv_shares: _F64,
+        sigma: _F64,
+        tradable: _B,
+        listed: _B,
+        split: _F64,
+        dividend: _F64,
+    ) -> None: ...
+    @property
+    def shape(self) -> tuple[int, int]: ...
+
+class Simulator:
+    def __init__(
+        self,
+        market: Market,
+        start: int = 0,
+        capital: float = 1.0,
+        *,
+        commission_bps: float | None = None,
+        half_spread_bps: float | None = None,
+        impact_coef: float | None = None,
+        max_participation: float | None = None,
+        borrow_rate: float | None = None,
+        cash_rate: float | None = None,
+        margin_rate: float | None = None,
+        delist_haircut: float | None = None,
+        periods_per_year: float | None = None,
+        long_only: bool = True,
+        max_gross: float = 1.0,
+        max_weight: float = 1.0,
+    ) -> None: ...
+    @property
+    def period(self) -> int: ...
+    @property
+    def done(self) -> bool: ...
+    @property
+    def equity(self) -> float: ...
+    @property
+    def cash(self) -> float: ...
+    def shares(self) -> _F64: ...
+    def weights(self) -> _F64: ...
+    def step(self, target: _F64) -> dict[str, float]: ...
+    def run(self, targets: _F64) -> dict[str, _F64]: ...
