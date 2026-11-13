@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: moonrs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: moonrs
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --features python -- -D warnings
+      - run: cargo test --release
+        env:
+          PROPTEST_CASES: "2048"
+      - run: cargo run --release --example bench
+
+  msrv:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: moonrs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: moonrs
+      - run: cargo check --all-targets --features python
+
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: moonrs
+      - name: Build and install
+        run: |
+          python -m venv .venv
+          . .venv/bin/activate
+          pip install -U pip maturin
+          maturin develop --release --extras dev
+      - name: Lint and type-check
+        run: |
+          . .venv/bin/activate
+          ruff check python tests
+          ruff format --check python tests
+          mypy
+      - name: Test
+        run: |
+          . .venv/bin/activate
+          pytest
+      - name: Test PyG conversion
+        if: matrix.python == '3.13'
+        run: |
+          . .venv/bin/activate
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install torch_geometric
+          pytest tests/test_graph.py -k pyg

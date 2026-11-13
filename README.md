@@ -10,7 +10,11 @@ This repository contains code and resources for automated algorithmic trading im
 
 - [`Introduction`](#introduction)
 
+- [`Architecture`](#architecture)
+
 - [`Usage`](#usage)
+
+- [`Roadmap`](#roadmap)
 
 - [`Legacy`](#legacy)
 
@@ -19,8 +23,6 @@ This repository contains code and resources for automated algorithmic trading im
 - [`Citation`](#citation)
 
 # Introduction
-
-See more [here](automoonbot/README.MD)
 
 ## Inspiration
 
@@ -46,39 +48,79 @@ Many people are willing to take on exceptional risks in pursue of, at least theo
 
 ## Approach
 
-The Medallion Fund publically stated numerous times that they collect nearly all publically available data, anything that could remotely affect the price actions of an asset was included. This may not be as difficult as it sounds, since the market is inherently influenced by the masses of investors, most of whom have access to similar amount of information. Therefore, it can be assumed that any data which can be gathered publically would have been reviewed by some investors, which inherently means it carries some degree of influence over the price actions. However, simply having the data does not mean it can be used to make consistent profits, otherwise anyone who knows a bit of software can build a scraper and would be filthy rich. Rather, the difficult part is to make effective use of the data, which can come in a variety of forms, making it difficult to construct a single comprehensive representation. For instance, imagine one obtains news articles in the form of raw `HTML` contents, and federal interest rates as time series, it would be difficult to design a model that could take in all of them and extract meaningful information.
+The Medallion Fund publically stated numerous times that they collect nearly all publically available data, anything that could remotely affect the price actions of an asset was included. Having the data is the easy part; making effective use of data that comes in wildly different forms (news text, filings, prices, relationships between companies) is the hard part.
 
-See [**here**](automoonbot/README.MD#arguments-against-regression-methods) to see arguments against using simple regression models. Readme will be better organized in the near future.
+This project represents that world as a **temporal heterogeneous graph**: companies, securities, publishers, articles and filings are nodes; real relationships (issuer, supplier/customer, mentions, ...) are typed edges. A graph model reads point-in-time snapshots of that graph and an actor-critic policy makes every trading decision. Large language models are used **offline only**, to turn text into node features and typed relationship edges; they are never in the trading loop.
 
-## Graphs
+Two rules come before any model:
 
-*Gimme a sec...*
+1. **No look-ahead, by construction.** Every fact carries a *valid time* (when it is true in the world) and a *known time* (when it could first have been known). A snapshot "as of" `T` can only see facts known by `T`. Restatements, delistings and ended relationships become visible exactly when they were knowable, and the universe is reconstructed point in time (no survivorship bias).
+2. **Risk first.** The objective is log-growth / return per unit of CVaR under a drawdown cap, measured strictly out of sample, against honest baselines.
 
-## Reinforcement Learning
+# Architecture
 
-*...*
+```
+moonrs/                 Rust core (bitemporal graph store, snapshots, persistence)
+  src/time.rs           Timestamps (UTC ns) and half-open validity intervals
+  src/schema.rs         Runtime schema: node kinds, feature channels, relations
+  src/versions.rs       Bitemporal interval facts (existence, edges)
+  src/series.rs         Bitemporal observation series (revisions, history)
+  src/store.rs          Atomic, idempotent batch ingestion
+  src/snapshot.rs       Point-in-time materialization (+ homogeneous token view)
+  src/persist.rs        Checksummed, versioned, atomically written store files
+  tests/leakage.rs      Property tests against an independent reference model
+python/automoonbot/     Python package (wrapper, PyG / graph-transformer inputs)
+tests/                  Python tests
+legacy/                 Earlier generations of the project
+```
+
+**Snapshots.** `snapshot(known_at, valid_at=None, history=..., homogeneous=...)` returns, per node kind, rows sorted by key with `[N, K, D]` feature tensors (chronological, right-aligned history), presence masks, and the valid/known time of every slot; per relation, an `edge_index`, attributes and temporal fields. With `homogeneous="reverse"` it also returns a flat token graph (global token ids, node and edge type ids, CSR adjacency) for graph transformers. Output is deterministic and independent of ingestion order.
+
+**Ingestion** is strict: shapes, finiteness and declared bounds are validated; two different facts with the same key and knowledge time are rejected (corrections must carry a later knowledge time); every batch is atomic; replaying identical rows is a no-op.
+
+**Performance** (4-core cloud VM, `cargo run --release --example bench`): 3,000 securities with 10 years of daily bars (7.6M rows) ingest at ~6.5M rows/s; a full snapshot with 30k supply-chain edges and the trailing 3-day article window takes ~3 ms, or ~9 ms with 64 days of bar history per security.
 
 # Usage
 
-This project utilizes [`torch_geometric`](https://pytorch-geometric.readthedocs.io/en/latest/install/installation.html) for Graph Neural Networks, I recommend visiting their site and install all dependencies according to their instructions.
+Requires Rust ≥ 1.88 and Python ≥ 3.10.
 
-## Installation
+```bash
+python -m venv .venv && . .venv/bin/activate
+pip install maturin
+maturin develop --release --extras dev      # add ,torch for PyG conversion
+pytest                                       # Python tests
+(cd moonrs && cargo test --release)          # Rust unit + property tests
+```
 
-*Gimme a min...*
+```python
+import numpy as np
+from automoonbot import Channel, TemporalGraph
 
-## Quick Start
+g = TemporalGraph()
+g.define_entity("company", [Channel("bar", 5)])
+g.define_event("article", window=np.timedelta64(3, "D"), channels=[Channel("embedding", 768)])
+g.define_relation("supplies", "company", "company", attr_dim=1, bounds=(0.0, 1.0))
+g.define_relation("mentions", "article", "company", attr_dim=2)
 
-*Yeah no not yet...*
+g.upsert_nodes("company", ["TSMC", "AAPL"], known_time="2020-01-01T00:00:00Z")
+# A daily bar is valid at the close and known when the vendor publishes it.
+g.observe("company", "bar", "AAPL",
+          valid_time="2024-03-01T21:00:00Z", known_time="2024-03-01T21:15:00Z",
+          values=[180.0, 182.0, 179.5, 181.2, 5.1e7])
+# A relationship disclosed in a filing accepted on 2024-02-02.
+g.assert_edges("supplies", "TSMC", "AAPL", known_time="2024-02-02T21:05:00Z",
+               valid_from="2023-09-30T00:00:00Z", attrs=[[0.25]])
 
-## Testing
+snap = g.snapshot("2024-03-04T14:30:00Z", history={"company.bar": 64}, homogeneous="reverse")
 
-Install `pytest` with `pip install -U pytest`.
+from automoonbot.pyg import to_hetero_data, to_token_graph   # needs torch + torch_geometric
+data = to_hetero_data(snap)       # heterogeneous GNN input
+tokens = to_token_graph(snap)     # graph-transformer input
+```
 
-Test scripts are available in the `tests` directory 
+# Roadmap
 
-Run all tests with `pytest -v tests/`
-
-To run tests for a specific module, run `pytest -v tests/{module}/...{submodules if necessary}/`
+See [`ROADMAP`](docs/ROADMAP.md).
 
 # Legacy
 
