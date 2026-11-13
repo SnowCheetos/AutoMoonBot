@@ -75,6 +75,7 @@ python/automoonbot/     Python package (wrapper, PyG / graph-transformer inputs)
   data/providers/       Provider interface + SEC EDGAR (acceptance-time knowledge)
   data/fundamentals.py  Bitemporal quarterly fundamentals from as-reported XBRL
   data/ingest.py        Loaders from the store into the temporal graph
+  backtest/             Market panels, labels, walk-forward, metrics (simulator in moonrs/src/backtest.rs)
 tests/                  Python tests
 legacy/                 Earlier generations of the project
 ```
@@ -143,6 +144,25 @@ g = TemporalGraph()
 define_core_schema(g)
 load_entities(store, g); load_filings(store, g); load_fundamentals(store, g)
 ```
+
+## Backtesting
+
+The execution simulator lives in Rust and fixes the timing so it cannot be gotten wrong by a caller: a decision made after bar `t` closes executes at the **open of bar `t + 1`**, sized and priced only with quantities known before that open (trailing ADV and volatility). It models commission, half-spread, square-root impact, a participation cap, borrow fees, cash/margin financing, splits, dividends, halts (frozen positions) and delistings (forced exit with a haircut), and enforces long-only / gross / per-name constraints.
+
+```python
+from automoonbot.backtest import MarketPanel, Simulator, forward_returns, summary, walk_forward
+
+panel = MarketPanel.from_store(store, ["AAPL", "MSFT", "NVDA"])     # unadjusted bars + corporate actions
+sim = Simulator(panel.market(), capital=1.0, half_spread_bps=2.0)
+report = sim.run(weights)                                           # [steps, S] target weights
+print(summary(report["log_return"]))                                # log-growth, CVaR95, max DD, PSR, ...
+
+labels = forward_returns(panel, horizons=[1, 5, 21])                # multi-horizon targets (labels only)
+for fold in walk_forward(panel.shape[0], test_size=63, min_train=504, max_label_horizon=21, embargo=5):
+    ...
+```
+
+Metrics lead with log-growth, CVaR and drawdown; Sharpe is reported with its probabilistic and deflated versions, so a result found by searching many configurations is judged against the best of that many unskilled ones.
 
 # Roadmap
 

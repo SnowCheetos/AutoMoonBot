@@ -16,6 +16,7 @@
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations)]
 
+pub mod backtest;
 pub mod error;
 pub mod persist;
 pub mod schema;
