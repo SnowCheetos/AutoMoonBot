@@ -70,6 +70,11 @@ moonrs/                 Rust core (bitemporal graph store, snapshots, persistenc
   src/persist.rs        Checksummed, versioned, atomically written store files
   tests/leakage.rs      Property tests against an independent reference model
 python/automoonbot/     Python package (wrapper, PyG / graph-transformer inputs)
+  data/schemas.py       Canonical point-in-time datasets (bars, filings, facts, articles, relations, ...)
+  data/store.py         Append-only, conflict-checked, as-of-readable Parquet store
+  data/providers/       Provider interface + SEC EDGAR (acceptance-time knowledge)
+  data/fundamentals.py  Bitemporal quarterly fundamentals from as-reported XBRL
+  data/ingest.py        Loaders from the store into the temporal graph
 tests/                  Python tests
 legacy/                 Earlier generations of the project
 ```
@@ -116,6 +121,27 @@ snap = g.snapshot("2024-03-04T14:30:00Z", history={"company.bar": 64}, homogeneo
 from automoonbot.pyg import to_hetero_data, to_token_graph   # needs torch + torch_geometric
 data = to_hetero_data(snap)       # heterogeneous GNN input
 tokens = to_token_graph(snap)     # graph-transformer input
+```
+
+## Data
+
+Every source is normalized into canonical Arrow schemas whose rows carry a `known_time` and a `source`, and lands in an append-only Parquet store with the same rules as the graph (idempotent replays, conflicting versions rejected, as-of reads). Providers declare a knowledge policy (`exact`, `conservative`, or `estimated`, which is never used for evaluation). Prices are stored unadjusted; split/dividend adjustment is applied point in time.
+
+The first provider is SEC EDGAR: filings with acceptance timestamps, XBRL company facts, and issuer identity. Quarterly fundamentals are derived per fiscal quarter (including Q4 = FY − 9M and year-to-date cash-flow differencing), and every restatement becomes a new observation at the moment it was filed.
+
+```python
+from automoonbot.data import ParquetStore
+from automoonbot.data.providers.edgar import EdgarProvider
+from automoonbot.data.ingest import define_core_schema, load_entities, load_filings, load_fundamentals
+
+store = ParquetStore("data/")
+edgar = EdgarProvider(user_agent="Your Name you@example.com", cache_dir="data/.http")  # SEC policy
+for dataset in ("entities", "filings", "facts"):
+    edgar.ingest(store, dataset, ["320193", "1045810"])
+
+g = TemporalGraph()
+define_core_schema(g)
+load_entities(store, g); load_filings(store, g); load_fundamentals(store, g)
 ```
 
 # Roadmap
