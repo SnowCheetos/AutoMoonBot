@@ -66,7 +66,7 @@ def test_simulator_validates() -> None:
     p = panel([[10], [11]], [[10], [11]])
     sim = Simulator(p.market())
     with pytest.raises(ValueError):
-        sim.step(np.array([np.nan]))
+        sim.step(np.array([np.inf]))
     with pytest.raises(ValueError):
         Simulator(p.market(), start=5)
     with pytest.raises(ValueError):

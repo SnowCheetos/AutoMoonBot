@@ -15,8 +15,12 @@ The project is being rebuilt in stages, each landing as its own pull request.
    slippage and borrow; walk-forward evaluation with purging and embargo;
    log-growth, CVaR, max drawdown, deflated Sharpe. A multi-horizon labeler kept
    strictly separate from features.
-4. **Baselines.** Cash, buy-and-hold, equal-weight, momentum, and the 2024
-   policy-gradient model (now PGPerceptron) re-measured out of sample.
+4. **Baselines.** Cash, buy-and-hold, equal-weight, inverse-volatility,
+   cross-sectional momentum, trend following, and PGPerceptron re-implemented
+   faithfully (as published, and with its four porting-time bugs repaired,
+   with in-sample or validation model selection), all on one walk-forward
+   out-of-sample path with causality audits and deflated Sharpe. *Harness and
+   strategies done; the real-data measurement needs a price source.*
 5. **Model.** A graph transformer over snapshot tokens (typed sparse attention,
    temporal and structural encodings) with MTP-style multi-horizon prediction
    heads, feeding an actor-critic policy trained on a risk-first objective

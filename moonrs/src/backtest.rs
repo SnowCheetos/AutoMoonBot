@@ -17,6 +17,9 @@
 //!   position is frozen and valued at the last close. A security that is no
 //!   longer listed is force-closed at its last close with a configurable
 //!   haircut (no survivorship).
+//! * A `NaN` target weight means "hold": shares are kept as they are and the
+//!   weight drifts with the price, so discrete-trade strategies do not pay
+//!   to rebalance every bar.
 //!
 //! Costs: commission (bps of notional), half-spread (bps), square-root market
 //! impact `k * sigma * sqrt(|q| / ADV)`, a participation cap on `|q| / ADV`,
@@ -310,35 +313,54 @@ impl Simulator {
         &self.weights
     }
 
+    /// Project `target` onto the constraints. `NaN` entries ("hold") and
+    /// untradable securities are returned as `NaN`: they are not traded,
+    /// and their gross exposure is part of `fixed_gross`.
     fn project(
         &self,
         target: &[f64],
         tradable_next: impl Fn(usize) -> bool,
-        frozen_gross: f64,
+        fixed_gross: f64,
     ) -> (Vec<f64>, f64) {
         let c = &self.constraints;
         let mut w: Vec<f64> = target
             .iter()
             .enumerate()
             .map(|(i, &x)| {
-                if !tradable_next(i) {
-                    return 0.0;
+                if x.is_nan() || !tradable_next(i) {
+                    return f64::NAN;
                 }
                 let x = if c.long_only { x.max(0.0) } else { x };
                 x.clamp(-c.max_weight, c.max_weight)
             })
             .collect();
-        let gross: f64 = w.iter().map(|x| x.abs()).sum();
-        let budget = (c.max_gross - frozen_gross).max(0.0);
+        let gross: f64 = w.iter().filter(|x| !x.is_nan()).map(|x| x.abs()).sum();
+        let budget = (c.max_gross - fixed_gross).max(0.0);
         if gross > budget {
             let scale = if gross > 0.0 { budget / gross } else { 0.0 };
-            w.iter_mut().for_each(|x| *x *= scale);
+            w.iter_mut()
+                .filter(|x| !x.is_nan())
+                .for_each(|x| *x *= scale);
         }
-        let dist = w.iter().zip(target).map(|(a, b)| (a - b).abs()).sum();
+        // Requested-vs-executable distance; a held entry requests nothing.
+        let dist = w
+            .iter()
+            .zip(target)
+            .map(|(&a, &b)| match (a.is_nan(), b.is_nan()) {
+                (_, true) => 0.0,
+                (true, false) => b.abs(),
+                (false, false) => (a - b).abs(),
+            })
+            .sum();
         (w, dist)
     }
 
     /// Execute `target` weights at the next open and mark to the next close.
+    ///
+    /// A `NaN` weight means "hold": the security's shares are left as they
+    /// are (no trade, no cost), and its exposure counts against
+    /// `max_gross` like a halted position. This is how strategies with
+    /// discrete trades let weights drift instead of rebalancing every bar.
     pub fn step(&mut self, target: &[f64]) -> Result<StepReport> {
         if self.done() {
             return Err(Error::Schema("simulation is finished".into()));
@@ -352,12 +374,12 @@ impl Simulator {
                 got: target.len(),
             });
         }
-        if let Some(i) = target.iter().position(|x| !x.is_finite()) {
+        if let Some(i) = target.iter().position(|x| x.is_infinite()) {
             return Err(Error::InvalidValue {
                 context: "target weights".into(),
                 index: i,
                 value: target[i] as f32,
-                reason: "not finite",
+                reason: "infinite (use NaN to hold)",
             });
         }
         let (t0, t1) = (self.t, self.t + 1);
@@ -423,8 +445,8 @@ impl Simulator {
                 .filter(|&i| self.shares[i] != 0.0)
                 .map(|i| self.shares[i] * open(i))
                 .sum::<f64>();
-        let frozen_gross: f64 = (0..s)
-            .filter(|&i| self.shares[i] != 0.0 && !m.tradable[m.at(t1, i)])
+        let fixed_gross: f64 = (0..s)
+            .filter(|&i| self.shares[i] != 0.0 && (!m.tradable[m.at(t1, i)] || target[i].is_nan()))
             .map(|i| (self.shares[i] * open(i)).abs())
             .sum::<f64>()
             / r.equity_open.max(f64::MIN_POSITIVE);
@@ -433,12 +455,12 @@ impl Simulator {
         }
 
         // 5. Target shares, participation cap, fills.
-        let (w, projection) = self.project(target, |i| m.tradable[m.at(t1, i)], frozen_gross);
+        let (w, projection) = self.project(target, |i| m.tradable[m.at(t1, i)], fixed_gross);
         r.projection = projection;
         let bps = 1e-4;
         for (i, &wi) in w.iter().enumerate() {
-            if !m.tradable[m.at(t1, i)] {
-                continue;
+            if wi.is_nan() {
+                continue; // held or untradable
             }
             let px = open(i);
             let want = wi * r.equity_open / px;
@@ -544,6 +566,33 @@ mod tests {
 
     fn sim(m: Market, costs: Costs, c: Constraints) -> Simulator {
         Simulator::new(Arc::new(m), costs, c, 0, 1000.0).unwrap()
+    }
+
+    #[test]
+    fn nan_holds_shares_and_drifts() {
+        let o: &[&[f64]] = &[&[10.0, 10.0], &[10.0, 10.0], &[20.0, 10.0], &[20.0, 10.0]];
+        let c: &[&[f64]] = &[&[10.0, 10.0], &[10.0, 10.0], &[20.0, 10.0], &[20.0, 10.0]];
+        let costs = Costs {
+            half_spread_bps: 10.0,
+            ..free()
+        };
+        let mut s = sim(market(o, c), costs, Constraints::default());
+        let r = s.step(&[0.5, 0.0]).unwrap();
+        assert!(r.turnover > 0.0);
+        let q = s.shares()[0];
+        // Holding: no trade even though the weight drifted from 0.5 to 2/3.
+        let r = s.step(&[f64::NAN, 0.0]).unwrap();
+        assert_eq!(r.turnover, 0.0);
+        assert_eq!(r.spread_cost, 0.0);
+        assert_eq!(s.shares()[0], q);
+        assert!((s.weights()[0] - 2.0 / 3.0).abs() < 1e-3);
+        // A held position consumes the gross budget: the other leg is cut.
+        let r = s.step(&[f64::NAN, 1.0]).unwrap();
+        assert_eq!(s.shares()[0], q);
+        assert!(r.projection > 0.0);
+        // Costs are paid after sizing, so gross may exceed 1 by the cost.
+        assert!(r.gross <= 1.0 + 1e-3, "{r:?}");
+        assert!(s.done());
     }
 
     #[test]
@@ -685,7 +734,8 @@ mod tests {
     fn invalid_inputs_are_rejected() {
         let m = market(&[&[10.0], &[10.0]], &[&[10.0], &[10.0]]);
         let mut s = sim(m.clone(), free(), Constraints::default());
-        assert!(s.step(&[f64::NAN]).is_err());
+        assert!(s.step(&[f64::INFINITY]).is_err());
+        assert!(s.step(&[f64::NEG_INFINITY]).is_err());
         assert!(s.step(&[0.5, 0.5]).is_err());
         let mut bad = m;
         bad.open[1] = -1.0;
