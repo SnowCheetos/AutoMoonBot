@@ -155,11 +155,21 @@ def test_store_semantics(tmp_path: Path, edgar: EdgarProvider) -> None:
     with pytest.raises(ConflictError):
         store.write("filings", bad)
 
+    # A co-registrant filing: the same accession for another entity.
+    other = store.read("filings").slice(0, 1)
+    other = other.set_column(
+        other.schema.get_field_index("entity_id"), "entity_id", pa.array(["cik:0000000002"])
+    )
+    assert store.write("filings", other).new == 1
+    assert store.read("filings").num_rows == 6
+    store.write("filings", other)  # idempotent
+
     # Point-in-time reads.
     as_of = to_ns("2024-09-01T00:00:00Z")
-    assert store.read("filings", as_of).num_rows == 2
-    assert store.read("filings").num_rows == 5
-    assert store.compact("filings") == 0
+    assert store.read("filings", as_of).num_rows == 3
+    assert store.read("filings").num_rows == 6
+    assert store.compact("filings") == 2  # the co-registrant row's part merged in
+    assert store.compact("filings") == 0 and store.read("filings").num_rows == 6
 
 
 def test_store_rejects_bad_tables(tmp_path: Path) -> None:
