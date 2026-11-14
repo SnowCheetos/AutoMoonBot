@@ -93,8 +93,10 @@ FILINGS = Dataset(
             _f("source", pa.string()),
         ]
     ),
-    ("accession",),
-    "Regulatory filings; known_time derives from the acceptance timestamp.",
+    ("entity_id", "accession"),
+    "Regulatory filings, one row per filer: a co-registrant filing (e.g. a "
+    "parent and its subsidiary) shares one accession across entities. "
+    "known_time derives from the acceptance timestamp.",
 )
 
 FACTS = Dataset(
