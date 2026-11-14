@@ -10,8 +10,6 @@ open of bar ``t`` (``adv_shares[t]``, ``sigma[t]``) is computed from bars
 ``<= t - 1`` only.
 """
 
-from __future__ import annotations
-
 import datetime as dt
 from collections.abc import Sequence
 from dataclasses import dataclass, fields

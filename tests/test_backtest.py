@@ -1,7 +1,5 @@
 """Tests for panels, the simulator bindings, labels, walk-forward and metrics."""
 
-from __future__ import annotations
-
 import math
 
 import numpy as np
@@ -137,7 +135,7 @@ def test_panel_from_store(tmp_path) -> None:  # type: ignore[no-untyped-def]
     store = ParquetStore(tmp_path)
     days = [dt.date(2024, 1, d) for d in (2, 3, 4, 5)]
     close_ns = [
-        int(dt.datetime(d.year, d.month, d.day, 21, tzinfo=dt.timezone.utc).timestamp()) * 10**9
+        int(dt.datetime(d.year, d.month, d.day, 21, tzinfo=dt.UTC).timestamp()) * 10**9
         for d in days
     ]
     n = len(days)

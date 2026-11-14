@@ -1,7 +1,5 @@
 """End-to-end tests of the Python API over the Rust store."""
 
-from __future__ import annotations
-
 import datetime as dt
 
 import numpy as np
@@ -35,10 +33,7 @@ def test_time_conversion() -> None:
     assert to_ns("1970-01-01T00:00:01Z") == 10**9
     assert to_ns("1970-01-01T01:00:00+01:00") == 0
     assert to_ns(np.datetime64("1970-01-02", "D")) == DAY
-    assert (
-        to_ns(dt.datetime(1970, 1, 1, tzinfo=dt.timezone.utc) + dt.timedelta(microseconds=5))
-        == 5000
-    )
+    assert to_ns(dt.datetime(1970, 1, 1, tzinfo=dt.UTC) + dt.timedelta(microseconds=5)) == 5000
     with pytest.raises(ValueError, match="naive"):
         to_ns(dt.datetime(2024, 1, 1))
     with pytest.raises(ValueError, match="naive"):

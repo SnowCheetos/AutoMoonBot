@@ -8,8 +8,6 @@ with exactly those masks. The gradient is identical (dropout is the only
 stochastic layer) and training is an order of magnitude faster.
 """
 
-from __future__ import annotations
-
 import math
 
 import torch

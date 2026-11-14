@@ -10,8 +10,6 @@
 * Only HTTPS URLs to an allow-listed set of hosts are fetched.
 """
 
-from __future__ import annotations
-
 import gzip
 import hashlib
 import json
@@ -128,7 +126,7 @@ class HttpClient:
                     time.sleep(self._backoff(attempt, e.headers.get("Retry-After")))
                     continue
                 raise
-            except (urllib.error.URLError, ConnectionError, TimeoutError):
+            except urllib.error.URLError, ConnectionError, TimeoutError:
                 if attempt < self.max_retries:
                     attempt += 1
                     time.sleep(self._backoff(attempt, None))

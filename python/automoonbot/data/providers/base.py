@@ -7,8 +7,6 @@ derives ``known_time``, and downstream evaluation can refuse providers whose
 policy is not point-in-time safe.
 """
 
-from __future__ import annotations
-
 import abc
 import enum
 from collections.abc import Iterator, Sequence

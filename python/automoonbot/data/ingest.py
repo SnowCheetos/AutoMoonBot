@@ -5,8 +5,6 @@ Loaders are idempotent (the graph ignores exact replays), so a pipeline can
 simply re-run them after every data update.
 """
 
-from __future__ import annotations
-
 import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc

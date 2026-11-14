@@ -12,8 +12,6 @@ feature slot comes with its ``present`` mask and its age relative to the
 snapshot's valid time, so a model can learn how much to trust stale data.
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 import numpy as np

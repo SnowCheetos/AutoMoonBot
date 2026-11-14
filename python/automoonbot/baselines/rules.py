@@ -12,8 +12,6 @@ Only ``tradable[t]`` (a bar exists at ``t``) decides eligibility; securities
 with no bar at the decision are skipped rather than guessed at.
 """
 
-from __future__ import annotations
-
 import math
 from dataclasses import dataclass
 

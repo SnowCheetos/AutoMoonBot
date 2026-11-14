@@ -17,8 +17,6 @@ corporate actions into past prices (look-ahead), so adjustment is applied
 point-in-time from ``corporate_actions`` instead.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 import pyarrow as pa

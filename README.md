@@ -88,7 +88,7 @@ legacy/                 Earlier generations of the project
 
 # Usage
 
-Requires Rust ≥ 1.88 and Python ≥ 3.10.
+Requires Rust ≥ 1.97 (edition 2024) and Python ≥ 3.14.
 
 ```bash
 python -m venv .venv && . .venv/bin/activate
