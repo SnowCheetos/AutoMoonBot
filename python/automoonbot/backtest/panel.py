@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -78,6 +79,10 @@ class MarketPanel:
     dividend: F64
     adv_shares: F64
     sigma: F64
+    #: Bar high/low (NaN where not tradable); ``max/min(open, close)`` when
+    #: the source has none.
+    high: F64
+    low: F64
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -96,10 +101,17 @@ class MarketPanel:
         decision_time: npt.ArrayLike | None = None,
         split: npt.ArrayLike | None = None,
         dividend: npt.ArrayLike | None = None,
+        high: npt.ArrayLike | None = None,
+        low: npt.ArrayLike | None = None,
         window: int = 20,
     ) -> MarketPanel:
         """Build from dense arrays; NaN prices mark untradable bars."""
         o, c, v = (np.asarray(a, dtype=np.float64) for a in (open, close, volume))
+        with np.errstate(invalid="ignore"):
+            hi = np.fmax(o, c) if high is None else np.asarray(high, dtype=np.float64)
+            lo = np.fmin(o, c) if low is None else np.asarray(low, dtype=np.float64)
+        if hi.shape != o.shape or lo.shape != o.shape:
+            raise ValueError("high/low must match open")
         t = np.asarray(times, dtype=np.int64)
         if o.shape != c.shape or o.shape != v.shape or o.shape[0] != t.size:
             raise ValueError("open/close/volume must be [T, S] matching times")
@@ -140,6 +152,8 @@ class MarketPanel:
             dividend=dv,
             adv_shares=np.nan_to_num(adv, nan=0.0),
             sigma=np.nan_to_num(sig, nan=0.0),
+            high=np.where(tradable, hi, np.nan),
+            low=np.where(tradable, lo, np.nan),
         )
 
     @classmethod
@@ -220,8 +234,49 @@ class MarketPanel:
             decision_time=decision,
             split=split,
             dividend=dividend,
+            high=dense("high"),
+            low=dense("low"),
             window=window,
         )
+
+    def truncate(self, n: int) -> MarketPanel:
+        """The first ``n`` bars: everything a strategy may know when deciding
+        at step ``n - 1``. (``listed`` is the simulator's world view and may
+        differ from a recomputation on the truncated data; strategies use
+        ``tradable`` instead.)"""
+        if not 1 <= n <= self.shape[0]:
+            raise ValueError(f"truncate length {n} outside [1, {self.shape[0]}]")
+        out: dict[str, Any] = {}
+        for f in fields(self):
+            v = getattr(self, f.name)
+            out[f.name] = v[:n] if isinstance(v, np.ndarray) else v
+        return MarketPanel(**out)
+
+    def log_returns(self) -> F64:
+        """``[T, S]`` close-to-close total log returns (splits and dividends
+        included); NaN where bar ``t`` or a previous close is missing. Row
+        ``t`` uses bars ``<= t`` only."""
+        prev = np.vstack([np.full((1, self.shape[1]), np.nan), self.close[:-1]])
+        with np.errstate(invalid="ignore", divide="ignore"):
+            r: F64 = np.log((self.close * self.split + self.dividend) / prev)
+        r[~self.tradable] = np.nan
+        return r
+
+    def total_return_index(self) -> F64:
+        """``[T, S]`` causal total-return price index, equal to ``close`` at
+        each security's first tradable bar and carried forward over halts.
+        Ratios of it equal ratios of prices back-adjusted *as of* any later
+        bar, so scale-free features computed on it never see future
+        corporate actions."""
+        r = self.log_returns()
+        first = np.argmax(self.tradable, axis=0)
+        cols = np.arange(self.shape[1])
+        base = self.close[first, cols]
+        cum = np.cumsum(np.nan_to_num(r, nan=0.0), axis=0)
+        cum = cum - cum[first, cols]
+        rows = np.arange(self.shape[0])[:, None]
+        started = rows >= first[None, :]
+        return np.where(started & self.tradable.any(axis=0), base * np.exp(cum), np.nan)
 
     def market(self) -> _moonrs.Market:
         """The Rust market object (shared by any number of simulators)."""

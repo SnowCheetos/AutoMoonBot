@@ -162,6 +162,14 @@ for fold in walk_forward(panel.shape[0], test_size=63, min_train=504, max_label_
     ...
 ```
 
+Every strategy, rule or learned, implements the same `Strategy` protocol and is scored by the same walk-forward harness: each fold is fitted on a panel truncated before its test window, the test windows form one continuous simulated path, and `check_causal` re-computes targets on truncated panels to prove no future bar was used.
+
+```python
+from automoonbot.baselines import report
+
+trials, table = report.run(panel, periods_per_year=252)   # baselines + PGPerceptron variants
+```
+
 Metrics lead with log-growth, CVaR and drawdown; Sharpe is reported with its probabilistic and deflated versions, so a result found by searching many configurations is judged against the best of that many unskilled ones.
 
 # Roadmap

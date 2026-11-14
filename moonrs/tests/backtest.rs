@@ -50,33 +50,46 @@ proptest! {
         .. ProptestConfig::default()
     })]
 
-    /// Frictionless equity equals the analytic value of the same trades.
+    /// Frictionless equity equals the analytic value of the same trades,
+    /// including "hold" (NaN) entries that keep shares and use up budget.
     #[test]
     fn frictionless_matches_reference(
         (t, s, px, w) in (3usize..12, 1usize..5).prop_flat_map(|(t, s)| (
             Just(t), Just(s),
             prop::collection::vec(1.0f64..200.0, t * s),
-            prop::collection::vec(prop::collection::vec(0.0f64..1.0, s), t - 1),
+            prop::collection::vec(prop::collection::vec(-0.4f64..1.0, s), t - 1),
         ))
     ) {
         let m = market(t, s, &px);
         let mut sim = Simulator::new(Arc::new(m.clone()), free(), Constraints::default(), 0, 1e6).unwrap();
         let mut cash = 1e6;
         let mut shares = vec![0.0; s];
-        for (k, wk) in w.iter().enumerate() {
-            let gross: f64 = wk.iter().sum();
-            let scale = if gross > 1.0 { 1.0 / gross } else { 1.0 };
+        for (k, raw) in w.iter().enumerate() {
+            let wk: Vec<f64> = raw.iter().map(|&x| if x < 0.0 { f64::NAN } else { x }).collect();
             let o = &m.open[(k + 1) * s..(k + 2) * s];
             let eq_open: f64 = cash + shares.iter().zip(o).map(|(q, p)| q * p).sum::<f64>();
+            let held: f64 = (0..s)
+                .filter(|&i| wk[i].is_nan())
+                .map(|i| (shares[i] * o[i]).abs())
+                .sum::<f64>() / eq_open;
+            let gross: f64 = wk.iter().filter(|x| !x.is_nan()).sum();
+            let budget = (1.0 - held).max(0.0);
+            let scale = if gross > budget { budget / gross } else { 1.0 };
             for i in 0..s {
+                if wk[i].is_nan() {
+                    continue;
+                }
                 let target = wk[i] * scale * eq_open / o[i];
                 cash -= (target - shares[i]) * o[i];
                 shares[i] = target;
             }
             let c = &m.close[(k + 1) * s..(k + 2) * s];
             let eq: f64 = cash + shares.iter().zip(c).map(|(q, p)| q * p).sum::<f64>();
-            let r = sim.step(wk).unwrap();
+            let r = sim.step(&wk).unwrap();
             prop_assert!((r.equity - eq).abs() <= 1e-6 * eq.abs().max(1.0), "{} vs {}", r.equity, eq);
+            for (got, want) in sim.shares().iter().zip(&shares) {
+                prop_assert!((got - want).abs() <= 1e-9 * want.abs().max(1.0));
+            }
         }
     }
 
