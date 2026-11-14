@@ -123,26 +123,21 @@ def _check_folds(folds: Sequence[Fold], n: int) -> None:
         raise ValueError("the last test step needs a following bar to execute on")
 
 
-def evaluate(
+def walk_forward_targets(
     panel: MarketPanel,
     strategy: Strategy,
     folds: Sequence[Fold],
     *,
-    params: Mapping[str, object] | None = None,
-    capital: float = 1.0,
-    periods_per_year: float = 252.0,
     audit: int = 0,
     seed: int = 0,
-    sim_kwargs: Mapping[str, object] | None = None,
-) -> Trial:
-    """Fit and simulate ``strategy`` over all folds as one out-of-sample path.
+) -> tuple[F64, int, int]:
+    """Fit ``strategy`` fold by fold and collect its out-of-sample targets.
 
-    ``audit`` causality probes are drawn per fold (``0`` disables). The last
-    test step is dropped if it is the panel's final bar (nothing to execute
-    on).
+    Returns ``(targets[N, S], first_step, n_folds)``. ``audit`` causality
+    probes are drawn per fold (``0`` disables). A test step on the panel's
+    final bar is dropped (nothing to execute on).
     """
     t_bars, s = panel.shape
-    # The final bar has no next open to execute on; drop it from the tests.
     folds = [Fold(f.train, f.test[f.test < t_bars - 1]) for f in folds if f.test[0] < t_bars - 1]
     _check_folds(folds, t_bars)
     rng = np.random.default_rng(seed)
@@ -164,30 +159,75 @@ def evaluate(
                 full=w,
             )
         rows.append(w)
-    targets = np.ascontiguousarray(np.vstack(rows))
+    return np.ascontiguousarray(np.vstack(rows)), int(folds[0].test[0]), len(folds)
+
+
+def simulate(
+    panel: MarketPanel,
+    targets: F64,
+    start: int,
+    *,
+    name: str,
+    params: Mapping[str, object] | None = None,
+    folds: int = 1,
+    capital: float = 1.0,
+    periods_per_year: float = 252.0,
+    sim_kwargs: Mapping[str, object] | None = None,
+) -> Trial:
+    """Run precomputed targets (decided at steps ``start, start + 1, ...``)
+    through the simulator. Targets do not depend on costs, so one fit can
+    be scored under several cost assumptions."""
     sim = Simulator(
         panel.market(),
-        start=int(folds[0].test[0]),
+        start=start,
         capital=capital,
         periods_per_year=periods_per_year,
         **dict(sim_kwargs or {}),  # type: ignore[arg-type]
     )
-    out = sim.run(targets)
+    out = sim.run(np.ascontiguousarray(targets, dtype=np.float64))
     lr = out["log_return"]
     costs = out["commission"] + out["spread_cost"] + out["impact_cost"] + out["borrow_cost"]
     equity_open = out["equity_open"]
     with np.errstate(invalid="ignore", divide="ignore"):
         cost_frac = np.where(equity_open > 0, costs / equity_open, 0.0)
     return Trial(
-        name=strategy.name,
+        name=name,
         params=dict(params or {}),
         periods=out["period"].astype(np.int64),
         log_returns=lr,
         turnover=out["turnover"],
         costs=cost_frac,
         summary=summary(lr, periods_per_year),
-        folds=len(folds),
+        folds=folds,
         periods_per_year=periods_per_year,
+    )
+
+
+def evaluate(
+    panel: MarketPanel,
+    strategy: Strategy,
+    folds: Sequence[Fold],
+    *,
+    params: Mapping[str, object] | None = None,
+    capital: float = 1.0,
+    periods_per_year: float = 252.0,
+    audit: int = 0,
+    seed: int = 0,
+    sim_kwargs: Mapping[str, object] | None = None,
+) -> Trial:
+    """Fit and simulate ``strategy`` over all folds as one out-of-sample path
+    (:func:`walk_forward_targets` then :func:`simulate`)."""
+    targets, start, n = walk_forward_targets(panel, strategy, folds, audit=audit, seed=seed)
+    return simulate(
+        panel,
+        targets,
+        start,
+        name=strategy.name,
+        params=params,
+        folds=n,
+        capital=capital,
+        periods_per_year=periods_per_year,
+        sim_kwargs=sim_kwargs,
     )
 
 
