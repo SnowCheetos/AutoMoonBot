@@ -36,7 +36,11 @@ def chart() -> dict[str, Any]:
             "error": None,
             "result": [
                 {
-                    "meta": {"symbol": "XYZ", "tradingPeriods": periods},
+                    "meta": {
+                        "symbol": "XYZ",
+                        "dataGranularity": "1h",
+                        "tradingPeriods": periods,
+                    },
                     "timestamp": starts,
                     "indicators": {
                         "quote": [
@@ -112,6 +116,32 @@ def test_actions_and_panel_round_trip(tmp_path: Any) -> None:
     )  # first bar of June 4
     r = p.log_returns()[:, 0]
     assert np.nanmax(np.abs(r)) < 0.1  # the split is not a return
+
+
+def test_rejects_coarsened_bars() -> None:
+    class Coarse(FakeClient):
+        def get(self, url: str, *, use_cache: bool = True) -> Response:
+            body = chart()
+            body["chart"]["result"][0]["meta"]["dataGranularity"] = "1mo"
+            return Response(url, 200, json.dumps(body).encode(), self.fetched, False)
+
+    y = YahooProvider("1h", client=Coarse(0))  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="1mo"):
+        y.chart("XYZ")
+
+
+def test_full_history_uses_an_explicit_period() -> None:
+    seen: list[str] = []
+
+    class Capture(FakeClient):
+        def get(self, url: str, *, use_cache: bool = True) -> Response:
+            seen.append(url)
+            body = chart()
+            body["chart"]["result"][0]["meta"]["dataGranularity"] = "1d"
+            return Response(url, 200, json.dumps(body).encode(), self.fetched, False)
+
+    YahooProvider("1d", client=Capture(0)).chart("XYZ")  # type: ignore[arg-type]
+    assert "range=" not in seen[0] and "period1=-2208988800" in seen[0]
 
 
 def test_rejects_bad_input() -> None:
