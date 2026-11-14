@@ -6,13 +6,11 @@ inputs (``datetime64``, ``pandas.Timestamp``, ``datetime`` with tzinfo,
 Python ints, lists) into that form once, and never guesses a timezone.
 """
 
-from __future__ import annotations
-
 import datetime as _dt
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from os import PathLike
-from typing import Any, Literal, TypeAlias
+from typing import Any, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -23,8 +21,8 @@ from automoonbot import _moonrs
 OPEN_START: int = np.iinfo(np.int64).min
 OPEN_END: int = np.iinfo(np.int64).max
 
-TimeLike: TypeAlias = "int | np.integer[Any] | np.datetime64 | _dt.datetime | str"
-TimesLike: TypeAlias = "TimeLike | Sequence[TimeLike] | npt.ArrayLike"
+type TimeLike = int | np.integer[Any] | np.datetime64 | _dt.datetime | str
+type TimesLike = TimeLike | Sequence[TimeLike] | npt.ArrayLike
 
 
 def to_ns(t: TimeLike) -> int:
@@ -46,7 +44,7 @@ def to_ns(t: TimeLike) -> int:
             raise ValueError(f"naive datetime {t!r}: attach a timezone")
         if hasattr(t, "value"):  # pandas.Timestamp keeps exact nanoseconds
             return int(t.value)
-        delta = t - _dt.datetime(1970, 1, 1, tzinfo=_dt.timezone.utc)
+        delta = t - _dt.datetime(1970, 1, 1, tzinfo=_dt.UTC)
         return (delta.days * 86_400 + delta.seconds) * 1_000_000_000 + delta.microseconds * 1_000
     if isinstance(t, np.datetime64):
         if np.isnat(t):

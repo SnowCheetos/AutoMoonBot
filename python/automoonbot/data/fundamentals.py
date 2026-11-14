@@ -16,8 +16,6 @@ the graph reproduces exactly what was knowable at any instant, including
 restatements.
 """
 
-from __future__ import annotations
-
 import datetime as dt
 from collections import defaultdict
 from collections.abc import Iterable, Sequence

@@ -24,8 +24,6 @@ Differences from the original, all deliberate:
   machine's local zone.
 """
 
-from __future__ import annotations
-
 import datetime as dt
 from collections.abc import Mapping, Sequence
 from typing import Any

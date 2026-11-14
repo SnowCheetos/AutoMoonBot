@@ -17,8 +17,6 @@ Partitioning by the year of ``known_time`` keeps conflict checks local: two
 versions can only conflict if they share a ``known_time``, hence a partition.
 """
 
-from __future__ import annotations
-
 import contextlib
 import hashlib
 import io

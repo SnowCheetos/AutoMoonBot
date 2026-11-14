@@ -13,8 +13,6 @@ original set the portfolio value to 0 (``self._portfolio = 0``) on a
 losing double-down.
 """
 
-from __future__ import annotations
-
 import math
 from collections import deque
 from dataclasses import dataclass

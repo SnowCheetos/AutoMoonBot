@@ -1,7 +1,5 @@
 """Tests for the evaluation harness, rule baselines and the PGPerceptron port."""
 
-from __future__ import annotations
-
 import numpy as np
 import pytest
 from automoonbot.backtest import (

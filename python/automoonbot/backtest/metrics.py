@@ -10,8 +10,6 @@ deflated Sharpe) because a raw Sharpe from a search over many configurations
 is mostly selection bias.
 """
 
-from __future__ import annotations
-
 import math
 from dataclasses import asdict, dataclass
 from statistics import NormalDist

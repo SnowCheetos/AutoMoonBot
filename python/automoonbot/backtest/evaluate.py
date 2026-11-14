@@ -17,8 +17,6 @@ is, :func:`compare` reports the deflated Sharpe ratio across all trials
 evaluated on the same span.
 """
 
-from __future__ import annotations
-
 import itertools
 import math
 from collections.abc import Iterable, Mapping, Sequence

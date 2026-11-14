@@ -6,8 +6,6 @@ embargo after each test window before reusing data, and never trains on the
 future: training uses only steps before the test window.
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterator
 from dataclasses import dataclass
 

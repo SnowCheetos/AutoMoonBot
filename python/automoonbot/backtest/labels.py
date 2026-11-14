@@ -8,8 +8,6 @@ features, and a label for decision step ``t`` and horizon ``h`` only becomes
 known at ``times[t + 1 + h]`` - which is what the walk-forward purge uses.
 """
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 from dataclasses import dataclass
 

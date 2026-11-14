@@ -2,7 +2,7 @@
 name = "moonrs"
 version = "0.2.0"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.97"
 license = "MIT"
 description = "Bitemporal, point-in-time heterogeneous graph store for leakage-free market research"
 publish = false
@@ -22,7 +22,7 @@ rayon = "1.12"
 serde = { version = "1.0", features = ["derive"] }
 smallvec = { version = "1.15", features = ["serde", "union", "const_generics"] }
 thiserror = "2.0"
-pyo3 = { version = "0.30", optional = true, features = ["abi3-py310"] }
+pyo3 = { version = "0.30", optional = true, features = ["abi3-py314"] }
 numpy = { version = "0.30", optional = true }
 
 [dev-dependencies]

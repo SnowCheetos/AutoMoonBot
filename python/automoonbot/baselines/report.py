@@ -7,8 +7,6 @@ Rule baselines are evaluated on the same folds, so every trial covers the
 identical out-of-sample periods.
 """
 
-from __future__ import annotations
-
 from collections.abc import Mapping, Sequence
 
 from automoonbot.backtest.evaluate import Strategy, Trial, compare, evaluate

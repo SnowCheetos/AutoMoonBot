@@ -32,8 +32,6 @@ the first part of the window, pick the episode that does best on the held-out
 tail, and deploy it if it beats the deployed model on that same tail.
 """
 
-from __future__ import annotations
-
 import copy
 import math
 from collections.abc import Mapping

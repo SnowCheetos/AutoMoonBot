@@ -1,7 +1,5 @@
 """Shared synthetic market data for tests."""
 
-from __future__ import annotations
-
 import numpy as np
 from automoonbot.backtest import MarketPanel
 

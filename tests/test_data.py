@@ -5,8 +5,6 @@ EDGAR payloads below are synthetic (a fictional issuer, CIK 1234567) but
 follow the documented shapes of the submissions and companyfacts APIs.
 """
 
-from __future__ import annotations
-
 import datetime as dt
 import json
 from pathlib import Path

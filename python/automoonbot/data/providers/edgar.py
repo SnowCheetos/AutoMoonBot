@@ -24,8 +24,6 @@ from the constructor or the ``SEC_USER_AGENT`` environment variable and never
 invented. Requests are limited to 8/s (SEC's limit is 10/s).
 """
 
-from __future__ import annotations
-
 import datetime as dt
 import os
 import re
@@ -44,7 +42,7 @@ NAME = "sec_edgar"
 _HOSTS = frozenset({"data.sec.gov", "www.sec.gov"})
 _ACCESSION = re.compile(r"^\d{10}-\d{2}-\d{6}$")
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-_UTC = dt.timezone.utc
+_UTC = dt.UTC
 
 
 def entity_id(cik: int | str) -> str:
