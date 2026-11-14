@@ -13,6 +13,8 @@ from typing import Any
 import numpy as np
 import pyarrow as pa
 import pytest
+
+from automoonbot import TemporalGraph, to_ns
 from automoonbot.data import ConflictError, ParquetStore
 from automoonbot.data.fundamentals import FEATURE_NAMES, quarterly_observations
 from automoonbot.data.http import Response
@@ -24,8 +26,6 @@ from automoonbot.data.ingest import (
 )
 from automoonbot.data.providers.edgar import EdgarProvider, entity_id
 from automoonbot.data.schemas import BARS, TS
-
-from automoonbot import TemporalGraph, to_ns
 
 CIK = 1234567
 EID = "cik:0001234567"

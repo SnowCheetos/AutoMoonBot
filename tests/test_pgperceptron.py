@@ -14,6 +14,7 @@ from automoonbot.baselines.pgperceptron import (
     reference_descriptors,
 )
 from automoonbot.baselines.pgperceptron.trading import Action, Position, TradeManager
+
 from helpers import synthetic
 
 SMALL = {
@@ -86,6 +87,7 @@ def _tiny(**kw: object) -> Config:
 
 def test_numpy_policy_matches_torch() -> None:
     import torch
+
     from automoonbot.baselines.pgperceptron.agent import _NumpyPolicy
     from automoonbot.baselines.pgperceptron.model import PolicyNet, draw_masks
 

@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+
 from automoonbot.backtest import (
     CausalityError,
     MarketPanel,
@@ -19,6 +20,7 @@ from automoonbot.baselines import (
     InverseVolatility,
     TrendFollowing,
 )
+
 from helpers import HOUR, synthetic
 
 
