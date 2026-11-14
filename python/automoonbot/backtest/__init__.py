@@ -9,6 +9,8 @@ from automoonbot.backtest.evaluate import (
     check_causal,
     compare,
     evaluate,
+    simulate,
+    walk_forward_targets,
 )
 from automoonbot.backtest.labels import Labels, forward_returns
 from automoonbot.backtest.metrics import Summary, summary
@@ -29,6 +31,8 @@ __all__ = [
     "compare",
     "evaluate",
     "forward_returns",
+    "simulate",
     "summary",
     "walk_forward",
+    "walk_forward_targets",
 ]
