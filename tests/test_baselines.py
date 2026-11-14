@@ -135,3 +135,15 @@ def test_fit_never_sees_the_test_window() -> None:
     folds = list(walk_forward(200, test_size=30, min_train=50, max_label_horizon=2))
     evaluate(p, Spy(), folds)
     assert seen == [int(f.test[0]) for f in folds]
+
+
+def test_rules_respect_membership() -> None:
+    from automoonbot.baselines import EqualWeight
+
+    p = synthetic(60, 4)
+    member = np.ones(p.shape, dtype=bool)
+    member[:, 2] = False
+    w = EqualWeight(rebalance=1).targets(p.with_membership(member), np.arange(30, 40))
+    assert (w[:, 2] == 0).all() and np.allclose(w.sum(axis=1), 1.0)
+    with pytest.raises(ValueError):
+        p.with_membership(member[:10])

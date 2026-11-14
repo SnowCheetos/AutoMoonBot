@@ -52,6 +52,14 @@ class PanelData:
     #: ``[T, S, H]`` multi-horizon labels and their mask.
     labels: Tensor
     label_ok: Tensor
+    #: ``[T, S]`` ``ok`` and in the universe at ``t``: the companies the
+    #: model sees and may hold (``None``: same as ``ok``). Windows still use
+    #: ``ok`` history from before a company joined.
+    eligible: Tensor | None = None
+
+    @property
+    def valid(self) -> Tensor:
+        return self.ok if self.eligible is None else self.eligible
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -77,6 +85,7 @@ class PanelData:
             r1=f32(one),
             labels=f32(lab.values),
             label_ok=torch.from_numpy(lab.mask.copy()),
+            eligible=None if panel.member is None else torch.from_numpy(fp.ok & panel.member),
         )
 
     def windows(
@@ -85,7 +94,7 @@ class PanelData:
         """Feature windows ending at each of ``days[B]``, for the companies
         (``cols``, default all) valid that day: ``(x[M, K, C], present[M, K],
         pair[M], valid[B, S'])`` with ``pair`` the flat index into ``valid``."""
-        valid = self.ok[days] if cols is None else self.ok[days][:, cols]
+        valid = self.valid[days] if cols is None else self.valid[days][:, cols]
         b_idx, s_idx = valid.nonzero(as_tuple=True)
         sec = s_idx if cols is None else cols[s_idx]
         rows = days[b_idx, None] - window + 1 + torch.arange(window)

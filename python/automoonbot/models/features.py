@@ -1,9 +1,12 @@
 """Causal per-security input features for the learned models.
 
 Every feature at row ``t`` uses bars ``<= t`` only. Cross-sectional
-normalization uses the same row's cross-section (all securities' values at
-``t``), which is known at the decision; nothing is normalized with
-statistics from the future, as a full-sample z-score would be.
+normalization uses the same row's cross-section (the values at ``t`` of the
+securities in the universe at ``t``), which is known at the decision;
+nothing is normalized with statistics from the future, as a full-sample
+z-score would be. Securities outside the universe still get features (a
+newly added member brings its price history), standardized against the
+universe.
 """
 
 import warnings
@@ -41,15 +44,19 @@ class FeaturePanel:
     channels: tuple[str, ...] = CHANNELS
 
 
-def _robust_cross_section(x: F64, ok: npt.NDArray[np.bool_], clip: float = 5.0) -> F64:
-    """Per-row median/MAD standardization over the valid securities,
-    clipped to ``[-clip, clip]``."""
+def _robust_cross_section(
+    x: F64, ok: npt.NDArray[np.bool_], ref: npt.NDArray[np.bool_], clip: float = 5.0
+) -> F64:
+    """Per-row median/MAD standardization of the ``ok`` entries, with the
+    statistics taken over the ``ref`` entries (the universe), clipped to
+    ``[-clip, clip]``."""
     v = np.where(ok, x, np.nan)
+    r = np.where(ref & ok, x, np.nan)
     # Rows with no valid security give NaN statistics (and a warning).
     with np.errstate(all="ignore"), warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
-        med = np.nanmedian(v, axis=1, keepdims=True)
-        mad = np.nanmedian(np.abs(v - med), axis=1, keepdims=True) * 1.4826
+        med = np.nanmedian(r, axis=1, keepdims=True)
+        mad = np.nanmedian(np.abs(r - med), axis=1, keepdims=True) * 1.4826
     scale = np.where(np.isfinite(mad) & (mad > 0), mad, 1.0)
     z = (v - np.nan_to_num(med)) / scale
     return np.clip(z, -clip, clip)
@@ -78,6 +85,6 @@ def price_features(panel: MarketPanel, *, normalize: bool = True) -> FeaturePane
     stack = np.stack(raw, axis=-1)
     ok = tradable & np.isfinite(stack).all(axis=-1)
     if normalize:
-        stack = np.stack([_robust_cross_section(x, ok) for x in raw], axis=-1)
+        stack = np.stack([_robust_cross_section(x, ok, panel.investable) for x in raw], axis=-1)
     out = np.where(ok[..., None], stack, np.nan).astype(np.float32)
     return FeaturePanel(out, ok)

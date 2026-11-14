@@ -175,6 +175,7 @@ def strategy(g, **train_kw) -> GraphTransformerStrategy:  # type: ignore[no-unty
         batch_windows=2,
         universe=6,
         cost_bps=5.0,
+        min_companies=3,
     )
     kw.update(train_kw)
     return GraphTransformerStrategy(
@@ -231,3 +232,22 @@ def test_strategy_is_causal_deterministic_and_warm_starts() -> None:
         TrainConfig(burn_in=30, window_days=24)
     with pytest.raises(ValueError):
         Overlay(start=0.3, full=0.2)
+
+
+def test_membership_restricts_holdings_but_keeps_history() -> None:
+    p, g, _ = universe(stagger=0)
+    member = np.ones(p.shape, dtype=bool)
+    member[:220, 3] = False  # joins the universe at bar 220
+    member[150:, 7] = False  # leaves at bar 150
+    pm = p.with_membership(member)
+    np.testing.assert_array_equal(pm.truncate(100).member, member[:100])
+    data = PanelData.build(pm, (1, 5))
+    assert not data.valid[200, 3] and data.valid[230, 3] and data.ok[200, 3]
+    # A new member's window carries its pre-membership history.
+    _, present, _, valid = data.windows(torch.tensor([225]), 16)
+    assert valid[0, 3] and present[int(valid[0, :3].sum())].all()
+    st = strategy(g)
+    st.fit(pm.truncate(200), np.arange(0, 170))
+    w = np.nan_to_num(st.targets(pm, np.arange(200, 240)))
+    assert (w[:, 7] == 0).all() and (w[:19, 3] == 0).all()
+    check_causal(st, pm, np.arange(200, 240), probes=[0, 25])
