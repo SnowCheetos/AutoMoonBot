@@ -11,3 +11,7 @@
 - Evaluation harness (`backtest.evaluate`): `Strategy` protocol, fitting on panels truncated before each test window, one continuous out-of-sample path, `check_causal` truncation audits, `compare` with deflated Sharpe across trials.
 - Baselines: cash, buy-and-hold, equal-weight, inverse-volatility, cross-sectional momentum, trend following; `baselines.report.run` for the standard comparison.
 - PGPerceptron port (`baselines.pgperceptron`): vectorized descriptors verified against the original formulas, literal trade-manager port, same policy network, REINFORCE with batched recomputation of log-probabilities, the server's retrain/deploy rule; `legacy` and `repaired` variants, `in_sample` and `validation` selection.
+- Yahoo Finance provider; full history is requested as an explicit period and bar granularity is verified (`range=max` silently returns weekly or monthly bars).
+- Filings are keyed by `(entity_id, accession)`: co-registrant filings share an accession.
+- Models (`automoonbot.models`): causal cross-sectional price features, company/industry/sector universe graph read point-in-time, graph transformer (temporal patch encoder, GPS-style layers, chained Student-t horizon heads, capped long-only policy), risk-first differentiable training with sub-universe sampling and warm-started walk-forward folds, `GraphTransformerStrategy` with bit-exact causal inference, no-trade band and drawdown overlay.
+- Experiments and results: `experiments/stage4_spy_hourly.py`, `experiments/stage5_sp500_daily.py`, `experiments/stage5_analysis.py`, `docs/results/`.
