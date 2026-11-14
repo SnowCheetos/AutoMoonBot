@@ -14,6 +14,8 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # pyo3 (abi3-py314) builds against this interpreter.
+  PYO3_PYTHON: python3.14
   RUSTFLAGS: -D warnings
 
 jobs:
@@ -24,6 +26,9 @@ jobs:
         working-directory: moonrs
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
@@ -44,6 +49,9 @@ jobs:
         working-directory: moonrs
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
       - uses: dtolnay/rust-toolchain@1.97
       - uses: Swatinem/rust-cache@v2
         with:
