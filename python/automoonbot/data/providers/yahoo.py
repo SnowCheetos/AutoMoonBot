@@ -16,6 +16,9 @@ Normalization
   its regular session (e.g. the 15:30 hourly bar ends at 16:00), taken from
   the response's ``tradingPeriods``; daily bars end at 16:00 New York (later
   than an early close, so only ever conservative).
+* ``range=max`` silently returns weekly/monthly/quarterly bars, so full
+  history is requested as an explicit period, and every response's
+  ``dataGranularity`` must equal the requested interval.
 * Bars that had not ended when the response was fetched (an in-progress
   session) are dropped, as are bars with missing prices.
 * Dividends are reported per split-adjusted share and are converted to per
@@ -26,6 +29,7 @@ Normalization
 import datetime as dt
 import os
 import re
+import time
 from collections.abc import Iterator, Mapping, Sequence
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -48,6 +52,8 @@ INTERVALS: dict[str, tuple[int, str]] = {
     "1h": (3600, "730d"),
     "1d": (86_400, "max"),
 }
+#: 1900-01-01 UTC: earlier than any listing, for full-history requests.
+_EPOCH_1900 = -2_208_988_800
 USER_AGENT = "automoonbot-research/0.2 (+https://github.com/SnowCheetos/AutoMoonBot)"
 
 
@@ -93,12 +99,22 @@ class YahooProvider(Provider):
             USER_AGENT, allowed_hosts=_HOSTS, rate_per_host=2.0, cache_dir=cache_dir
         )
 
+    def _span(self) -> str:
+        """The requested history. ``range=max`` makes Yahoo silently coarsen
+        the bars (to 1wk/1mo/3mo), so the full history is requested as an
+        explicit period instead, ending at the next UTC midnight (a stable
+        URL, and so a stable cache key, within a day)."""
+        if self.range != "max":
+            return f"range={self.range}"
+        end = (int(time.time()) // 86_400 + 1) * 86_400
+        return f"period1={_EPOCH_1900}&period2={end}"
+
     def chart(self, symbol: str) -> tuple[dict[str, Any], int]:
         """The chart result for ``symbol`` and its fetch time (ns)."""
         sym = _symbol(symbol)
         url = (
             f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
-            f"?range={self.range}&interval={self.interval}&events=div%2Csplits"
+            f"?{self._span()}&interval={self.interval}&events=div%2Csplits"
             "&includePrePost=false"
         )
         r = self.client.get(url)
@@ -112,9 +128,14 @@ class YahooProvider(Provider):
         if len(res) != 1:
             raise ValueError(f"{sym}: expected one result")
         out: dict[str, Any] = res[0]
-        got = out.get("meta", {}).get("symbol", "").upper()
+        meta = out.get("meta", {})
+        got = str(meta.get("symbol", "")).upper()
         if got != sym:
             raise ValueError(f"{sym}: response is for {got!r}")
+        # Yahoo may answer with coarser bars than requested.
+        gran = meta.get("dataGranularity")
+        if gran != self.interval:
+            raise ValueError(f"{sym}: got {gran!r} bars, requested {self.interval!r}")
         return out, r.fetched_at_ns
 
     # --------------------------------------------------------- normalization
