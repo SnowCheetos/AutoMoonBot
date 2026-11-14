@@ -43,8 +43,9 @@ class Strategy(Protocol):
     the weight vector decided after bar ``steps[k]`` closes and executed at
     the next open. ``steps`` are consecutive, and stateful strategies start
     from a flat book at ``steps[0]``. It may read rows ``<= steps[k]`` of
-    ``open, high, low, close, volume, tradable, split, dividend, times,
-    decision_time``, but never ``listed`` (which encodes future delistings).
+    ``open, high, low, close, volume, tradable, member, split, dividend,
+    times, decision_time``, but never ``listed`` (which encodes future
+    delistings), and invests only in ``investable`` securities.
     ``NaN`` holds the current position. The call must be deterministic.
     """
 

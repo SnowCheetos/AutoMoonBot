@@ -29,14 +29,12 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 import torch
+from stage5_sp500_daily import add_universe_args, build_universe
 
 from automoonbot.backtest import MarketPanel, simulate, walk_forward
 from automoonbot.baselines.rules import _Rule, trailing_sum, trailing_vol
-from automoonbot.data import ParquetStore
-from automoonbot.graph import to_ns
 from automoonbot.models import GraphTransformerStrategy, TrainConfig
 from automoonbot.models.transformer import GraphTransformer
-from automoonbot.models.universe import Membership, build_universe_graph
 
 F64 = npt.NDArray[np.float64]
 I64 = npt.NDArray[np.int64]
@@ -61,7 +59,7 @@ class VolQuintile(_Rule):
 
     def weights(self, panel: MarketPanel) -> F64:
         vol = trailing_vol(panel.log_returns(), self.window)
-        return _quantile_ew(vol, panel.tradable, 0.2, self.top)
+        return _quantile_ew(vol, panel.investable, 0.2, self.top)
 
 
 @dataclass
@@ -74,7 +72,7 @@ class Reversal(_Rule):
 
     def weights(self, panel: MarketPanel) -> F64:
         r5, _ = trailing_sum(panel.log_returns(), self.lookback, self.lookback)
-        return _quantile_ew(r5, panel.tradable, 0.2, top=False)
+        return _quantile_ew(r5, panel.investable, 0.2, top=False)
 
 
 def pct_rank(x: F64, ok: npt.NDArray[np.bool_]) -> F64:
@@ -90,10 +88,8 @@ def pct_rank(x: F64, ok: npt.NDArray[np.bool_]) -> F64:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--store", required=True)
-    ap.add_argument("--universe", required=True)
+    add_universe_args(ap)
     ap.add_argument("--run", required=True)
-    ap.add_argument("--start", default="1998-01-01T00:00:00Z")
     ap.add_argument("--min-train-years", type=int, default=8)
     ap.add_argument("--threads", type=int, default=2)
     ap.add_argument("--capital", type=float, default=1e6)
@@ -101,18 +97,7 @@ def main() -> None:
     torch.set_num_threads(args.threads)
     run = Path(args.run)
 
-    from stage5_sp500_daily import load_universe  # same directory
-
-    uni = load_universe(args.universe)
-    panel = MarketPanel.from_store(
-        ParquetStore(args.store), [u[0] for u in uni], start=to_ns(args.start)
-    )
-    cls = {u[0]: u for u in uni}
-    first = np.argmax(panel.tradable, axis=0)
-    graph = build_universe_graph(
-        [Membership(s, cls[s][2], cls[s][1]) for s in panel.securities],
-        panel.decision_time[first],
-    )
+    panel, graph, _ = build_universe(args)
     t_bars, _ = panel.shape
     folds = list(
         walk_forward(
@@ -237,7 +222,7 @@ def main() -> None:
     for i in range(w_gt.shape[0]):
         cur = np.where(np.isnan(w_gt[i]), cur, w_gt[i])
         book[i] = cur
-    ok = panel.tradable[steps]
+    ok = panel.investable[steps]
     lr = panel.log_returns()
     vol = trailing_vol(lr, 63)[steps]
     r252, _ = trailing_sum(lr, 252, 200)

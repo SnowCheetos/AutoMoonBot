@@ -281,7 +281,7 @@ class GraphTransformerStrategy:
         inside = np.cumsum(inside)
         cand = fit_steps[fit_steps + tc.window_days <= panel.shape[0]]
         full = inside[cand + tc.window_days] - inside[cand] == tc.window_days
-        n_ok = data.ok.sum(dim=1).numpy()
+        n_ok = data.valid.sum(dim=1).numpy()
         starts = cand[full]
         starts = starts[n_ok[starts] >= tc.min_companies]
         if starts.size == 0:
@@ -345,7 +345,7 @@ class GraphTransformerStrategy:
         k = self.train.universe
         if k is None:
             return None
-        live = np.flatnonzero(data.ok[starts].any(dim=0).numpy())
+        live = np.flatnonzero(data.valid[starts].any(dim=0).numpy())
         if live.size <= k:
             return torch.from_numpy(live)
         return torch.from_numpy(np.sort(rng.choice(live, size=k, replace=False)))

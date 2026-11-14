@@ -8,8 +8,9 @@ this in the test suite. Between rebalances the strategies emit ``NaN``
 constant. A rebalance happens on steps divisible by ``rebalance`` and on the
 first step of every :meth:`targets` call, so a fold never starts in cash.
 
-Only ``tradable[t]`` (a bar exists at ``t``) decides eligibility; securities
-with no bar at the decision are skipped rather than guessed at.
+Only ``investable[t]`` (a bar exists at ``t`` and the security is in the
+point-in-time universe) decides eligibility; securities with no bar at the
+decision are skipped rather than guessed at.
 """
 
 import math
@@ -95,7 +96,7 @@ class Cash(_Rule):
 
 @dataclass
 class BuyAndHold(_Rule):
-    """Equal weight across securities tradable at the first step, then hold.
+    """Equal weight across securities investable at the first step, then hold.
     Delisted holdings go to cash and stay there."""
 
     name: str = "buy_and_hold"
@@ -104,7 +105,7 @@ class BuyAndHold(_Rule):
         steps = np.asarray(steps, dtype=np.int64)
         out = np.full((steps.size, panel.shape[1]), np.nan)
         if steps.size:
-            ok = panel.tradable[steps[0]]
+            ok = panel.investable[steps[0]]
             out[0] = np.where(ok, 1.0 / max(int(ok.sum()), 1), 0.0)
         return out
 
@@ -115,7 +116,7 @@ class EqualWeight(_Rule):
     name: str = "equal_weight"
 
     def weights(self, panel: MarketPanel) -> F64:
-        ok = panel.tradable
+        ok = panel.investable
         n = ok.sum(axis=1, keepdims=True)
         return np.where(ok, 1.0 / np.maximum(n, 1), 0.0)
 
@@ -129,7 +130,7 @@ class InverseVolatility(_Rule):
     def weights(self, panel: MarketPanel) -> F64:
         vol = trailing_vol(panel.log_returns(), self.window)
         with np.errstate(divide="ignore"):
-            inv = np.where(panel.tradable & (vol > 0), 1.0 / vol, 0.0)
+            inv = np.where(panel.investable & (vol > 0), 1.0 / vol, 0.0)
         inv = np.nan_to_num(inv, nan=0.0)
         total = inv.sum(axis=1, keepdims=True)
         return np.divide(inv, total, out=np.zeros_like(inv), where=total > 0)
@@ -153,7 +154,7 @@ class CrossSectionalMomentum(_Rule):
         total, _ = trailing_sum(panel.log_returns(), span, max(1, int(0.8 * span)))
         score = np.full_like(total, np.nan)
         score[self.skip :] = total[: total.shape[0] - self.skip]
-        score[~panel.tradable] = np.nan
+        score[~panel.investable] = np.nan
         valid = np.isfinite(score)
         # Stable sort on -score: ties broken by security index, deterministic.
         order = np.argsort(np.where(valid, -score, np.inf), axis=1, kind="stable")
@@ -181,7 +182,7 @@ class TrendFollowing(_Rule):
         r = panel.log_returns()
         total, _ = trailing_sum(r, self.lookback, max(1, int(0.8 * self.lookback)))
         vol = trailing_vol(r, self.vol_window)
-        eligible = panel.tradable & np.isfinite(total) & np.isfinite(vol) & (vol > 0)
+        eligible = panel.investable & np.isfinite(total) & np.isfinite(vol) & (vol > 0)
         n = np.maximum(eligible.sum(axis=1, keepdims=True), 1)
         per_period = self.vol_target / math.sqrt(self.periods_per_year)
         with np.errstate(divide="ignore", invalid="ignore"):

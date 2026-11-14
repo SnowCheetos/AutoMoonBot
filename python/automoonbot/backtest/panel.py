@@ -12,7 +12,7 @@ open of bar ``t`` (``adv_shares[t]``, ``sigma[t]``) is computed from bars
 
 import datetime as dt
 from collections.abc import Sequence
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, replace
 from typing import Any
 
 import numpy as np
@@ -81,6 +81,27 @@ class MarketPanel:
     #: the source has none.
     high: F64
     low: F64
+    #: ``[T, S]`` point-in-time universe membership (e.g. index constituents
+    #: as known at each decision), or ``None`` for "every security". Prices
+    #: of non-members stay available (history for features); strategies only
+    #: invest in :attr:`investable` securities.
+    member: npt.NDArray[np.bool_] | None = None
+
+    @property
+    def investable(self) -> npt.NDArray[np.bool_]:
+        """``[T, S]`` a bar exists at ``t`` and the security is in the
+        universe at ``t``."""
+        if self.member is None:
+            return self.tradable
+        out: npt.NDArray[np.bool_] = self.tradable & self.member
+        return out
+
+    def with_membership(self, member: npt.ArrayLike) -> MarketPanel:
+        """A copy restricted to the universe ``member[T, S]``."""
+        m = np.asarray(member, dtype=np.bool_)
+        if m.shape != self.shape:
+            raise ValueError(f"membership must be {self.shape}, got {m.shape}")
+        return replace(self, member=m)
 
     @property
     def shape(self) -> tuple[int, int]:

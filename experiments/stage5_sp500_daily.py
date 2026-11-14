@@ -23,6 +23,7 @@ import argparse
 import copy
 import csv
 import dataclasses
+import datetime as dt
 import json
 import pickle
 import time
@@ -42,8 +43,9 @@ from automoonbot.baselines import (
     InverseVolatility,
 )
 from automoonbot.data import ParquetStore
+from automoonbot.data.membership import Snapshots, coverage, require_history
 from automoonbot.data.providers.yahoo import security_id
-from automoonbot.graph import to_ns
+from automoonbot.graph import TemporalGraph, to_ns
 from automoonbot.models import GraphTransformerStrategy, Overlay, TrainConfig
 from automoonbot.models.universe import Membership, build_universe_graph
 
@@ -65,12 +67,97 @@ def load_universe(path: str) -> list[tuple[str, str, str]]:
     ]
 
 
+def add_universe_args(ap: argparse.ArgumentParser) -> None:
+    ap.add_argument("--store", required=True)
+    ap.add_argument("--universe", required=True, help="current constituents CSV")
+    ap.add_argument("--start", default="1998-01-01T00:00:00Z")
+    ap.add_argument(
+        "--membership",
+        help="dated constituent snapshots (date,tickers CSV): point-in-time universe; "
+        "the current list is appended as a final snapshot dated --as-of",
+    )
+    ap.add_argument("--as-of", default="2026-11-13", help="date of the current list")
+    ap.add_argument(
+        "--instruments",
+        help="JSON {info: {symbol: {type}}} from the price source; non-EQUITY symbols are dropped",
+    )
+    ap.add_argument(
+        "--sic",
+        help="SIC codes per symbol (JSON from SEC submissions): classify every name by "
+        "SIC industry (4-digit) and major group (2-digit) instead of today's GICS",
+    )
+
+
+def build_universe(
+    args: argparse.Namespace,
+) -> tuple[MarketPanel, TemporalGraph, dict[str, Any]]:
+    """The panel (with point-in-time membership if requested), its
+    classification graph, and a description of the universe."""
+    uni = load_universe(args.universe)
+    info: dict[str, Any] = {"membership": bool(args.membership)}
+    if args.sic:
+        with open(args.sic) as fh:
+            sic = json.load(fh)["sic"]
+
+        def classify(sym: str) -> tuple[str, str] | None:
+            code = str((sic.get(sym) or {}).get("sic") or "")
+            return (f"sic:{code}", f"sic2:{code[:2]}") if code.isdigit() else None
+
+    else:
+        gics = {u[0][7:].replace("-", "."): (u[2], u[1]) for u in uni}
+
+        def classify(sym: str) -> tuple[str, str] | None:
+            return gics.get(sym)
+
+    snap = None
+    symbols = [u[0][7:].replace("-", ".") for u in uni]
+    if args.membership:
+        snap = Snapshots.from_csv(args.membership).extended(
+            dt.date.fromisoformat(args.as_of), symbols
+        )
+        since = dt.datetime.fromtimestamp(to_ns(args.start) // 10**9, dt.UTC).date()
+        symbols = sorted(snap.symbols(since))
+    if args.instruments:
+        # Symbols whose current owner is not a common stock (e.g. an ETF that
+        # took over a former member's ticker).
+        with open(args.instruments) as fh:
+            kinds = json.load(fh)["info"]
+        info["not_equity"] = sorted(
+            s for s in symbols if kinds.get(s, {}).get("type", "EQUITY") != "EQUITY"
+        )
+        symbols = [s for s in symbols if s not in set(info["not_equity"])]
+    unclassified = [s for s in symbols if classify(s) is None]
+    symbols = [s for s in symbols if classify(s) is not None]
+    store = ParquetStore(args.store)
+    ids = [security_id(s.replace(".", "-")) for s in symbols]
+    panel = MarketPanel.from_store(store, ids, start=to_ns(args.start))
+    has = panel.tradable.any(axis=0)
+    if not has.all():
+        keep = [s for s, h in zip(panel.securities, has, strict=True) if h]
+        info["without_bars"] = sorted(
+            s for s, h in zip(panel.securities, has, strict=True) if not h
+        )
+        panel = MarketPanel.from_store(store, keep, start=to_ns(args.start))
+    info["unclassified"] = unclassified
+    if snap is not None:
+        mask = snap.mask(panel.times, panel.securities, lambda sid: sid[7:].replace("-", "."))
+        mask = require_history(mask, panel.tradable)
+        panel = panel.with_membership(mask)
+        info["coverage"] = coverage(snap, panel.times, mask, panel.tradable)
+    first = np.argmax(panel.tradable, axis=0)
+    members = []
+    for sid in panel.securities:
+        ind, sec = classify(sid[7:].replace("-", ".")) or ("", "")
+        members.append(Membership(sid, ind, sec))
+    graph = build_universe_graph(members, panel.decision_time[first])
+    info["securities"] = panel.shape[1]
+    return panel, graph, info
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--store", required=True)
-    ap.add_argument("--universe", required=True)
+    add_universe_args(ap)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--start", default="1998-01-01T00:00:00Z")
     ap.add_argument("--min-train-years", type=int, default=8)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--threads", type=int, default=2)
@@ -85,20 +172,12 @@ def main() -> None:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    uni = load_universe(args.universe)
-    store = ParquetStore(args.store)
-    panel = MarketPanel.from_store(store, [u[0] for u in uni], start=to_ns(args.start))
-    has = panel.tradable.any(axis=0)
-    if not has.all():
-        keep = [s for s, h in zip(panel.securities, has, strict=True) if h]
-        print(f"dropping {int((~has).sum())} securities without bars")
-        panel = MarketPanel.from_store(store, keep, start=to_ns(args.start))
-    cls = {u[0]: u for u in uni}
-    first = np.argmax(panel.tradable, axis=0)
-    members = [Membership(s, cls[s][2], cls[s][1]) for s in panel.securities]
-    graph = build_universe_graph(members, panel.decision_time[first])
+    panel, graph, info = build_universe(args)
+    (out / "universe.json").write_text(json.dumps(info, indent=1))
     t_bars, n_sec = panel.shape
     print(f"panel {t_bars} bars x {n_sec} securities", flush=True)
+    if "coverage" in info:
+        print("member-day coverage by year:", {k: round(v, 3) for k, v in info["coverage"].items()})
 
     folds = list(
         walk_forward(
