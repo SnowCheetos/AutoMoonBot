@@ -1,5 +1,7 @@
 # Stage 5: graph transformer on S&P 500 daily bars
 
+> **Superseded.** On a point-in-time S&P 500 the edge disappears: +10.5% a year against +10.7% for equal weight, factor alpha −1.0% (t −0.5). See [stage5-pit.md](stage5-pit.md). This page is kept as the record of the survivor-only run.
+
 **Result.** Out of sample, the graph transformer beats every baseline on the same universe. After controlling for the obvious factor tilts, the alpha is about 6–8% a year (t ≈ 3).
 
 **This is not yet evidence of a real edge.** The universe is the *current* S&P 500, so it is survivorship-biased. The model leans hard into high-volatility names, and that is exactly the tilt survivorship flatters. The test that decides it is a point-in-time universe that includes names later removed or delisted.
@@ -92,7 +94,7 @@ The deflated Sharpe ratio is about 1.0 for every positive strategy. All of them 
 - The model's excess return is lumpy.
 - Big wins come in high-volatility rebounds and rallies: 2009 (+104% vs +39%), 2020 (+66% vs +22%), and 2023–2026.
 - It lags in 2014–2016 and 2022 (−28% vs −11%).
-- The overlay roughly halves the 2008 and 2022 damage.
+- The overlay cuts 2008 from −44% to −30% and 2022 from −28% to −23%.
 
 ## Reading
 

@@ -140,10 +140,17 @@ def build_universe(
         panel = MarketPanel.from_store(store, keep, start=to_ns(args.start))
     info["unclassified"] = unclassified
     if snap is not None:
-        mask = snap.mask(panel.times, panel.securities, lambda sid: sid[7:].replace("-", "."))
-        mask = require_history(mask, panel.tradable)
+        raw = snap.mask(panel.times, panel.securities, lambda sid: sid[7:].replace("-", "."))
+        mask = require_history(raw, panel.tradable)
         panel = panel.with_membership(mask)
+        # Coverage before the history check separates the two kinds of hole:
+        # names with no price series at all, and runs dropped as ticker reuse.
+        info["coverage_before_history_check"] = coverage(snap, panel.times, raw, panel.tradable)
         info["coverage"] = coverage(snap, panel.times, mask, panel.tradable)
+        dropped = (raw & ~mask).any(axis=0)
+        info["history_check_dropped"] = sorted(
+            s[7:] for s, d in zip(panel.securities, dropped, strict=True) if d
+        )
     first = np.argmax(panel.tradable, axis=0)
     members = []
     for sid in panel.securities:
