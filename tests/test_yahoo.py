@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 import numpy as np
 import pytest
+
 from automoonbot.backtest import MarketPanel
 from automoonbot.data import ParquetStore
 from automoonbot.data.http import Response

@@ -43,6 +43,11 @@ target-version = "py314"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF", "NPY"]
 
+[tool.ruff.lint.isort]
+# Explicit, so import order does not depend on whether the package is installed.
+known-first-party = ["automoonbot"]
+known-local-folder = ["helpers"]
+
 [tool.mypy]
 python_version = "3.14"
 strict = true

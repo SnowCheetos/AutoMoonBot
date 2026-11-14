@@ -4,6 +4,7 @@ import math
 
 import numpy as np
 import pytest
+
 from automoonbot.backtest import MarketPanel, Simulator, forward_returns, summary, walk_forward
 from automoonbot.backtest.metrics import (
     cvar,
@@ -129,6 +130,7 @@ def test_panel_from_store(tmp_path) -> None:  # type: ignore[no-untyped-def]
     import datetime as dt
 
     import pyarrow as pa
+
     from automoonbot.data import ParquetStore
     from automoonbot.data.schemas import TS
 

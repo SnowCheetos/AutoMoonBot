@@ -1,6 +1,7 @@
 """Shared synthetic market data for tests."""
 
 import numpy as np
+
 from automoonbot.backtest import MarketPanel
 
 HOUR = 3600 * 10**9
