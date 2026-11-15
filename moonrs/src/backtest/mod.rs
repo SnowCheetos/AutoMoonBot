@@ -102,6 +102,12 @@ pub struct Market {
     /// Optional absolute half-spread per unit of price, known before the
     /// open of each bar; `NaN` entries fall back to the bps defaults.
     pub half_spread: Option<Vec<f64>>,
+    /// Optional `[T]` annual risk-free rate known at the close of each bar:
+    /// cash held from that close to the next bar accrues at it (plus
+    /// [`Costs::cash_spread`] or [`Costs::margin_spread`]), and portfolio
+    /// margin reprices options with it. `None`: the constant
+    /// [`Costs::cash_rate`] / [`Costs::margin_rate`] and [`Rules::rate`].
+    pub rate: Option<Vec<f64>>,
 }
 
 impl Market {
@@ -132,6 +138,7 @@ impl Market {
             dividend,
             instruments: Vec::new(),
             half_spread: None,
+            rate: None,
         }
     }
 
@@ -154,6 +161,18 @@ impl Market {
         ] {
             if len != n {
                 return bad(&format!("{name} has {len} elements, expected {n}"));
+            }
+        }
+        if let Some(r) = &self.rate {
+            if r.len() != self.periods {
+                return bad(&format!(
+                    "rate has {} elements, expected {}",
+                    r.len(),
+                    self.periods
+                ));
+            }
+            if let Some(t) = r.iter().position(|x| !x.is_finite()) {
+                return bad(&format!("rate must be finite (bar {t})"));
             }
         }
         if !self.instruments.is_empty() && self.instruments.len() != self.securities {
@@ -260,6 +279,10 @@ pub struct Costs {
     pub cash_rate: f64,
     /// Annual rate paid on negative cash (margin).
     pub margin_rate: f64,
+    /// With a market rate series: the spread over it earned on cash (may be
+    /// negative) and paid on margin loans, in place of the two rates above.
+    pub cash_spread: f64,
+    pub margin_spread: f64,
     /// Fraction of last close lost when a position is force-closed because
     /// its security stopped trading.
     pub delist_haircut: f64,
@@ -286,6 +309,8 @@ impl Default for Costs {
             borrow_rate: 0.01,
             cash_rate: 0.0,
             margin_rate: 0.06,
+            cash_spread: 0.0,
+            margin_spread: 0.015,
             delist_haircut: 0.3,
             periods_per_year: 252.0,
             option_commission: 0.65,
@@ -305,6 +330,7 @@ impl Costs {
             ("max_participation", self.max_participation),
             ("borrow_rate", self.borrow_rate),
             ("margin_rate", self.margin_rate),
+            ("margin_spread", self.margin_spread),
             ("option_commission", self.option_commission),
             ("future_commission", self.future_commission),
             ("option_half_spread_bps", self.option_half_spread_bps),
@@ -317,8 +343,10 @@ impl Costs {
                 )));
             }
         }
-        if !self.cash_rate.is_finite() {
-            return Err(Error::Schema("costs.cash_rate must be finite".into()));
+        if !(self.cash_rate.is_finite() && self.cash_spread.is_finite()) {
+            return Err(Error::Schema(
+                "costs.cash_rate and costs.cash_spread must be finite".into(),
+            ));
         }
         if !(0.0..=1.0).contains(&self.delist_haircut) {
             return Err(Error::Schema(
@@ -726,12 +754,20 @@ impl Simulator {
         let ppy = self.costs.periods_per_year;
         let t = at_open_of.unwrap_or(self.t);
         let need_vol = matches!(self.rules.margin, MarginModel::Portfolio(_));
+        // The latest rate known: the last close's (the open of t follows
+        // the close of t - 1).
+        let known = if at_open_of.is_some() {
+            t.saturating_sub(1)
+        } else {
+            t
+        };
+        let rate = m.rate.as_ref().map_or(self.rules.rate, |r| r[known]);
         Marks::new(
             &self.instruments,
             price,
             &self.strike,
             &self.deliverable,
-            self.rules.rate,
+            rate,
             need_vol,
             |i| {
                 let e = self.instruments[i].expiry().unwrap_or(t) as f64;
@@ -913,10 +949,17 @@ impl Simulator {
                 r.borrow_cost += -self.shares[i] * px * self.costs.borrow_rate / ppy;
             }
         }
+        let (cash_rate, margin_rate) = match &m.rate {
+            Some(rate) => (
+                rate[t0] + self.costs.cash_spread,
+                rate[t0] + self.costs.margin_spread,
+            ),
+            None => (self.costs.cash_rate, self.costs.margin_rate),
+        };
         r.financing = if self.cash >= 0.0 {
-            self.cash * self.costs.cash_rate / ppy
+            self.cash * cash_rate / ppy
         } else {
-            self.cash * self.costs.margin_rate / ppy
+            self.cash * margin_rate / ppy
         };
         self.cash += r.financing - r.borrow_cost;
 
@@ -1273,6 +1316,7 @@ mod tests {
             dividend: vec![0.0; t * s],
             instruments: Vec::new(),
             half_spread: None,
+            rate: None,
         }
     }
 

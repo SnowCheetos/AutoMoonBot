@@ -96,11 +96,13 @@ class Market:
         *,
         instruments: list[dict[str, Any]] | None = None,
         half_spread: _F64 | None = None,
+        rate: npt.NDArray[np.float64] | None = None,
     ) -> None:
         """``instruments``: one dict per column (``kind`` is ``"equity"``,
         ``"index"``, ``"option"`` or ``"future"``); unknown keys are
         rejected. ``half_spread``: absolute per-bar half-spread, NaN for the
-        bps default."""
+        bps default. ``rate``: ``[T]`` annual risk-free rate known at each
+        close (cash accrues at it plus ``cash_spread``/``margin_spread``)."""
     @property
     def shape(self) -> tuple[int, int]: ...
 
@@ -118,6 +120,8 @@ class Simulator:
         borrow_rate: float | None = None,
         cash_rate: float | None = None,
         margin_rate: float | None = None,
+        cash_spread: float | None = None,
+        margin_spread: float | None = None,
         delist_haircut: float | None = None,
         periods_per_year: float | None = None,
         option_commission: float | None = None,
@@ -154,3 +158,15 @@ class Simulator:
         trade); infinities are rejected."""
     def run(self, targets: _F64, units: bool = False) -> dict[str, _F64]:
         """``step`` for each row of ``targets[N, S]``; stops on ruin."""
+
+def option_value(
+    call: npt.NDArray[np.bool_],
+    spot: npt.NDArray[np.float64],
+    strike: npt.NDArray[np.float64],
+    tau: npt.NDArray[np.float64],
+    rate: npt.NDArray[np.float64],
+    carry: npt.NDArray[np.float64],
+    vol: npt.NDArray[np.float64],
+    *,
+    american: bool = True,
+) -> npt.NDArray[np.float64]: ...

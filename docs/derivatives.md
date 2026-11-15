@@ -137,6 +137,32 @@ assumptions, and it reports how much of each strategy's option marking
 rests on stale prices. `ingest` needs `MASSIVE_API_KEY` and runs for
 hours; `run` takes seconds.
 
+## Synthetic options
+
+`automoonbot.backtest.synthetic` prices option chains with Black-Scholes
+for history no option data covers. The same code prices options for
+portfolio margin, and Python can call it as `_moonrs.option_value`.
+
+* **Listing.** A monthly cycle's contracts are listed at the close of the
+  previous expiration, with strikes from that close.
+* **Volatility.** It comes from a market-implied index (VIX for the S&P
+  500), not from the stock's own past volatility. Pricing at past
+  volatility leaves out the volatility risk premium that option sellers
+  earn. A skew sits on top, in standardized moneyness.
+* **Inputs.** Every price uses only data from its own time or earlier.
+  `aligned_bars`, `tbill_rate` and `trailing_dividend_yield` build the
+  inputs from the store.
+
+`MarketPanel.with_rate` adds a daily risk-free rate series, for example
+T-bill yields. Cash accrues at the rate known at each close, plus the
+`cash_spread` / `margin_spread` costs. Portfolio margin reprices options
+with the same rate.
+
+`experiments/options_synthetic.py` runs the SPY study in
+`docs/results/options-synthetic.md`. The ATM/VIX ratio is fitted against
+the Cboe PutWrite index on 1996–2010 and tested on 2011–2026, where the
+synthetic level is about 1.7% a year too high.
+
 ## Limitations
 
 * **Stale marks.** Free-tier bars are trade aggregates. An illiquid

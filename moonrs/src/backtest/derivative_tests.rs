@@ -28,6 +28,7 @@ fn market(open: &[&[f64]], close: &[&[f64]], instruments: Vec<Instrument>) -> Ma
         dividend: vec![0.0; t * s],
         instruments,
         half_spread: None,
+        rate: None,
     }
 }
 
@@ -554,4 +555,35 @@ fn option_weights_are_notional() {
     assert!((stock - CAP / 101.0).abs() < 1e-6);
     let w = s.weights().to_vec();
     assert!(close(w[1], calls * 100.0 * 101.0 / s.equity()), "{w:?}");
+}
+
+#[test]
+fn cash_accrues_at_the_rate_series() {
+    let mut m = market(
+        &[&[10.0], &[10.0], &[10.0]],
+        &[&[10.0], &[10.0], &[10.0]],
+        vec![],
+    );
+    // Annual rates known at each close; the last one is never used.
+    m.rate = Some(vec![0.0504, 0.0252, 9.0]);
+    let costs = Costs {
+        cash_spread: -0.0002,
+        ..free()
+    };
+    let mut s = Simulator::new(Arc::new(m), costs, levered(1.0), 0, CAP).unwrap();
+    let r = s.step(&[0.0]).unwrap();
+    assert!(close(r.financing, CAP * 0.0502 / 252.0), "{r:?}");
+    let r = s.step(&[0.0]).unwrap();
+    assert!(
+        close(
+            r.financing,
+            s.equity() / (1.0 + 0.025 / 252.0) * 0.025 / 252.0
+        ),
+        "{r:?}"
+    );
+    let mut bad = market(&[&[10.0], &[10.0]], &[&[10.0], &[10.0]], vec![]);
+    bad.rate = Some(vec![0.01]);
+    assert!(bad.validate().is_err());
+    bad.rate = Some(vec![0.01, f64::NAN]);
+    assert!(bad.validate().is_err());
 }
