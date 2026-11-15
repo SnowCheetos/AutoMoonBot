@@ -187,7 +187,8 @@ fn index_option_settles_on_the_next_open() {
         m.tradable[t * 2] = false;
     }
     expire(&mut m, 1, 2);
-    let mut s = sim(m, levered(1.0), Rules::default());
+    // One contract is 400,000 of index notional: 4x the capital.
+    let mut s = sim(m, levered(5.0), Rules::default());
     // Asking to trade the index does nothing.
     let r = s.step_units(&[5.0, 1.0]).unwrap();
     assert_eq!(s.shares(), &[0.0, 1.0]);
@@ -475,8 +476,9 @@ fn option_costs_and_lots() {
         ..free()
     };
     let mut s = Simulator::new(Arc::new(m), costs, levered(1.0), 0, CAP).unwrap();
-    // 1% of equity = 1,000 at 200 per contract: 5 contracts.
-    let r = s.step(&[0.0, 0.01]).unwrap();
+    // Option weights are notional: half of equity at 100 x 100 of stock per
+    // contract is 5 contracts (whatever the premium).
+    let r = s.step(&[0.0, 0.5]).unwrap();
     assert_eq!(s.shares()[1], 5.0);
     assert!(close(r.commission, 5.0 * 0.65));
     // The half-spread floor (0.05 > 1% of 2.00) per unit, x 100 x 5.
@@ -530,4 +532,26 @@ fn invalid_instruments_are_rejected() {
     let mut m = ok();
     m.instruments.pop();
     assert!(m.validate().is_err());
+}
+
+#[test]
+fn option_weights_are_notional() {
+    // The call's premium gaps from 2 to 3 overnight while the stock opens
+    // at 101: both legs are sized from the stock's open.
+    let m = market(
+        &[&[100.0, 2.0], &[101.0, 3.0], &[102.0, 3.5]],
+        &[&[100.0, 2.0], &[101.0, 3.0], &[102.0, 3.5]],
+        vec![
+            Instrument::EQUITY,
+            option(0, Right::Call, 105.0, 5, Settlement::Physical),
+        ],
+    );
+    let mut s = sim(m, levered(2.5), Rules::default());
+    s.step(&[1.0, -1.0]).unwrap();
+    let (stock, calls) = (s.shares()[0], s.shares()[1]);
+    // Whole contracts covering the shares bought at the same open.
+    assert_eq!(calls, -(stock / 100.0).round());
+    assert!((stock - CAP / 101.0).abs() < 1e-6);
+    let w = s.weights().to_vec();
+    assert!(close(w[1], calls * 100.0 * 101.0 / s.equity()), "{w:?}");
 }

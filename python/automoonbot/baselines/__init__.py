@@ -1,6 +1,7 @@
 """Baselines: simple rules and a faithful re-implementation of PGPerceptron,
 evaluated out of sample with the same harness as every new model."""
 
+from automoonbot.baselines.options import OptionWrite
 from automoonbot.baselines.rules import (
     BuyAndHold,
     Cash,
@@ -16,5 +17,6 @@ __all__ = [
     "CrossSectionalMomentum",
     "EqualWeight",
     "InverseVolatility",
+    "OptionWrite",
     "TrendFollowing",
 ]

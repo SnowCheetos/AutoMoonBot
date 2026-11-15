@@ -32,8 +32,13 @@
 //!
 //! Columns can be options and futures as well as stock (see
 //! [`instrument`]). Positions are counts of units (shares or contracts);
-//! targets are either weights of equity ([`Simulator::step`]; for a future
-//! the weight is its notional) or units ([`Simulator::step_units`]).
+//! targets are either weights of equity ([`Simulator::step`]) or units
+//! ([`Simulator::step_units`]). The weight of a derivative is its notional
+//! over equity: a future's contract value, and for an option the value of
+//! the underlying it delivers (`deliverable` units at the underlying's
+//! price), not its premium. So writing calls on a stock position of weight
+//! 1 is a call weight of -1, whatever the premium, and both legs are sized
+//! from the same opening price of the stock.
 //!
 //! * **Futures** are marked to market: gains and losses move to cash at the
 //!   open (before trading) and at the close of every bar, and a position
@@ -330,8 +335,8 @@ impl Costs {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Constraints {
     pub long_only: bool,
-    /// Max `sum |w|` (1.0 = unlevered). Futures count their notional,
-    /// options their premium.
+    /// Max `sum |w|` (1.0 = unlevered), with derivatives at their notional
+    /// (see the module docs): a covered call has a gross of 2.
     pub max_gross: f64,
     /// Max `|w_i|`.
     pub max_weight: f64,
@@ -551,18 +556,29 @@ impl Simulator {
             .then(|| (self.strike[i], self.deliverable[i]))
     }
 
-    /// Current weights at the last close (futures: notional).
+    /// Current weights at the last close (derivatives at their notional).
     pub fn weights(&mut self) -> &[f64] {
-        let m = &self.market;
+        let m = self.market.clone();
+        let t = self.t;
         for i in 0..m.securities {
-            let px = m.close[m.at(self.t, i)];
             self.weights[i] = if self.equity > 0.0 && self.shares[i] != 0.0 {
-                self.shares[i] * px * self.instruments[i].multiplier / self.equity
+                self.shares[i] * self.unit_exposure(i, |j| m.close[m.at(t, j)]) / self.equity
             } else {
                 0.0
             };
         }
         &self.weights
+    }
+
+    /// The exposure of one unit of `i`, the basis of its weight, given each
+    /// column's price: a share's or future's contract value, and for an
+    /// option the value of the underlying it delivers.
+    fn unit_exposure(&self, i: usize, price: impl Fn(usize) -> f64) -> f64 {
+        let mult = self.instruments[i].multiplier;
+        match self.instruments[i].kind {
+            Kind::Option(o) => price(o.underlying) * self.ratio(i) * mult,
+            _ => price(i) * mult,
+        }
     }
 
     /// Project `target` onto the constraints. `NaN` entries ("hold") and
@@ -945,8 +961,6 @@ impl Simulator {
                 sim.shares[i] * px * sim.instruments[i].multiplier
             }
         };
-        let exposure =
-            |sim: &Self, i: usize, px: f64| sim.shares[i] * px * sim.instruments[i].multiplier;
         r.equity_open = self.cash
             + (0..s)
                 .filter(|&i| self.shares[i] != 0.0)
@@ -1005,7 +1019,12 @@ impl Simulator {
         let liquidating = r.liquidated > 0;
 
         // 6. Targets as weights, projected onto the constraints.
-        let px_unit = |sim: &Self, i: usize| open(i) * sim.instruments[i].multiplier;
+        let px_unit = |sim: &Self, i: usize| sim.unit_exposure(i, open);
+        // A derivative whose underlying has no price cannot be sized by weight.
+        let sizable = |sim: &Self, i: usize| {
+            let p = px_unit(sim, i);
+            tradable(sim, i) && p.is_finite() && p > 0.0
+        };
         let units_in = mode == Target::Units;
         let w_in: Vec<f64> = if units_in {
             (0..s)
@@ -1016,14 +1035,14 @@ impl Simulator {
         };
         let fixed_gross: f64 = (0..s)
             .filter(|&i| self.shares[i] != 0.0 && (!tradable(self, i) || w_in[i].is_nan()))
-            .map(|i| exposure(self, i, open(i)).abs())
+            .map(|i| (self.shares[i] * px_unit(self, i)).abs())
             .sum::<f64>()
             / e_open;
         let (w, projection) = if liquidating {
             // A liquidation only reduces positions; constraints cannot bind.
             (w_in.clone(), 0.0)
         } else {
-            self.project(&w_in, |i| tradable(self, i), fixed_gross)
+            self.project(&w_in, |i| sizable(self, i), fixed_gross)
         };
         r.projection = projection;
         let mut want: Vec<f64> = (0..s)
@@ -1176,7 +1195,7 @@ impl Simulator {
         for i in 0..s {
             if self.shares[i] != 0.0 {
                 let px = m.close[m.at(t1, i)];
-                let x = exposure(self, i, px);
+                let x = self.shares[i] * self.unit_exposure(i, |j| m.close[m.at(t1, j)]);
                 if x > 0.0 {
                     long += x
                 } else {
