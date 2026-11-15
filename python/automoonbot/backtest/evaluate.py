@@ -174,10 +174,13 @@ def simulate(
     capital: float = 1.0,
     periods_per_year: float = 252.0,
     sim_kwargs: Mapping[str, object] | None = None,
+    units: bool = False,
 ) -> Trial:
     """Run precomputed targets (decided at steps ``start, start + 1, ...``)
     through the simulator. Targets do not depend on costs, so one fit can
-    be scored under several cost assumptions."""
+    be scored under several cost assumptions. ``units=True``: targets are
+    shares / contracts rather than weights. ``sim_kwargs`` passes costs,
+    constraints and margin rules (e.g. ``margin="portfolio"``)."""
     sim = Simulator(
         panel.market(),
         start=start,
@@ -185,7 +188,7 @@ def simulate(
         periods_per_year=periods_per_year,
         **dict(sim_kwargs or {}),  # type: ignore[arg-type]
     )
-    out = sim.run(np.ascontiguousarray(targets, dtype=np.float64))
+    out = sim.run(np.ascontiguousarray(targets, dtype=np.float64), units=units)
     lr = out["log_return"]
     costs = out["commission"] + out["spread_cost"] + out["impact_cost"] + out["borrow_cost"]
     equity_open = out["equity_open"]

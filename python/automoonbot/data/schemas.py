@@ -198,9 +198,41 @@ RELATIONS = Dataset(
     "Typed relationships between entities with their evidence (accession, URL, model run).",
 )
 
+OPTION_CONTRACTS = Dataset(
+    "option_contracts",
+    pa.schema(
+        [
+            _f("security_id", pa.string()),
+            _f("underlying_id", pa.string()),
+            _f("right", pa.string()),  # 'call' | 'put'
+            _f("strike", pa.float64()),
+            _f("expiration", pa.date32()),
+            _f("exercise_style", pa.string()),  # 'american' | 'european'
+            _f("settlement", pa.string()),  # 'physical' | 'cash_close' | 'cash_next_open'
+            _f("multiplier", pa.float64()),
+            _f("deliverable", pa.float64()),  # underlying units per contract
+            _f("known_time", TS),
+            _f("source", pa.string()),
+        ]
+    ),
+    ("security_id",),
+    "Listed option contracts (terms as listed). A contract adjusted for a corporate "
+    "action is listed under a new security_id; known_time is no later than its first bar.",
+)
+
 DATASETS: dict[str, Dataset] = {
     d.name: d
-    for d in (ENTITIES, IDENTIFIERS, FILINGS, FACTS, BARS, CORPORATE_ACTIONS, ARTICLES, RELATIONS)
+    for d in (
+        ENTITIES,
+        IDENTIFIERS,
+        FILINGS,
+        FACTS,
+        BARS,
+        CORPORATE_ACTIONS,
+        OPTION_CONTRACTS,
+        ARTICLES,
+        RELATIONS,
+    )
 }
 
 

@@ -14,7 +14,11 @@ The project is being rebuilt in stages, each landing as its own pull request.
 3. **Backtester.** Event-driven, next-bar execution with commissions, spread,
    slippage and borrow; walk-forward evaluation with purging and embargo;
    log-growth, CVaR, max drawdown, deflated Sharpe. A multi-horizon labeler kept
-   strictly separate from features.
+   strictly separate from features. *Extended with options, futures and
+   margin (Reg T and portfolio margin, forced liquidation) and a
+   point-in-time option-chain provider; see `docs/derivatives.md`. Open: two
+   years of SPY chains on the free data plan, then covered-call and
+   put-write baselines against buy-and-hold.*
 4. **Baselines.** Cash, buy-and-hold, equal-weight, inverse-volatility,
    cross-sectional momentum, trend following, and PGPerceptron re-implemented
    faithfully (as published, and with its four porting-time bugs repaired,

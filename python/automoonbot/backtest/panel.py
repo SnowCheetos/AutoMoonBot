@@ -58,6 +58,18 @@ def _trailing(x: F64, window: int, fn: str) -> F64:
     return out
 
 
+def session_dates(times_ns: npt.ArrayLike) -> npt.NDArray[np.datetime64]:
+    """New York calendar dates (``datetime64[D]``) of UTC-ns instants."""
+    ts = pa.array(np.asarray(times_ns, dtype=np.int64), pa.int64()).cast(
+        pa.timestamp("ns", tz="UTC")
+    )
+    local = pc.local_timestamp(ts.cast(pa.timestamp("ns", tz="America/New_York")))
+    out: npt.NDArray[np.datetime64] = (
+        local.cast(pa.date32()).to_numpy(zero_copy_only=False).astype("datetime64[D]")
+    )
+    return out
+
+
 @dataclass
 class MarketPanel:
     securities: list[str]
@@ -86,6 +98,13 @@ class MarketPanel:
     #: of non-members stay available (history for features); strategies only
     #: invest in :attr:`investable` securities.
     member: npt.NDArray[np.bool_] | None = None
+    #: What each column is, as the simulator's instrument dicts (see
+    #: :class:`automoonbot._moonrs.Market`), or ``None`` for "all stocks".
+    #: Set with :meth:`with_instruments`.
+    instruments: list[dict[str, Any]] | None = None
+    #: ``[T, S]`` absolute half-spread per unit of price known before each
+    #: open (e.g. from the previous close's quotes), NaN where unknown.
+    half_spread: F64 | None = None
 
     @property
     def investable(self) -> npt.NDArray[np.bool_]:
@@ -102,6 +121,110 @@ class MarketPanel:
         if m.shape != self.shape:
             raise ValueError(f"membership must be {self.shape}, got {m.shape}")
         return replace(self, member=m)
+
+    def with_instruments(self, instruments: Sequence[dict[str, Any]]) -> MarketPanel:
+        """A copy whose columns are the given instruments.
+
+        Options and futures stay listed from their first bar through their
+        last trading bar (``expiry``, a bar index) even on bars without a
+        trade, with the last close carried forward, so a contract that
+        stops trading before expiry is held to expiry instead of being
+        force-closed as delisted. They are neither listed nor tradable
+        after expiry.
+        """
+        inst = [dict(x) for x in instruments]
+        t, s = self.shape
+        if len(inst) != s:
+            raise ValueError(f"need {s} instruments, got {len(inst)}")
+        listed = self.listed.copy()
+        tradable = self.tradable.copy()
+        close = self.close.copy()
+        opn = self.open.copy()
+        rows = np.arange(t)
+        for i, x in enumerate(inst):
+            if x.get("kind") not in ("option", "future"):
+                continue
+            e = int(x["expiry"])
+            if not self.tradable[:, i].any():
+                listed[:, i] = False
+                continue
+            first = int(np.argmax(self.tradable[:, i]))
+            if first > e:
+                raise ValueError(f"{self.securities[i]}: first bar {first} after expiry {e}")
+            live = (rows >= first) & (rows <= e)
+            # Last tradable close, carried forward to expiry.
+            has = np.where(self.tradable[:, i], rows, -1)
+            last = np.maximum.accumulate(has)
+            filled = self.close[np.maximum(last, 0), i]
+            listed[:, i] = live
+            tradable[:, i] &= live  # bars after expiry are not this contract's
+            close[:, i] = np.where(live, filled, np.nan)
+            opn[:, i] = np.where(tradable[:, i], opn[:, i], np.nan)
+        return replace(
+            self, instruments=inst, listed=listed, tradable=tradable, close=close, open=opn
+        )
+
+    def with_half_spread(self, half_spread: npt.ArrayLike) -> MarketPanel:
+        """A copy with an absolute per-bar half-spread (see
+        :attr:`half_spread`)."""
+        h = np.asarray(half_spread, dtype=np.float64)
+        if h.shape != self.shape:
+            raise ValueError(f"half_spread must be {self.shape}, got {h.shape}")
+        return replace(self, half_spread=h)
+
+    def with_contracts(self, store: ParquetStore, *, as_of: int | None = None) -> MarketPanel:
+        """A copy whose ``option:`` columns are options on the terms listed
+        in the store's ``option_contracts`` (latest known by ``as_of``);
+        other columns keep their instruments (equities by default).
+
+        Each contract's underlying must be a column. Its expiration date maps
+        to the last row on or before that New York date; one past the
+        panel's end maps to the last row plus the weekdays in between, so
+        time to expiry stays right for contracts still open at the end.
+        """
+        opts = [s for s in self.securities if s.startswith("option:")]
+        inst = [dict(x) for x in self.instruments] if self.instruments else None
+        inst = inst or [{"kind": "equity"} for _ in self.securities]
+        if not opts:
+            return self.with_instruments(inst)
+        terms = store.read(
+            "option_contracts", as_of, filter=pc.field("security_id").isin(opts), latest=True
+        )
+        rows = {r["security_id"]: r for r in terms.to_pylist()}
+        missing = sorted(set(opts) - rows.keys())
+        if missing:
+            raise ValueError(f"no contract terms for {missing[:5]} ({len(missing)} in all)")
+        col = {s: i for i, s in enumerate(self.securities)}
+        days = session_dates(self.times)
+        last = self.shape[0] - 1
+        settlement = {"physical", "cash_close", "cash_next_open"}
+        for i, sec in enumerate(self.securities):
+            r = rows.get(sec)
+            if r is None:
+                continue
+            u = col.get(r["underlying_id"])
+            if u is None:
+                raise ValueError(f"{sec}: underlying {r['underlying_id']} is not a column")
+            if r["settlement"] not in settlement:
+                raise ValueError(f"{sec}: unknown settlement {r['settlement']!r}")
+            exp = np.datetime64(r["expiration"], "D")
+            k = int(np.searchsorted(days, exp, side="right")) - 1
+            if k < 0:
+                raise ValueError(f"{sec}: expires before the panel starts")
+            if k == last and exp > days[last]:
+                k += int(np.busday_count(days[last] + 1, exp + 1))
+            inst[i] = {
+                "kind": "option",
+                "underlying": u,
+                "right": r["right"],
+                "strike": float(r["strike"]),
+                "expiry": k,
+                "style": r["exercise_style"],
+                "settlement": r["settlement"],
+                "deliverable": float(r["deliverable"]),
+                "multiplier": float(r["multiplier"]),
+            }
+        return self.with_instruments(inst)
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -185,9 +308,20 @@ class MarketPanel:
         end: int | None = None,
         as_of: int | None = None,
         window: int = 20,
+        align: str = "end",
     ) -> MarketPanel:
         """Assemble from the store's unadjusted ``bars`` and
-        ``corporate_actions`` (latest versions known by ``as_of``)."""
+        ``corporate_actions`` (latest versions known by ``as_of``).
+
+        ``align`` says which bars share a row. ``"end"``: bars with the same
+        end time (any bar length). ``"session"``: daily bars of the same New
+        York session date, for sources whose daily bars end at different
+        times (stock bars at 16:00, option bars at 16:15); a row's time is
+        the latest end in it and its decision time the latest knowledge
+        time, so no bar in it ends or is known after either.
+        """
+        if align not in ("end", "session"):
+            raise ValueError(f"align must be 'end' or 'session', got {align!r}")
         secs = list(dict.fromkeys(securities))
         flt = pc.field("security_id").isin(secs)
         bars = store.read("bars", as_of, filter=flt, latest=True)
@@ -202,11 +336,19 @@ class MarketPanel:
         if bars.num_rows == 0:
             raise ValueError("no bars for the requested securities and range")
         ends = bars.column("end").cast(pa.int64()).to_numpy()
-        times = np.unique(ends)
-        ti = np.searchsorted(times, ends)
+        if align == "end":
+            times = np.unique(ends)
+            ti = np.searchsorted(times, ends)
+        else:
+            sessions, ti = np.unique(session_dates(ends), return_inverse=True)
+            times = np.full(sessions.size, np.iinfo(np.int64).min)
+            np.maximum.at(times, ti, ends)
         col = {s: i for i, s in enumerate(secs)}
         si = np.array([col[s] for s in bars.column("security_id").to_pylist()])
         shape = (times.size, len(secs))
+        cell = ti.astype(np.int64) * len(secs) + si
+        if np.unique(cell).size != cell.size:
+            raise ValueError(f"two bars of one security share a row (align={align!r})")
 
         def dense(name: str) -> F64:
             a = np.full(shape, np.nan)
@@ -309,4 +451,6 @@ class MarketPanel:
             c(self.listed),
             c(self.split),
             c(self.dividend),
+            instruments=self.instruments,
+            half_spread=None if self.half_spread is None else c(self.half_spread),
         )
