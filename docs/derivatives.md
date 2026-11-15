@@ -22,9 +22,14 @@ or `with_contracts` to read option terms from the store):
 | `future` | contracts | 0 (gains settle to cash daily) | `multiplier`, `expiry`, `settlement`, initial and maintenance margin as fractions of notional |
 
 Strategies give targets as weights of equity (`step`) or as unit counts
-(`step(..., units=True)`, `run(..., units=True)`), which is what option
-strategies want ("short one call"). For a future, a weight is its notional
-over equity. Contracts are rounded to whole lots.
+(`step(..., units=True)`, `run(..., units=True)`, e.g. "short one call").
+The weight of a derivative is its notional over equity, not its premium: a
+future's contract value, and for an option the value of the underlying it
+delivers. Writing calls against a stock weight of 1 is a call weight of -1,
+and both legs are sized from the stock's opening price, so the hedge is
+exact up to whole contracts even when the option gaps overnight. The gross
+limit counts the same notional (a covered call has a gross of 2).
+Contracts are rounded to whole lots.
 
 ## Lifecycle
 
@@ -114,6 +119,23 @@ On the free plan: two years of history, 5 requests a minute, and trades
 only. Two years of SPY monthly chains with $5 strikes within 10% is about
 1,500 requests, roughly 5 hours, and an interrupted run resumes from the
 HTTP cache.
+
+## Baselines and the SPY experiment
+
+`automoonbot.baselines.OptionWrite` is the standard way to sell
+volatility: a covered call (`right="call"`: hold the stock, write calls on
+it) or a cash-secured put write (`right="put"`). It writes the nearest
+monthly contract with 15 to 50 sessions left, at the money or `otm` out of
+it, holds it to expiration, and writes the next one at the first decision
+after it settles. It reads only contracts with a bar at the decision, so
+it passes `check_causal`.
+
+`experiments/options_spy.py` runs buy-and-hold, covered calls (ATM and 2%
+out of the money) and put writes (the same strikes) on SPY. It uses one
+out-of-sample path with causality probes, portfolio margin and two cost
+assumptions, and it reports how much of each strategy's option marking
+rests on stale prices. `ingest` needs `MASSIVE_API_KEY` and runs for
+hours; `run` takes seconds.
 
 ## Limitations
 

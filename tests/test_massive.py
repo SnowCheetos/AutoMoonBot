@@ -2,9 +2,11 @@
 store, a session-aligned panel and the simulator."""
 
 import datetime as dt
+import importlib.util
 import json
 import urllib.parse
 from dataclasses import replace
+from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -13,6 +15,7 @@ import pyarrow as pa
 import pytest
 
 from automoonbot.backtest import MarketPanel, Simulator
+from automoonbot.baselines import OptionWrite
 from automoonbot.data import ParquetStore
 from automoonbot.data.http import Response
 from automoonbot.data.providers.massive import (
@@ -305,3 +308,26 @@ def test_bars_sharing_a_row_are_rejected(tmp_path: Any) -> None:
         MarketPanel.from_store(store, ["ticker:XYZ"], align="session")
     with pytest.raises(ValueError, match="align"):
         MarketPanel.from_store(store, ["ticker:XYZ"], align="day")
+
+
+def test_spy_experiment_pipeline_on_the_fake_chain(tmp_path: Any) -> None:
+    path = Path(__file__).parents[1] / "experiments" / "options_spy.py"
+    spec = importlib.util.spec_from_file_location("options_spy", path)
+    assert spec and spec.loader
+    exp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(exp)
+    store = ParquetStore(tmp_path)
+    store.write("bars", stock_bars())
+    closes = exp.session_closes(store, "ticker:XYZ")
+    assert closes == CLOSE
+    sel = ChainSelection(moneyness=0.05, max_days=40)
+    provider().ingest_chain(
+        store, "XYZ", closes, start=dt.date(2024, 6, 1), end=dt.date(2024, 6, 30), selection=sel
+    )
+    panel = exp.build_panel(store, "XYZ")
+    assert panel.securities[0] == "ticker:XYZ" and panel.shape[1] == 5
+    res = exp.run(panel, audit=3, costs={"default": {}}, writers=[OptionWrite("call")])
+    rows = {r["name"]: r for r in res["costs"]["default"]}
+    assert set(rows) == {"buy_and_hold", "covered_call_otm0"}
+    assert all(np.isfinite(r["log_growth"]) for r in rows.values())
+    assert res["stale_share"]["covered_call_otm0"] == 0.0  # the fake trades daily
