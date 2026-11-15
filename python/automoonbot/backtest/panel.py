@@ -105,6 +105,10 @@ class MarketPanel:
     #: ``[T, S]`` absolute half-spread per unit of price known before each
     #: open (e.g. from the previous close's quotes), NaN where unknown.
     half_spread: F64 | None = None
+    #: ``[T]`` annual risk-free rate known at each close (e.g. from T-bill
+    #: yields), or ``None`` for the simulator's constant rates. Cash held
+    #: from a close to the next bar accrues at that close's rate.
+    rate: F64 | None = None
 
     @property
     def investable(self) -> npt.NDArray[np.bool_]:
@@ -171,6 +175,15 @@ class MarketPanel:
         if h.shape != self.shape:
             raise ValueError(f"half_spread must be {self.shape}, got {h.shape}")
         return replace(self, half_spread=h)
+
+    def with_rate(self, rate: npt.ArrayLike) -> MarketPanel:
+        """A copy with a risk-free rate series (see :attr:`rate`)."""
+        r = np.asarray(rate, dtype=np.float64)
+        if r.shape != (self.shape[0],):
+            raise ValueError(f"rate must be [{self.shape[0]}], got {r.shape}")
+        if not np.isfinite(r).all():
+            raise ValueError("rate must be finite")
+        return replace(self, rate=r)
 
     def with_contracts(self, store: ParquetStore, *, as_of: int | None = None) -> MarketPanel:
         """A copy whose ``option:`` columns are options on the terms listed
@@ -453,4 +466,5 @@ class MarketPanel:
             c(self.dividend),
             instruments=self.instruments,
             half_spread=None if self.half_spread is None else c(self.half_spread),
+            rate=None if self.rate is None else c(self.rate),
         )

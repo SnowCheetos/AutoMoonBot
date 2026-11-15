@@ -149,3 +149,10 @@ def test_rejects_bad_input() -> None:
         security_id("bad symbol")
     with pytest.raises(ValueError):
         YahooProvider("5m")
+
+
+def test_index_symbols() -> None:
+    assert security_id("^vix") == "ticker:^VIX"
+    for bad in ("A^B", "^", "^^VIX", "SPY/"):
+        with pytest.raises(ValueError):
+            security_id(bad)

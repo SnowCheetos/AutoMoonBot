@@ -18,7 +18,9 @@ The project is being rebuilt in stages, each landing as its own pull request.
    margin (Reg T and portfolio margin, forced liquidation) and a
    point-in-time option-chain provider; see `docs/derivatives.md`. Open: two
    years of SPY chains on the free data plan, then covered-call and
-   put-write baselines against buy-and-hold.*
+   put-write baselines against buy-and-hold. Synthetic Black-Scholes chains
+   at VIX-implied volatility cover 1996–2026 meanwhile; see
+   `docs/results/options-synthetic.md`.*
 4. **Baselines.** Cash, buy-and-hold, equal-weight, inverse-volatility,
    cross-sectional momentum, trend following, and PGPerceptron re-implemented
    faithfully (as published, and with its four porting-time bugs repaired,

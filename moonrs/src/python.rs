@@ -569,7 +569,9 @@ fn instrument(index: usize, d: Bound<'_, PyDict>) -> PyResult<Instrument> {
 /// or ``{"kind": "future", "expiry", "multiplier", "initial_margin",
 /// "maintenance_margin", ...}``. `half_spread` (optional, `[T, S]`) is an
 /// absolute half-spread per unit of price known before each open; `NaN`
-/// falls back to the bps costs.
+/// falls back to the bps costs. `rate` (optional, `[T]`) is the annual
+/// risk-free rate known at each close, which cash accrues at until the next
+/// bar (plus `cash_spread` / `margin_spread`).
 #[pyclass(name = "Market", module = "automoonbot._moonrs", frozen)]
 #[derive(Debug)]
 pub struct PyMarket {
@@ -581,7 +583,7 @@ impl PyMarket {
     #[new]
     #[pyo3(signature = (
         open, close, adv_shares, sigma, tradable, listed, split, dividend, *,
-        instruments=None, half_spread=None,
+        instruments=None, half_spread=None, rate=None,
     ))]
     #[allow(clippy::too_many_arguments)]
     fn new(
@@ -595,6 +597,7 @@ impl PyMarket {
         dividend: Ro2<'_, f64>,
         instruments: Option<Vec<Bound<'_, PyDict>>>,
         half_spread: Option<Ro2<'_, f64>>,
+        rate: Option<PyReadonlyArray1<'_, f64>>,
     ) -> PyResult<Self> {
         let sh = open.shape();
         let shape = (sh[0], sh[1]);
@@ -625,6 +628,9 @@ impl PyMarket {
         m.instruments = instruments;
         m.half_spread = half_spread
             .map(|h| panel_f64(&h, "half_spread", shape))
+            .transpose()?;
+        m.rate = rate
+            .map(|r| slice(&r, "rate").map(<[f64]>::to_vec))
             .transpose()?;
         m.validate().map_err(to_py)?;
         Ok(Self { inner: Arc::new(m) })
@@ -777,7 +783,8 @@ impl PySimulator {
     #[pyo3(signature = (
         market, start=0, capital=1.0, *,
         commission_bps=None, half_spread_bps=None, impact_coef=None, max_participation=None,
-        borrow_rate=None, cash_rate=None, margin_rate=None, delist_haircut=None,
+        borrow_rate=None, cash_rate=None, margin_rate=None, cash_spread=None,
+        margin_spread=None, delist_haircut=None,
         periods_per_year=None, option_commission=None, future_commission=None,
         option_half_spread_bps=None, option_min_half_spread=None,
         long_only=true, max_gross=1.0, max_weight=1.0,
@@ -796,6 +803,8 @@ impl PySimulator {
         borrow_rate: Option<f64>,
         cash_rate: Option<f64>,
         margin_rate: Option<f64>,
+        cash_spread: Option<f64>,
+        margin_spread: Option<f64>,
         delist_haircut: Option<f64>,
         periods_per_year: Option<f64>,
         option_commission: Option<f64>,
@@ -820,6 +829,8 @@ impl PySimulator {
             borrow_rate: borrow_rate.unwrap_or(d.borrow_rate),
             cash_rate: cash_rate.unwrap_or(d.cash_rate),
             margin_rate: margin_rate.unwrap_or(d.margin_rate),
+            cash_spread: cash_spread.unwrap_or(d.cash_spread),
+            margin_spread: margin_spread.unwrap_or(d.margin_spread),
             delist_haircut: delist_haircut.unwrap_or(d.delist_haircut),
             periods_per_year: periods_per_year.unwrap_or(d.periods_per_year),
             option_commission: option_commission.unwrap_or(d.option_commission),
@@ -955,11 +966,67 @@ impl PySimulator {
     }
 }
 
+/// Generalized Black-Scholes values (carry `b = r - q` for stock, `0` for
+/// a futures underlying), elementwise over equal-length arrays; `american`
+/// floors each value at intrinsic. The simulator prices with the same code.
+#[pyfunction]
+#[pyo3(signature = (call, spot, strike, tau, rate, carry, vol, *, american = true))]
+#[allow(clippy::too_many_arguments)]
+fn option_value<'py>(
+    py: Python<'py>,
+    call: PyReadonlyArray1<'py, bool>,
+    spot: PyReadonlyArray1<'py, f64>,
+    strike: PyReadonlyArray1<'py, f64>,
+    tau: PyReadonlyArray1<'py, f64>,
+    rate: PyReadonlyArray1<'py, f64>,
+    carry: PyReadonlyArray1<'py, f64>,
+    vol: PyReadonlyArray1<'py, f64>,
+    american: bool,
+) -> PyResult<Bound<'py, numpy::PyArray1<f64>>> {
+    use crate::backtest::pricing::{Contract, Right};
+    let c = slice(&call, "call")?;
+    let cols = [
+        ("spot", slice(&spot, "spot")?),
+        ("strike", slice(&strike, "strike")?),
+        ("tau", slice(&tau, "tau")?),
+        ("rate", slice(&rate, "rate")?),
+        ("carry", slice(&carry, "carry")?),
+        ("vol", slice(&vol, "vol")?),
+    ];
+    for (name, x) in &cols {
+        if x.len() != c.len() {
+            return Err(PyValueError::new_err(format!(
+                "{name} has length {}, expected {}",
+                x.len(),
+                c.len()
+            )));
+        }
+    }
+    let [s, k, t, r, b, v] = cols.map(|(_, x)| x);
+    let out: Vec<f64> = py.detach(|| {
+        (0..c.len())
+            .map(|i| {
+                Contract {
+                    right: if c[i] { Right::Call } else { Right::Put },
+                    spot: s[i],
+                    strike: k[i],
+                    tau: t[i],
+                    rate: r[i],
+                    carry: b[i],
+                }
+                .value(v[i], american)
+            })
+            .collect()
+    });
+    Ok(out.into_pyarray(py))
+}
+
 #[pymodule]
 fn _moonrs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyTemporalGraph>()?;
     m.add_class::<PyMarket>()?;
     m.add_class::<PySimulator>()?;
+    m.add_function(wrap_pyfunction!(option_value, m)?)?;
     m.add("FORMAT_VERSION", crate::persist::FORMAT_VERSION)?;
     m.add("MISSING_TIME", crate::snapshot::MISSING_TIME)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;

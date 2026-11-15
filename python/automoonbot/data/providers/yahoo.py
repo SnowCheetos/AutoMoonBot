@@ -30,6 +30,7 @@ import datetime as dt
 import os
 import re
 import time
+import urllib.parse
 from collections.abc import Iterator, Mapping, Sequence
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -44,7 +45,8 @@ from automoonbot.data.schemas import BARS, CORPORATE_ACTIONS, conform
 
 NAME = "yahoo"
 _HOSTS = frozenset({"query1.finance.yahoo.com", "query2.finance.yahoo.com"})
-_SYMBOL = re.compile(r"^[A-Z0-9][A-Z0-9.\-^=]{0,15}$")
+#: Tickers, plus Yahoo index symbols with a leading caret (``^VIX``).
+_SYMBOL = re.compile(r"^\^?[A-Z0-9][A-Z0-9.\-=]{0,15}$")
 _NY = ZoneInfo("America/New_York")
 _SEC = 1_000_000_000
 #: interval -> (seconds per bar, default range)
@@ -113,7 +115,7 @@ class YahooProvider(Provider):
         """The chart result for ``symbol`` and its fetch time (ns)."""
         sym = _symbol(symbol)
         url = (
-            f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}"
+            f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(sym)}"
             f"?{self._span()}&interval={self.interval}&events=div%2Csplits"
             "&includePrePost=false"
         )

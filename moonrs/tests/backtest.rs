@@ -36,6 +36,7 @@ fn market(t: usize, s: usize, px: &[f64]) -> Market {
         dividend: vec![0.0; t * s],
         instruments: Vec::new(),
         half_spread: None,
+        rate: None,
     }
 }
 
