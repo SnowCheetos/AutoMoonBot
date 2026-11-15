@@ -8,6 +8,8 @@
 * Caches successful responses on disk by URL, so re-running a pipeline does
   not re-download, and records the fetch time alongside each body.
 * Only HTTPS URLs to an allow-listed set of hosts are fetched.
+* Credentials go in request headers, never in URLs, so they are not part
+  of cache keys, cached files or error messages.
 """
 
 import gzip
@@ -92,7 +94,11 @@ class HttpClient:
         base = self.cache_dir / h[:2] / h
         return base.with_suffix(".body"), base.with_suffix(".meta.json")
 
-    def get(self, url: str, *, use_cache: bool = True) -> Response:
+    def get(
+        self, url: str, *, use_cache: bool = True, headers: dict[str, str] | None = None
+    ) -> Response:
+        """Fetch ``url``. ``headers`` (e.g. ``Authorization``) are sent but
+        are not part of the cache key."""
         parts = urllib.parse.urlsplit(url)
         if parts.scheme != "https" or parts.hostname not in self.allowed_hosts:
             raise ValueError(
@@ -109,7 +115,11 @@ class HttpClient:
             limiter.acquire()
             req = urllib.request.Request(
                 url,
-                headers={"User-Agent": self.user_agent, "Accept-Encoding": "gzip"},
+                headers={
+                    **(headers or {}),
+                    "User-Agent": self.user_agent,
+                    "Accept-Encoding": "gzip",
+                },
             )
             try:
                 with urllib.request.urlopen(req, timeout=self.timeout) as resp:

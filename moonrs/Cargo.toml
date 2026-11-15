@@ -24,6 +24,7 @@ smallvec = { version = "1.15", features = ["serde", "union", "const_generics"] }
 thiserror = "2.0"
 pyo3 = { version = "0.30", optional = true, features = ["abi3-py314"] }
 numpy = { version = "0.30", optional = true }
+libm = "0.2.16"
 
 [dev-dependencies]
 proptest = "1.12"

@@ -93,7 +93,14 @@ class Market:
         listed: _B,
         split: _F64,
         dividend: _F64,
-    ) -> None: ...
+        *,
+        instruments: list[dict[str, Any]] | None = None,
+        half_spread: _F64 | None = None,
+    ) -> None:
+        """``instruments``: one dict per column (``kind`` is ``"equity"``,
+        ``"index"``, ``"option"`` or ``"future"``); unknown keys are
+        rejected. ``half_spread``: absolute per-bar half-spread, NaN for the
+        bps default."""
     @property
     def shape(self) -> tuple[int, int]: ...
 
@@ -113,10 +120,21 @@ class Simulator:
         margin_rate: float | None = None,
         delist_haircut: float | None = None,
         periods_per_year: float | None = None,
+        option_commission: float | None = None,
+        future_commission: float | None = None,
+        option_half_spread_bps: float | None = None,
+        option_min_half_spread: float | None = None,
         long_only: bool = True,
         max_gross: float = 1.0,
         max_weight: float = 1.0,
-    ) -> None: ...
+        margin: str = "none",
+        margin_params: dict[str, float] | None = None,
+        early_exercise: bool = True,
+        exercise_threshold: float | None = None,
+        rate: float | None = None,
+    ) -> None:
+        """``margin``: ``"none"``, ``"reg_t"`` or ``"portfolio"``, with
+        ``margin_params`` overriding that model's defaults."""
     @property
     def period(self) -> int: ...
     @property
@@ -127,8 +145,12 @@ class Simulator:
     def cash(self) -> float: ...
     def shares(self) -> _F64: ...
     def weights(self) -> _F64: ...
-    def step(self, target: _F64) -> dict[str, float]:
-        """Execute target weights at the next open. ``NaN`` holds a
-        security's current shares (no trade); infinities are rejected."""
-    def run(self, targets: _F64) -> dict[str, _F64]:
+    def option_terms(self, i: int) -> tuple[float, float] | None:
+        """``(strike, deliverable)`` of an option column after split
+        adjustments; ``None`` for other columns."""
+    def step(self, target: _F64, units: bool = False) -> dict[str, float]:
+        """Execute target weights (or, with ``units``, shares / contracts)
+        at the next open. ``NaN`` holds a security's current position (no
+        trade); infinities are rejected."""
+    def run(self, targets: _F64, units: bool = False) -> dict[str, _F64]:
         """``step`` for each row of ``targets[N, S]``; stops on ruin."""
